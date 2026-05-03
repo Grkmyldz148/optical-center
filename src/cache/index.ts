@@ -16,3 +16,8 @@ export type {
   CacheOptions,
   CacheStats,
 } from './transform-cache.js';
+
+export {
+  algorithmCacheKey,
+  computeAlgorithmFingerprint,
+} from './algorithm-fingerprint.js';

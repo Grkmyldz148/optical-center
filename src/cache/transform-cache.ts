@@ -22,6 +22,8 @@ import { dirname, join } from 'node:path';
 
 import { ALGORITHM_VERSION } from '../core/version.js';
 
+import { algorithmCacheKey } from './algorithm-fingerprint.js';
+
 export interface CacheEntry<T> {
   readonly v: 1;
   readonly key: string;
@@ -51,9 +53,16 @@ const DEFAULT_L1_CAPACITY = 1000;
  * Hashing raw bytes — not normalized content — closes the F3 collision
  * vector flagged by security-sentinel: an attacker who controls SVG input
  * can't engineer two distinct payloads that share the same key.
+ *
+ * The algorithm cache key blends the hand-maintained ALGORITHM_VERSION
+ * with a SHA fingerprint of the model source — so that even an unbumped
+ * tweak to the math invalidates stale entries.
  */
 export function computeCacheKey(svg: string): string {
-  return createHash('sha256').update(svg).update(ALGORITHM_VERSION).digest('hex');
+  return createHash('sha256')
+    .update(svg)
+    .update(algorithmCacheKey())
+    .digest('hex');
 }
 
 export class TransformCache<T> {
