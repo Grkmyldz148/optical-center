@@ -167,22 +167,48 @@ export function applyDoG(
  * This is the key correction that Proffitt et al. (1983) predicted:
  * perceived center is dominated by contour, not interior luminance.
  *
+ * Phase 2.5: a 1024-entry LUT replaces Math.pow when the exponent matches
+ * the calibrated default (0.7). Weights are clamped into [0, 1] before the
+ * lookup; non-default exponents fall back to the original Math.pow path.
+ *
  * @param weights  - Row-major weight map (length = width * height).
  * @param exponent - Power law exponent. Default: 0.7 (moderate compression).
  *                   Range: 0.5 (strong compression) to 1.0 (linear/no compression).
  * @returns A new Float32Array with compressed weights.
  */
+const POWER_LUT_DEFAULT_EXPONENT = 0.7;
+const POWER_LUT_SIZE = 1024;
+const POWER_LUT_LAST = POWER_LUT_SIZE - 1;
+const POWER_LUT_DEFAULT: Float32Array = (() => {
+  const lut = new Float32Array(POWER_LUT_SIZE);
+  for (let i = 0; i < POWER_LUT_SIZE; i++) {
+    lut[i] = Math.pow(i / POWER_LUT_LAST, POWER_LUT_DEFAULT_EXPONENT);
+  }
+  return lut;
+})();
+
 export function applyPowerCompression(
   weights: Float32Array,
-  exponent: number = 0.7
+  exponent: number = POWER_LUT_DEFAULT_EXPONENT
 ): Float32Array {
   const result = new Float32Array(weights.length);
+
+  if (exponent === POWER_LUT_DEFAULT_EXPONENT) {
+    for (let i = 0; i < weights.length; i++) {
+      const w = weights[i]!;
+      if (w > 0) {
+        const clamped = w >= 1 ? POWER_LUT_LAST : Math.round(w * POWER_LUT_LAST);
+        result[i] = POWER_LUT_DEFAULT[clamped]!;
+      }
+    }
+    return result;
+  }
+
   for (let i = 0; i < weights.length; i++) {
     const w = weights[i]!;
     if (w > 0) {
       result[i] = Math.pow(w, exponent);
     }
-    // weights <= 0 stay 0
   }
   return result;
 }

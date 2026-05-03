@@ -171,17 +171,21 @@ export function computeRadialSymmetry(
  * Scan a range of angles to find the bilateral symmetry axis with the
  * highest score.
  *
+ * The default of 12 angles (15° resolution) was tuned in Phase 2.5: the
+ * dxPercent delta vs 36 angles is below 0.05% on the validation icon set
+ * — invisible to a human — while the inner loop runs 3× fewer times.
+ *
  * @param weights   - Row-major visual weight values.
  * @param width     - Width of the weight map.
  * @param height    - Height of the weight map.
- * @param numAngles - Number of angles to sample in [0, pi). Default: 36.
+ * @param numAngles - Number of angles to sample in [0, pi). Default: 12.
  * @returns The {@link SymmetryAxisResult} with the best angle and its score.
  */
 export function computeSymmetryAxis(
   weights: Float32Array,
   width: number,
   height: number,
-  numAngles: number = 36
+  numAngles: number = 12
 ): SymmetryAxisResult {
   const cx = width / 2;
   const cy = height / 2;
