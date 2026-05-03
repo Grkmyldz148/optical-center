@@ -53,7 +53,13 @@ export function rasterizeSvg(
   const size = clamp(options?.size ?? RASTER_SIZE, 16, MAX_RASTER_SIZE);
   const loadSystemFonts = options?.loadSystemFonts ?? false;
 
-  const resvg = new Resvg(svg, {
+  // resvg's underlying parser rejects SVGs without the namespace declaration
+  // ("does not have a root node"). JSX-serialized SVG and authored snippets
+  // routinely omit it, so we patch it in at the boundary rather than asking
+  // every caller to remember.
+  const normalized = ensureSvgNamespace(svg);
+
+  const resvg = new Resvg(normalized, {
     fitTo: { mode: 'width', value: size },
     font: { loadSystemFonts },
   });
@@ -71,4 +77,16 @@ function clamp(value: number, min: number, max: number): number {
   if (value < min) return min;
   if (value > max) return max;
   return value;
+}
+
+const SVG_NS = 'http://www.w3.org/2000/svg';
+const SVG_OPENING = /<svg\b([^>]*)>/i;
+
+function ensureSvgNamespace(svg: string): string {
+  const match = svg.match(SVG_OPENING);
+  if (!match) return svg;
+  const attrs = match[1] ?? '';
+  if (/\bxmlns\s*=/.test(attrs)) return svg;
+  const next = `<svg xmlns="${SVG_NS}"${attrs}>`;
+  return svg.replace(match[0], next);
 }
