@@ -15,11 +15,26 @@ interface VitePluginShape {
     code: string,
     id: string,
   ) => Promise<{ code: string; map: unknown } | null>;
-  transformIndexHtml?: (html: string) => string | Promise<string>;
+  transformIndexHtml?:
+    | ((html: string) => string | Promise<string>)
+    | {
+        order?: 'pre' | 'post';
+        handler: (html: string) => string | Promise<string>;
+      };
 }
 
 function asVitePlugin(plugin: ReturnType<typeof opticalCenterVite>): VitePluginShape {
   return plugin as unknown as VitePluginShape;
+}
+
+function callTransformIndexHtml(
+  plugin: VitePluginShape,
+  html: string,
+): string | Promise<string> {
+  const hook = plugin.transformIndexHtml;
+  if (!hook) return '';
+  if (typeof hook === 'function') return hook(html);
+  return hook.handler(html);
 }
 
 const PLAY_SVG =
@@ -32,21 +47,25 @@ describe('opticalCenterVite plugin shape', () => {
     expect(plugin.enforce).toBe('pre');
     expect(typeof plugin.load).toBe('function');
     expect(typeof plugin.transform).toBe('function');
-    expect(typeof plugin.transformIndexHtml).toBe('function');
+    // transformIndexHtml is wrapped in {order: 'post', handler} so it
+    // runs after every other plugin's HTML pass.
+    const hook = plugin.transformIndexHtml;
+    expect(hook && typeof hook === 'object' ? hook.order : null).toBe('post');
+    expect(
+      typeof (hook && typeof hook === 'object' ? hook.handler : hook),
+    ).toBe('function');
   });
 
   it('defaults emitMetadata to true under serve and false under build', async () => {
     const serve = asVitePlugin(opticalCenterVite());
     serve.configResolved?.({ command: 'serve' });
     const html = `<html><body>${PLAY_SVG.replace('<svg', '<svg optical-center')}</body></html>`;
-    const out = await Promise.resolve(serve.transformIndexHtml?.(html) ?? '');
+    const out = await Promise.resolve(callTransformIndexHtml(serve, html));
     expect(out).toContain('data-optical-original-viewbox');
 
     const build = asVitePlugin(opticalCenterVite());
     build.configResolved?.({ command: 'build' });
-    const buildOut = await Promise.resolve(
-      build.transformIndexHtml?.(html) ?? '',
-    );
+    const buildOut = await Promise.resolve(callTransformIndexHtml(build, html));
     expect(buildOut).not.toContain('data-optical-original-viewbox');
     expect(buildOut).toContain('data-optical-center=""');
   });
@@ -82,7 +101,7 @@ describe('transformIndexHtml', () => {
     const plugin = asVitePlugin(opticalCenterVite());
     plugin.configResolved?.({ command: 'build' });
     const out = await Promise.resolve(
-      plugin.transformIndexHtml?.(`<html>${dirty}</html>`) ?? '',
+      callTransformIndexHtml(plugin, `<html>${dirty}</html>`),
     );
     expect(out).not.toContain('onload');
     expect(out).not.toContain('<script');

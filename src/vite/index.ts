@@ -169,13 +169,20 @@ export default function opticalCenterVite(
       return { code: result.code, map: result.map ?? null };
     },
 
-    transformIndexHtml(html) {
-      const opts = optionalOnWarning;
-      return transformHtmlSvgs(html, {
-        emitMetadata: emitMetadata === true,
-        sanitize,
-        ...opts,
-      });
+    // transformIndexHtml uses `order: 'post'` so we see the HTML *after*
+    // every other plugin has had a turn. That is critical when frameworks
+    // (Astro, Marko, vite-plugin-svelte) inject their own SVGs late in
+    // the build — running pre would miss them.
+    transformIndexHtml: {
+      order: 'post',
+      handler(html) {
+        const opts = optionalOnWarning;
+        return transformHtmlSvgs(html, {
+          emitMetadata: emitMetadata === true,
+          sanitize,
+          ...opts,
+        });
+      },
     },
 
     handleHotUpdate(ctx: HmrContext) {
