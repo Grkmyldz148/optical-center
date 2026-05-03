@@ -4,16 +4,39 @@
     <meta charset="UTF-8" />
     <title>optical-center · react-vite example</title>
     <style>
-      body { font: 16px/1.4 system-ui; padding: 40px; color: #111; }
-      .row { display: flex; gap: 24px; align-items: center; margin-bottom: 24px; }
+      :root { color-scheme: light dark; }
+      body {
+        font: 16px/1.5 system-ui, sans-serif;
+        max-width: 720px;
+        margin: 40px auto;
+        padding: 0 24px;
+        color: #111;
+      }
+      .grid { display: grid; gap: 32px; }
+      .pair {
+        display: grid;
+        grid-template-columns: 100px 100px 1fr;
+        gap: 16px;
+        align-items: center;
+      }
       .badge {
-        width: 80px; height: 80px;
+        position: relative;
+        width: 100px; height: 100px;
         background: #111; color: #fff;
         border-radius: 50%;
         display: grid; place-items: center;
       }
-      .badge svg { width: 32px; height: 32px; fill: #fff; }
-      code { background: #f3f3f3; padding: 2px 6px; border-radius: 4px; }
+      .badge svg { width: 40px; height: 40px; fill: #fff; }
+      .label {
+        position: absolute;
+        bottom: -22px;
+        font-size: 12px;
+        color: #666;
+        letter-spacing: 0.04em;
+      }
+      .name { font-family: ui-monospace, monospace; }
+      code { background: #f3f3f3; padding: 2px 6px; border-radius: 4px; font-size: 90%; }
+      h1 { letter-spacing: -0.02em; }
     </style>
   </head>
   <body>
