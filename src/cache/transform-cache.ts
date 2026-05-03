@@ -17,8 +17,9 @@
  */
 
 import { createHash } from 'node:crypto';
-import { mkdir, readFile, rename, writeFile } from 'node:fs/promises';
+import { mkdir, readFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
+import writeFileAtomic from 'write-file-atomic';
 
 import { ALGORITHM_VERSION } from '../core/version.js';
 
@@ -171,7 +172,8 @@ export function defaultCacheDir(): string {
 
 async function writeAtomic(target: string, content: string): Promise<void> {
   await mkdir(dirname(target), { recursive: true });
-  const tmp = `${target}.${process.pid}.${Date.now()}.tmp`;
-  await writeFile(tmp, content);
-  await rename(tmp, target);
+  // write-file-atomic handles fsync, the tmp-file rename dance, and the
+  // Windows file-lock retry loop that the previous hand-rolled version
+  // would silently fail on. Cross-platform safety with one dependency.
+  await writeFileAtomic(target, content);
 }
