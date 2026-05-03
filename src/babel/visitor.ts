@@ -39,6 +39,8 @@ interface OpticalNode extends t.JSXElement {
 export interface VisitorOptions {
   readonly emitMetadata: boolean;
   readonly onWarning?: (warning: { code: WarningCode; location?: string }) => void;
+  /** Bail out before rasterizing anything larger than this many bytes. */
+  readonly maxInputBytes?: number;
 }
 
 interface ValidationOk {
@@ -99,6 +101,11 @@ export function visitJsxElement(
     svg = jsxElementToSvgString(node);
   } catch {
     emitWarning(options, 'OPTICAL_DYNAMIC_SVG', path);
+    node._opticalProcessed = true;
+    return;
+  }
+  if (options.maxInputBytes !== undefined && svg.length > options.maxInputBytes) {
+    emitWarning(options, 'OPTICAL_RASTERIZE_FAILED', path);
     node._opticalProcessed = true;
     return;
   }

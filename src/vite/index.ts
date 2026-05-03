@@ -25,6 +25,7 @@ import type { HmrContext, Plugin, ResolvedConfig } from 'vite';
 import { applyTransformToSvg } from '../core/apply-to-svg.js';
 import opticalCenterBabel from '../babel/index.js';
 import type { BabelPluginOptions } from '../babel/index.js';
+import { MAX_INPUT_BYTES } from '../core/constants.js';
 import { transformViewBoxFromSvg } from '../node/transform-viewbox-from-svg.js';
 import { sanitizeSvg } from '../node/sanitize.js';
 import type { SanitizeOptions } from '../node/sanitize.js';
@@ -51,6 +52,21 @@ export interface VitePluginOptions {
    * entirely (only do this if the SVG sources are fully trusted).
    */
   readonly sanitize?: boolean | SanitizeOptions;
+  /**
+   * Filter which JSX/TSX module ids the Babel pass runs on. Modules
+   * whose id matches at least one `include` pattern (and none of
+   * `exclude`) are processed. By default every `.jsx`/`.tsx` file is
+   * eligible. Either RegExp or substring patterns are accepted.
+   */
+  readonly include?: ReadonlyArray<RegExp | string>;
+  /** Inverse of `include`. Wins on conflict. */
+  readonly exclude?: ReadonlyArray<RegExp | string>;
+  /**
+   * Hard upper bound on the size (bytes) of an SVG payload before the
+   * plugin gives up. Applies to both ?optical asset imports and the
+   * forwarded Babel pass. Default `MAX_INPUT_BYTES` from constants.
+   */
+  readonly maxInputBytes?: number;
 }
 
 const JSX_FILE = /\.[jt]sx(\?.*)?$/;
@@ -70,6 +86,14 @@ export default function opticalCenterVite(
     if (sanitizeOption === false) return svg;
     if (sanitizeOption === true) return sanitizeSvg(svg);
     return sanitizeSvg(svg, sanitizeOption);
+  };
+  const maxInputBytes = options.maxInputBytes ?? MAX_INPUT_BYTES;
+  const includes = options.include ?? null;
+  const excludes = options.exclude ?? null;
+  const isIncluded = (id: string): boolean => {
+    if (excludes && excludes.some((p) => matchesPattern(p, id))) return false;
+    if (!includes) return true;
+    return includes.some((p) => matchesPattern(p, id));
   };
 
   return {
@@ -92,6 +116,10 @@ export default function opticalCenterVite(
         svg = await readFile(filePath, 'utf8');
       } catch {
         return null;
+      }
+      if (svg.length > maxInputBytes) {
+        onWarning?.({ code: 'OPTICAL_RASTERIZE_FAILED', location: filePath });
+        return `export default ${JSON.stringify(svg)};`;
       }
       // ?optical is an explicit opt-in by the importer — transform
       // unconditionally, no marker required.
@@ -116,11 +144,13 @@ export default function opticalCenterVite(
 
     async transform(code, id) {
       if (!JSX_FILE.test(id)) return null;
+      if (!isIncluded(id)) return null;
       const babelOptions = options.babel;
       const onWarningForBabel = babelOptions?.onWarning ?? onWarning;
       const merged: BabelPluginOptions = {
         emitMetadata: babelOptions?.emitMetadata ?? emitMetadata === true,
         onWarning: onWarningForBabel ?? null,
+        maxInputBytes: babelOptions?.maxInputBytes ?? maxInputBytes,
       };
       const result = await babel.transformAsync(code, {
         filename: id,
@@ -165,3 +195,7 @@ export default function opticalCenterVite(
 }
 
 export type { ResolvedConfig };
+
+function matchesPattern(pattern: RegExp | string, id: string): boolean {
+  return typeof pattern === 'string' ? id.includes(pattern) : pattern.test(id);
+}

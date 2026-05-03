@@ -133,4 +133,32 @@ describe('transform() — JSX/TSX', () => {
     const result = await plugin.transform?.('export const x = 1;', '/x/foo.ts');
     expect(result).toBeNull();
   });
+
+  it('honors include patterns', async () => {
+    const plugin = asVitePlugin(opticalCenterVite({ include: [/icons\//] }));
+    plugin.configResolved?.({ command: 'build' });
+    const skipped = await plugin.transform?.(
+      'const X = () => <svg opticalCenter viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>;',
+      '/components/MyIcon.tsx',
+    );
+    expect(skipped).toBeNull();
+
+    const matched = await plugin.transform?.(
+      'const X = () => <svg opticalCenter viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>;',
+      '/icons/MyIcon.tsx',
+    );
+    expect(matched?.code).toContain('data-optical-center=""');
+  });
+
+  it('honors exclude patterns (wins over include)', async () => {
+    const plugin = asVitePlugin(
+      opticalCenterVite({ include: [/icons\//], exclude: ['MyIcon'] }),
+    );
+    plugin.configResolved?.({ command: 'build' });
+    const result = await plugin.transform?.(
+      'const X = () => <svg opticalCenter viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>;',
+      '/icons/MyIcon.tsx',
+    );
+    expect(result).toBeNull();
+  });
 });

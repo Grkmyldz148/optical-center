@@ -19,6 +19,7 @@
 
 import type { PluginObj } from '@babel/core';
 
+import { MAX_INPUT_BYTES } from '../core/constants.js';
 import type { WarningCode } from '../core/warnings.js';
 
 import { visitJsxElement } from './visitor.js';
@@ -36,6 +37,21 @@ export interface BabelPluginOptions {
    * function to integrate with a build logger.
    */
   readonly onWarning?: ((warning: { code: WarningCode; location?: string }) => void) | null;
+  /**
+   * Hard upper bound on serialized JSX size (bytes). Anything larger
+   * skips the pipeline with an `OPTICAL_RASTERIZE_FAILED` warning so a
+   * pathological inline SVG can't blow the build. Default
+   * `MAX_INPUT_BYTES` from constants.
+   */
+  readonly maxInputBytes?: number;
+  /**
+   * If `true`, emit a warning every time the visitor decides not to
+   * transform an `<svg opticalCenter>` element (dynamic children, spread
+   * props, etc.) instead of silently skipping. Default `true` —
+   * surfacing these helps icon-set authors notice why their markup
+   * isn't being rewritten.
+   */
+  readonly warnOnBailOut?: boolean;
 }
 
 export type { WarningCode };
@@ -45,18 +61,21 @@ export default function opticalCenterBabelPlugin(
   options: BabelPluginOptions = {},
 ): PluginObj {
   const emitMetadata = options.emitMetadata === true;
-  const onWarning =
+  const warnOnBailOut = options.warnOnBailOut !== false;
+  const maxInputBytes = options.maxInputBytes ?? MAX_INPUT_BYTES;
+  const baseOnWarning =
     options.onWarning === null
       ? undefined
       : options.onWarning ?? defaultWarningHandler;
+  const onWarning = baseOnWarning && warnOnBailOut ? baseOnWarning : undefined;
 
   return {
     name: 'optical-center',
     visitor: {
       JSXElement(path) {
         const visitorOptions = onWarning
-          ? { emitMetadata, onWarning }
-          : { emitMetadata };
+          ? { emitMetadata, maxInputBytes, onWarning }
+          : { emitMetadata, maxInputBytes };
         visitJsxElement(path, visitorOptions);
       },
     },
