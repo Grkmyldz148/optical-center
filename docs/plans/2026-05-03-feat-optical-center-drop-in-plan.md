@@ -1,7 +1,7 @@
 ---
 title: Optical Center — Drop-in DX Implementation
 type: feat
-status: active
+status: completed
 date: 2026-05-03
 origin: docs/brainstorms/2026-05-03-optical-center-drop-in-brainstorm.md
 deepened: 2026-05-03
