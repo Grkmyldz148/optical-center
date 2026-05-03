@@ -1,6 +1,6 @@
 {
   "name": "optical-center",
-  "version": "0.1.0",
+  "version": "0.2.0-alpha.0",
   "description": "Computes the perceptual optical center of an icon for visually balanced rendering.",
   "type": "module",
   "main": "./dist/index.js",
@@ -9,15 +9,25 @@
     ".": {
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
-    }
+    },
+    "./node": {
+      "types": "./dist/node/index.d.ts",
+      "import": "./dist/node/index.js"
+    },
+    "./package.json": "./package.json"
   },
   "files": [
     "dist",
     "src",
     "README.md"
   ],
+  "engines": {
+    "node": ">=20"
+  },
   "scripts": {
     "build": "tsc",
+    "test": "vitest run",
+    "test:watch": "vitest",
     "prepublishOnly": "npm run build"
   },
   "keywords": [
@@ -29,7 +39,11 @@
     "ui"
   ],
   "license": "MIT",
+  "dependencies": {
+    "@resvg/resvg-js": "^2.6.0"
+  },
   "devDependencies": {
-    "typescript": "^5.4.0"
+    "typescript": "^5.4.0",
+    "vitest": "^3.0.0"
   }
 }
