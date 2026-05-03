@@ -21,6 +21,11 @@ import type { WarningCode } from '../core/warnings.js';
 export interface HtmlTransformOptions {
   readonly emitMetadata: boolean;
   readonly onWarning?: (warning: { code: WarningCode; location?: string }) => void;
+  /**
+   * Optional pass to scrub dangerous content (scripts, on* handlers,
+   * javascript: URIs) before re-emitting the SVG. Defaults to identity.
+   */
+  readonly sanitize?: (svg: string) => string;
 }
 
 const SVG_BLOCK = /<svg\b[^>]*\boptical-center\b[^>]*>[\s\S]*?<\/svg>/gi;
@@ -30,6 +35,7 @@ export function transformHtmlSvgs(
   html: string,
   options: HtmlTransformOptions,
 ): string {
+  const sanitize = options.sanitize ?? ((s) => s);
   return html.replace(SVG_BLOCK, (svg) => {
     const explicit = svg.match(/\boptical-center\s*=\s*["']([^"']*)["']/i);
     if (explicit && explicit[1] !== undefined) {
@@ -40,7 +46,7 @@ export function transformHtmlSvgs(
 
     // Strip the boolean `optical-center` attribute BEFORE rasterizing —
     // resvg's strict XML parser rejects bare attribute names.
-    const stripped = svg.replace(OC_ATTR, '');
+    const stripped = sanitize(svg.replace(OC_ATTR, ''));
 
     let result: ViewBoxTransformResult;
     try {
@@ -49,7 +55,7 @@ export function transformHtmlSvgs(
       });
     } catch {
       options.onWarning?.({ code: 'OPTICAL_RASTERIZE_FAILED' });
-      return svg;
+      return sanitize(svg);
     }
 
     const next = applyTransformToSvg(stripped, {

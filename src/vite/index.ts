@@ -26,6 +26,8 @@ import { applyTransformToSvg } from '../core/apply-to-svg.js';
 import opticalCenterBabel from '../babel/index.js';
 import type { BabelPluginOptions } from '../babel/index.js';
 import { transformViewBoxFromSvg } from '../node/transform-viewbox-from-svg.js';
+import { sanitizeSvg } from '../node/sanitize.js';
+import type { SanitizeOptions } from '../node/sanitize.js';
 import type { WarningCode } from '../core/warnings.js';
 
 import { transformHtmlSvgs } from './transform-html-svg.js';
@@ -42,6 +44,13 @@ export interface VitePluginOptions {
   readonly babel?: BabelPluginOptions;
   /** Logger callback for every bail-out / clip warning. */
   readonly onWarning?: (warning: { code: WarningCode; location?: string }) => void;
+  /**
+   * Sanitize emitted SVG markup (drop `<script>`, on* handlers,
+   * javascript: URIs, foreignObject). Default `true`. Pass an object to
+   * narrow which categories are stripped, or `false` to opt out
+   * entirely (only do this if the SVG sources are fully trusted).
+   */
+  readonly sanitize?: boolean | SanitizeOptions;
 }
 
 const JSX_FILE = /\.[jt]sx(\?.*)?$/;
@@ -56,6 +65,12 @@ export default function opticalCenterVite(
 
   const onWarning = options.onWarning;
   const optionalOnWarning = onWarning ? { onWarning } : {};
+  const sanitizeOption = options.sanitize ?? true;
+  const sanitize = (svg: string): string => {
+    if (sanitizeOption === false) return svg;
+    if (sanitizeOption === true) return sanitizeSvg(svg);
+    return sanitizeSvg(svg, sanitizeOption);
+  };
 
   return {
     name: 'optical-center',
@@ -80,11 +95,12 @@ export default function opticalCenterVite(
       }
       // ?optical is an explicit opt-in by the importer — transform
       // unconditionally, no marker required.
+      const sanitized = sanitize(svg);
       try {
-        const result = transformViewBoxFromSvg(svg, {
+        const result = transformViewBoxFromSvg(sanitized, {
           emitMetadata: emitMetadata === true,
         });
-        const next = applyTransformToSvg(svg, {
+        const next = applyTransformToSvg(sanitized, {
           viewBox: result.viewBox,
           breadcrumb: result.breadcrumb,
         });
@@ -94,7 +110,7 @@ export default function opticalCenterVite(
         return `export default ${JSON.stringify(next)};`;
       } catch {
         onWarning?.({ code: 'OPTICAL_RASTERIZE_FAILED', location: filePath });
-        return `export default ${JSON.stringify(svg)};`;
+        return `export default ${JSON.stringify(sanitized)};`;
       }
     },
 
@@ -127,6 +143,7 @@ export default function opticalCenterVite(
       const opts = optionalOnWarning;
       return transformHtmlSvgs(html, {
         emitMetadata: emitMetadata === true,
+        sanitize,
         ...opts,
       });
     },

@@ -75,6 +75,20 @@ describe('transformIndexHtml', () => {
     });
     expect(out).not.toContain('data-optical-center');
   });
+
+  it('strips dangerous content via the sanitize hook', async () => {
+    const dirty =
+      '<svg optical-center xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" onload="hack()"><script>steal()</script><path d="M8 5v14l11-7z"/></svg>';
+    const plugin = asVitePlugin(opticalCenterVite());
+    plugin.configResolved?.({ command: 'build' });
+    const out = await Promise.resolve(
+      plugin.transformIndexHtml?.(`<html>${dirty}</html>`) ?? '',
+    );
+    expect(out).not.toContain('onload');
+    expect(out).not.toContain('<script');
+    expect(out).not.toContain('steal()');
+    expect(out).toContain('data-optical-center=""');
+  });
 });
 
 describe('load() — ?optical SVG asset', () => {
