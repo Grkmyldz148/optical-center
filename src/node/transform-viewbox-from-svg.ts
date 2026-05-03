@@ -6,12 +6,12 @@
  * should use `transformViewBox` directly to avoid double rasterization.
  */
 
-import { getOpticalCenter } from '../final-model.js';
-import { transformViewBox } from '../transform-viewbox.js';
+import { getOpticalCenter } from '../model/final-model.js';
+import { transformViewBox } from '../core/transform-viewbox.js';
 import type {
   ViewBoxTransformOptions,
   ViewBoxTransformResult,
-} from '../transform-viewbox.js';
+} from '../core/transform-viewbox.js';
 
 import { rasterizeSvg } from './rasterize.js';
 import type { RasterizeOptions } from './rasterize.js';

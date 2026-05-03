@@ -2,7 +2,7 @@ import * as babel from '@babel/core';
 import { describe, expect, it } from 'vitest';
 
 import opticalCenter from '../src/babel/index.js';
-import type { WarningCode } from '../src/warnings.js';
+import type { WarningCode } from '../src/core/warnings.js';
 
 interface RunResult {
   readonly code: string;

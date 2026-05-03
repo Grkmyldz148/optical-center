@@ -13,10 +13,10 @@
  *     "garbage output".
  */
 
-import { applyTransformToSvg } from '../apply-to-svg.js';
+import { applyTransformToSvg } from '../core/apply-to-svg.js';
 import { transformViewBoxFromSvg } from '../node/transform-viewbox-from-svg.js';
-import type { ViewBoxTransformResult } from '../transform-viewbox.js';
-import type { WarningCode } from '../warnings.js';
+import type { ViewBoxTransformResult } from '../core/transform-viewbox.js';
+import type { WarningCode } from '../core/warnings.js';
 
 export interface HtmlTransformOptions {
   readonly emitMetadata: boolean;

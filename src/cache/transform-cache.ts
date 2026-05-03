@@ -20,7 +20,7 @@ import { createHash } from 'node:crypto';
 import { mkdir, readFile, rename, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 
-import { ALGORITHM_VERSION } from './version.js';
+import { ALGORITHM_VERSION } from '../core/version.js';
 
 export interface CacheEntry<T> {
   readonly v: 1;

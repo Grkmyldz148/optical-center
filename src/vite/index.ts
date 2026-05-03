@@ -22,11 +22,11 @@ import { readFile } from 'node:fs/promises';
 import * as babel from '@babel/core';
 import type { HmrContext, Plugin, ResolvedConfig } from 'vite';
 
-import { applyTransformToSvg } from '../apply-to-svg.js';
+import { applyTransformToSvg } from '../core/apply-to-svg.js';
 import opticalCenterBabel from '../babel/index.js';
 import type { BabelPluginOptions } from '../babel/index.js';
 import { transformViewBoxFromSvg } from '../node/transform-viewbox-from-svg.js';
-import type { WarningCode } from '../warnings.js';
+import type { WarningCode } from '../core/warnings.js';
 
 import { transformHtmlSvgs } from './transform-html-svg.js';
 

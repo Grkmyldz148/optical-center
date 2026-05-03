@@ -25,10 +25,10 @@ import * as t from '@babel/types';
 import type { NodePath } from '@babel/core';
 
 import { rasterizeSvg } from '../node/rasterize.js';
-import { getOpticalCenter } from '../final-model.js';
-import { transformViewBox } from '../transform-viewbox.js';
-import type { ViewBoxBreadcrumb } from '../types.js';
-import type { WarningCode } from '../warnings.js';
+import { getOpticalCenter } from '../model/final-model.js';
+import { transformViewBox } from '../core/transform-viewbox.js';
+import type { ViewBoxBreadcrumb } from '../core/types.js';
+import type { WarningCode } from '../core/warnings.js';
 
 import { jsxElementToSvgString } from './jsx-to-svg.js';
 

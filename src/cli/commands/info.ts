@@ -8,7 +8,7 @@ import { readFile, stat } from 'node:fs/promises';
 import { resolve } from 'node:path';
 
 import { transformViewBoxFromSvg } from '../../node/transform-viewbox-from-svg.js';
-import { parseViewBoxFromSvg } from '../../parse-viewbox.js';
+import { parseViewBoxFromSvg } from '../../core/parse-viewbox.js';
 
 import { readOutputOptions, writeJson, writeStderr, writeStdout } from '../output.js';
 

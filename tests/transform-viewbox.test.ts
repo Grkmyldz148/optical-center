@@ -4,8 +4,8 @@ import {
   applyOffsetToViewBox,
   getRasterBbox,
   transformViewBox,
-} from '../src/transform-viewbox.js';
-import type { RasterImage, ViewBoxNumeric } from '../src/types.js';
+} from '../src/core/transform-viewbox.js';
+import type { RasterImage, ViewBoxNumeric } from '../src/core/types.js';
 
 function emptyRaster(width = 24, height = 24): RasterImage {
   return {

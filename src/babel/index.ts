@@ -19,7 +19,7 @@
 
 import type { PluginObj } from '@babel/core';
 
-import type { WarningCode } from '../warnings.js';
+import type { WarningCode } from '../core/warnings.js';
 
 import { visitJsxElement } from './visitor.js';
 

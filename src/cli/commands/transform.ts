@@ -9,11 +9,11 @@ import { mkdir, readFile, readdir, stat, writeFile } from 'node:fs/promises';
 import { dirname, extname, join, relative, resolve } from 'node:path';
 import { performance } from 'node:perf_hooks';
 
-import { applyTransformToSvg } from '../../apply-to-svg.js';
-import { TransformCache, computeCacheKey } from '../../cache.js';
+import { applyTransformToSvg } from '../../core/apply-to-svg.js';
+import { TransformCache, computeCacheKey } from '../../cache/index.js';
 import { transformViewBoxFromSvg } from '../../node/transform-viewbox-from-svg.js';
-import { buildWarning } from '../../warnings.js';
-import type { WarningRecord } from '../../warnings.js';
+import { buildWarning } from '../../core/warnings.js';
+import type { WarningRecord } from '../../core/warnings.js';
 
 import { getBoolFlag, getStringFlag } from '../argv.js';
 import {

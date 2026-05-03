@@ -12,8 +12,8 @@
 
 import { Resvg } from '@resvg/resvg-js';
 
-import { MAX_INPUT_BYTES, MAX_RASTER_SIZE, RASTER_SIZE } from '../constants.js';
-import type { RasterImage } from '../types.js';
+import { MAX_INPUT_BYTES, MAX_RASTER_SIZE, RASTER_SIZE } from '../core/constants.js';
+import type { RasterImage } from '../core/types.js';
 
 export interface RasterizeOptions {
   /**

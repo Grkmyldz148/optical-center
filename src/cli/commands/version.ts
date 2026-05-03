@@ -4,7 +4,7 @@
  * they're talking to the right binary.
  */
 
-import { ALGORITHM_VERSION } from '../../version.js';
+import { ALGORITHM_VERSION } from '../../core/version.js';
 
 import {
   PACKAGE_VERSION,

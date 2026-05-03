@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { applyTransformToSvg } from '../src/apply-to-svg.js';
+import { applyTransformToSvg } from '../src/core/apply-to-svg.js';
 
 describe('applyTransformToSvg', () => {
   const patch = {

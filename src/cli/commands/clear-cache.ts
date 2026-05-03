@@ -9,8 +9,8 @@
 import { rm } from 'node:fs/promises';
 import { join } from 'node:path';
 
-import { defaultCacheDir } from '../../cache.js';
-import { ALGORITHM_VERSION } from '../../version.js';
+import { defaultCacheDir } from '../../cache/index.js';
+import { ALGORITHM_VERSION } from '../../core/version.js';
 
 import { getStringFlag, getBoolFlag } from '../argv.js';
 import { readOutputOptions, writeJson, writeStderr, writeStdout } from '../output.js';

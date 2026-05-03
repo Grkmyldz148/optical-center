@@ -9,7 +9,7 @@
  * incompatible upgrades without parsing free-form text.
  */
 
-import { ALGORITHM_VERSION } from '../version.js';
+import { ALGORITHM_VERSION } from '../core/version.js';
 
 export const SCHEMA_VERSION = 1;
 export const PACKAGE_VERSION = '0.2.0-alpha.0';
