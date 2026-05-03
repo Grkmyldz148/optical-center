@@ -11,7 +11,7 @@ import { loadIcon } from '../helpers/fixtures.js';
 
 describe('transformViewBoxFromSvg', () => {
   it('transforms the play icon (asymmetric) and produces a deterministic viewBox', () => {
-    const svg = loadIcon('play');
+    const svg = loadIcon('lucide/play');
     const a = transformViewBoxFromSvg(svg);
     const b = transformViewBoxFromSvg(svg);
     expect(a.viewBox).toBe(b.viewBox);
@@ -23,14 +23,14 @@ describe('transformViewBoxFromSvg', () => {
     // A circle is horizontally and vertically symmetric, so dx should be
     // ~0. The model still applies a small perceptual vertical bias, so
     // dy is bounded but not necessarily zero.
-    const svg = loadIcon('circle-centered');
+    const svg = loadIcon('phosphor/circle-fill');
     const result = transformViewBoxFromSvg(svg);
     expect(Math.abs(result.offset.dxPercent)).toBeLessThan(0.5);
     expect(Math.abs(result.offset.dyPercent)).toBeLessThan(5);
   });
 
   it('returns large offset for an asymmetric triangle', () => {
-    const svg = loadIcon('triangle-asymmetric');
+    const svg = loadIcon('edge-cases/asymmetric-triangle');
     const result = transformViewBoxFromSvg(svg);
     const magnitude = Math.hypot(
       result.offset.dxPercent,
@@ -40,7 +40,7 @@ describe('transformViewBoxFromSvg', () => {
   });
 
   it('emits metadata breadcrumbs when emitMetadata is true', () => {
-    const result = transformViewBoxFromSvg(loadIcon('play'), {
+    const result = transformViewBoxFromSvg(loadIcon('lucide/play'), {
       emitMetadata: true,
     });
     expect(result.breadcrumb['data-optical-original-viewbox']).toBeTruthy();
