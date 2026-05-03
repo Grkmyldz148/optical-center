@@ -3,7 +3,7 @@
 // from "SVG string" to "transformed viewBox" without wiring rasterization
 // themselves.
 
-export { rasterizeSvg } from './rasterize.js';
+export { rasterizeSvg, initRasterizer } from './rasterize.js';
 export type { RasterizeOptions } from './rasterize.js';
 
 export { transformViewBoxFromSvg } from './transform-viewbox-from-svg.js';

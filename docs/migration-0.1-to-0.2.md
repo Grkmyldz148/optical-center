@@ -145,6 +145,25 @@ exported.
 - **CLI honors path safety**: input/output paths must resolve under
   cwd. Pass `--allow-outside-cwd` to skip the check.
 
+## Running outside Node (Bun, Deno, edge)
+
+The default rasterizer uses `@resvg/resvg-js`'s native binding. If your
+host can't load that (Bun without prebuilds, Deno, edge runtimes), the
+WASM build is a drop-in replacement — register it once at startup:
+
+```ts
+import init, { Resvg } from '@resvg/resvg-wasm';
+import { initRasterizer } from 'optical-center/node';
+
+await init();
+initRasterizer(Resvg);
+
+// rasterizeSvg / transformViewBoxFromSvg now route through WASM
+```
+
+After init, the rasterizer is synchronous from the caller's perspective
+again — Babel and Vite paths keep working unchanged.
+
 ## Where to read more
 
 - [`docs/plans/2026-05-03-feat-optical-center-drop-in-plan.md`](./plans/2026-05-03-feat-optical-center-drop-in-plan.md)

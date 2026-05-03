@@ -8,12 +8,49 @@
  *   Keeping it under `optical-center/node` lets browser users consume the
  *   pure-TS pipeline (`getOpticalCenter`, `transformViewBox`) without ever
  *   touching the native dep.
+ *
+ * Backend selection:
+ *   The default code path uses the native binding; if a host can't load
+ *   it (Bun, Deno, CI without prebuilds, edge runtimes), call
+ *   `initRasterizer()` once to register the WASM fallback. Once
+ *   initialized, `rasterizeSvg` continues to be synchronous from the
+ *   caller's perspective.
  */
 
 import { Resvg } from '@resvg/resvg-js';
 
 import { MAX_INPUT_BYTES, MAX_RASTER_SIZE, RASTER_SIZE } from '../core/constants.js';
 import type { RasterImage } from '../core/types.js';
+
+type ResvgInstance = {
+  render(): { pixels: Uint8Array | Uint8ClampedArray; width: number; height: number };
+};
+type ResvgConstructor = new (svg: string, options: ResvgOptions) => ResvgInstance;
+interface ResvgOptions {
+  fitTo: { mode: 'width'; value: number };
+  font: { loadSystemFonts: boolean };
+}
+
+let resvgImpl: ResvgConstructor = Resvg as unknown as ResvgConstructor;
+
+/**
+ * Override the rasterizer with a WASM-backed (or other) implementation.
+ *
+ * The WASM build of resvg requires async init before its constructor
+ * is callable. Run that init in your bootstrap, then pass the
+ * post-init constructor here:
+ *
+ *   import init, { Resvg } from '@resvg/resvg-wasm';
+ *   await init();
+ *   initRasterizer(Resvg);
+ *
+ * After this call, every `rasterizeSvg` invocation goes through the
+ * provided implementation. The native path is replaced wholesale, not
+ * augmented — call this once at startup or not at all.
+ */
+export function initRasterizer(impl: ResvgConstructor): void {
+  resvgImpl = impl;
+}
 
 export interface RasterizeOptions {
   /**
@@ -59,7 +96,7 @@ export function rasterizeSvg(
   // every caller to remember.
   const normalized = ensureSvgNamespace(svg);
 
-  const resvg = new Resvg(normalized, {
+  const resvg = new resvgImpl(normalized, {
     fitTo: { mode: 'width', value: size },
     font: { loadSystemFonts },
   });
