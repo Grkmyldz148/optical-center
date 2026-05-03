@@ -1,5 +1,5 @@
 {
-  "name": "optical-center-example-asset-import",
+  "name": "optical-center-example-vanilla-html",
   "private": true,
   "type": "module",
   "scripts": {
@@ -9,7 +9,6 @@
   },
   "devDependencies": {
     "optical-center": "file:../..",
-    "typescript": "^5.4.0",
     "vite": "^7.0.0"
   }
 }

@@ -1,0 +1,14 @@
+{
+  "name": "optical-center-example-cli-pipeline",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "transform": "optical-center transform ./icons ./icons-centered",
+    "info": "optical-center info ./icons/play.svg",
+    "analyze": "optical-center analyze ./icons",
+    "report": "optical-center transform ./icons ./icons-centered --json"
+  },
+  "devDependencies": {
+    "optical-center": "file:../.."
+  }
+}
