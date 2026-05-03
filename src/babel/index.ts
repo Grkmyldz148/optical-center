@@ -22,7 +22,9 @@ import type { PluginObj } from '@babel/core';
 import { MAX_INPUT_BYTES } from '../core/constants.js';
 import type { WarningCode } from '../core/warnings.js';
 
+import { SyncTransformCache } from './sync-cache.js';
 import { visitJsxElement } from './visitor.js';
+import type { CachedTransform } from './visitor.js';
 
 export interface BabelPluginOptions {
   /**
@@ -52,6 +54,17 @@ export interface BabelPluginOptions {
    * isn't being rewritten.
    */
   readonly warnOnBailOut?: boolean;
+  /**
+   * Override the on-disk cache directory. By default the plugin shares
+   * `node_modules/.cache/optical-center` with the CLI and Vite plugin
+   * so a JSX-warmed entry is reusable from `optical-center transform`.
+   */
+  readonly cacheDir?: string;
+  /**
+   * Disable the per-plugin sync cache. Useful in tests or when an
+   * outer orchestrator already deduplicates inputs. Default `false`.
+   */
+  readonly disableCache?: boolean;
 }
 
 export type { WarningCode };
@@ -68,14 +81,22 @@ export default function opticalCenterBabelPlugin(
       ? undefined
       : options.onWarning ?? defaultWarningHandler;
   const onWarning = baseOnWarning && warnOnBailOut ? baseOnWarning : undefined;
+  const cache = options.disableCache === true
+    ? undefined
+    : new SyncTransformCache<CachedTransform>(
+        options.cacheDir !== undefined ? { dir: options.cacheDir } : undefined,
+      );
 
   return {
     name: 'optical-center',
     visitor: {
       JSXElement(path) {
-        const visitorOptions = onWarning
-          ? { emitMetadata, maxInputBytes, onWarning }
-          : { emitMetadata, maxInputBytes };
+        const visitorOptions = {
+          emitMetadata,
+          maxInputBytes,
+          ...(onWarning ? { onWarning } : {}),
+          ...(cache ? { cache } : {}),
+        };
         visitJsxElement(path, visitorOptions);
       },
     },

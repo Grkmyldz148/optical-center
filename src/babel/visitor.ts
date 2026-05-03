@@ -31,6 +31,13 @@ import type { ViewBoxBreadcrumb } from '../core/types.js';
 import type { WarningCode } from '../core/warnings.js';
 
 import { jsxElementToSvgString } from './jsx-to-svg.js';
+import { SyncTransformCache } from './sync-cache.js';
+
+export interface CachedTransform {
+  readonly viewBox: string;
+  readonly breadcrumb: ViewBoxBreadcrumb;
+  readonly clipDetected: boolean;
+}
 
 interface OpticalNode extends t.JSXElement {
   _opticalProcessed?: boolean;
@@ -41,6 +48,12 @@ export interface VisitorOptions {
   readonly onWarning?: (warning: { code: WarningCode; location?: string }) => void;
   /** Bail out before rasterizing anything larger than this many bytes. */
   readonly maxInputBytes?: number;
+  /**
+   * Optional sync cache shared across the plugin lifetime. When
+   * provided, repeated icons (the same SVG appearing in many JSX
+   * files) skip the rasterizer entirely on hit.
+   */
+  readonly cache?: SyncTransformCache<CachedTransform>;
 }
 
 interface ValidationOk {
@@ -113,19 +126,35 @@ export function visitJsxElement(
   let viewBox: string;
   let breadcrumb: ViewBoxBreadcrumb;
   let clipDetected = false;
-  try {
-    const raster = rasterizeSvg(svg);
-    const offset = getOpticalCenter(raster);
-    const result = transformViewBox(svg, raster, offset, {
-      emitMetadata: options.emitMetadata,
-    });
-    viewBox = result.viewBox;
-    breadcrumb = result.breadcrumb;
-    clipDetected = result.clipDetected;
-  } catch {
-    emitWarning(options, 'OPTICAL_RASTERIZE_FAILED', path);
-    node._opticalProcessed = true;
-    return;
+  // Breadcrumb shape depends on emitMetadata, so we tag the cache key
+  // with the flag — same SVG with different emit modes coexist as
+  // separate entries.
+  const cacheTag = `meta:${options.emitMetadata ? '1' : '0'}\n${svg}`;
+  const cached = options.cache?.get(cacheTag).value ?? null;
+  if (cached) {
+    viewBox = cached.viewBox;
+    breadcrumb = cached.breadcrumb;
+    clipDetected = cached.clipDetected;
+  } else {
+    try {
+      const raster = rasterizeSvg(svg);
+      const offset = getOpticalCenter(raster);
+      const result = transformViewBox(svg, raster, offset, {
+        emitMetadata: options.emitMetadata,
+      });
+      viewBox = result.viewBox;
+      breadcrumb = result.breadcrumb;
+      clipDetected = result.clipDetected;
+      options.cache?.set(cacheTag, {
+        viewBox,
+        breadcrumb,
+        clipDetected,
+      });
+    } catch {
+      emitWarning(options, 'OPTICAL_RASTERIZE_FAILED', path);
+      node._opticalProcessed = true;
+      return;
+    }
   }
 
   // 4. Commit — mutate the AST ----------------------------------------
