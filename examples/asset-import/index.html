@@ -2,30 +2,47 @@
 <html>
   <head>
     <meta charset="UTF-8" />
-    <title>optical-center · asset import example</title>
+    <title>optical-center · asset import (?optical)</title>
     <style>
+      * { box-sizing: border-box; }
       body {
         font: 16px/1.5 system-ui, sans-serif;
-        max-width: 720px;
+        max-width: 880px;
         margin: 40px auto;
         padding: 0 24px;
+        color: #111;
       }
-      .row { display: flex; align-items: center; gap: 24px; margin: 16px 0; }
+      h1 { letter-spacing: -0.02em; }
+      .lede { color: #666; margin-bottom: 32px; }
+      .row {
+        display: grid;
+        grid-template-columns: 80px 80px 1fr;
+        gap: 16px;
+        align-items: center;
+        margin-bottom: 16px;
+      }
       .badge {
         width: 80px; height: 80px;
-        background: #111; border-radius: 50%;
+        background: #111;
+        border-radius: 50%;
         display: grid; place-items: center;
       }
-      .badge svg { width: 32px; height: 32px; fill: #fff; }
-      h1 { letter-spacing: -0.02em; }
-      code { background: #f3f3f3; padding: 2px 6px; border-radius: 4px; }
+      .badge svg { width: 36px; height: 36px; color: #fff; }
+      code {
+        font-family: ui-monospace, monospace;
+        font-size: 13px;
+        color: #555;
+      }
     </style>
   </head>
   <body>
     <h1>optical-center · asset import</h1>
-    <p>
-      Each row imports the same SVG twice — once raw, once with the
-      <code>?optical</code> suffix that triggers build-time rewriting.
+    <p class="lede">
+      Every icon in <code>fixtures/icons/</code> imported twice — once
+      raw, once with <code>?optical</code>. The right column is
+      rewritten by the Vite plugin at build time. Pulled via
+      <code>import.meta.glob</code> so the example scales with the
+      shared pool.
     </p>
     <div id="root"></div>
     <script type="module" src="/src/main.ts"></script>

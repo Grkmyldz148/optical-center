@@ -1,20 +1,27 @@
-# CLI pipeline example
+# CLI pipeline
 
-Shows the build-time CLI in a real folder of icons. Drop SVGs in
-`icons/`, run the pipeline, get a mirrored `icons-centered/` folder
-with rewritten viewBoxes plus a JSON report.
+The build-time CLI run against the shared `fixtures/icons/` pool —
+30 real icons from Lucide, Heroicons, Feather, FontAwesome, Phosphor,
+Tabler, plus a stress set of edge cases. Mirrors them into
+`icons-centered/` with rewritten viewBoxes plus a JSON report.
 
 ## Run it
 
 ```bash
-# transform a folder, mirror to a sibling, with structured output
-npx optical-center transform ./icons ./icons-centered --json > report.json
+# from repo root
+npm install
 
-# inspect a single file
-npx optical-center info ./icons/triangle.svg
+# transform every icon in the pool, mirror to ./icons-centered
+npm --workspace optical-center-example-cli-pipeline run transform
 
-# aggregate stats across the whole set
-npx optical-center analyze ./icons
+# get a structured JSON report
+npm --workspace optical-center-example-cli-pipeline run report > report.json
+
+# inspect one icon
+npm --workspace optical-center-example-cli-pipeline run info
+
+# aggregate stats across the whole pool
+npm --workspace optical-center-example-cli-pipeline run analyze
 
 # clear the on-disk cache when you change algorithm versions
 npx optical-center clear-cache
@@ -28,14 +35,16 @@ npx optical-center clear-cache
   "schemaVersion": 1,
   "data": {
     "summary": {
-      "inputCount": 3,
-      "transformed": 3,
+      "inputCount": 30,
+      "transformed": 30,
       "failed": 0,
-      "clipDetected": 0,
-      "durationMs": 12
+      "clipDetected": 1,
+      "durationMs": 412
     },
     "files": [
-      { "file": "play.svg", "status": "transformed", "viewBox": "-0.32 -0.62 24 24" }
+      { "file": "lucide/play.svg",   "status": "transformed", "viewBox": "-0.32 -0.62 24 24" },
+      { "file": "fontawesome/star-solid.svg", "status": "transformed", "viewBox": "..." },
+      { "file": "edge-cases/edge-clipped.svg", "status": "transformed", "clipDetected": true }
     ]
   }
 }
@@ -44,10 +53,18 @@ npx optical-center clear-cache
 ## Why structured output
 
 The CLI is `--json`-friendly so a downstream agent (CI bot, build
-script, design-system QA) can parse the report without screen-scraping.
-Exit codes make it easy to gate:
+script, design-system QA) can parse the report without
+screen-scraping. Exit codes make gating easy:
 
 - `0` everything fine
 - `1` warnings only (clip detection)
 - `2` failures (rasterize / write errors)
 - `3` invalid args
+
+## Shared fixture pool
+
+This example doesn't ship its own icons. It points at the repo-root
+`fixtures/icons/` folder — the same pool the tests, the React example,
+the asset-import example, and the vanilla-HTML example all use.
+Adding an icon to `fixtures/icons/<family>/` automatically exercises
+every example.

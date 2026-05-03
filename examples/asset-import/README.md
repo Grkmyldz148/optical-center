@@ -1,34 +1,42 @@
-# Asset import example
+# Asset import (`?optical` suffix)
 
-Demonstrates the `?optical` query suffix for SVG asset imports — useful
-when icons live in a folder of static `.svg` files (Heroicons, Lucide,
-your own design-system) and you don't want to inline JSX for each one.
+The Vite plugin's `load` hook recognises any SVG import that ends in
+`?optical` and returns the rewritten markup as the default export of a
+JS module. This example glob-imports every icon in the shared
+`fixtures/icons/` pool — raw + optical — and renders them side by
+side.
 
 ## Run it
 
 ```bash
+# from repo root
 npm install
-npm run dev
+npm --workspace optical-center-example-asset-import run dev
 ```
 
-## How it works
+## How it scales
+
+Adding a new icon to `fixtures/icons/` automatically picks it up here
+because `import.meta.glob` is build-time-evaluated:
 
 ```ts
-import playRaw from './icons/play.svg?raw';
-import playOptical from './icons/play.svg?optical';
-
-// playRaw       — original SVG markup, geometric center
-// playOptical   — same SVG, viewBox rewritten by optical-center
+const opticalModules = import.meta.glob<string>(
+  '../../../fixtures/icons/**/*.svg',
+  { query: '?optical', import: 'default', eager: true },
+);
 ```
 
-The `?optical` suffix is an explicit opt-in: the Vite plugin sees the
-suffix in the importer's id and transforms the SVG once at build time.
-HMR is wired via `handleHotUpdate` so editing the source `.svg`
-invalidates the cached module.
+No per-icon import line. Same pool drives the test suite, the React
+example, and this one.
 
-## Note on framework integration
+## Vite alias (optional)
 
-Other Vite-based meta-frameworks (Astro, SolidStart, Marko, SvelteKit)
-work the same way as long as they keep the standard Vite plugin API.
-Drop `optical-center/vite` into your config's `plugins` array and the
-`?optical` suffix lights up.
+`vite.config.ts` adds `@fixtures` → `fixtures/icons/` so production
+code can write `import x from '@fixtures/lucide/play.svg?optical'`
+instead of the relative `../../../fixtures/...` path.
+
+## Bundler-agnostic note
+
+The same `?optical` suffix works in any tool that loads via the Vite
+plugin API surface: Astro, SolidStart, Marko, SvelteKit, Nuxt 3
+(which uses Vite under the hood).
