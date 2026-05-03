@@ -14,7 +14,14 @@
       "types": "./dist/node/index.d.ts",
       "import": "./dist/node/index.js"
     },
+    "./cli": {
+      "types": "./dist/cli/index.d.ts",
+      "import": "./dist/cli/index.js"
+    },
     "./package.json": "./package.json"
+  },
+  "bin": {
+    "optical-center": "./dist/cli/index.js"
   },
   "files": [
     "dist",
@@ -43,6 +50,7 @@
     "@resvg/resvg-js": "^2.6.0"
   },
   "devDependencies": {
+    "@types/node": "^25.6.0",
     "typescript": "^5.4.0",
     "vitest": "^3.0.0"
   }

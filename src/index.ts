@@ -42,3 +42,18 @@ export {
 } from './constants.js';
 
 export { ALGORITHM_VERSION } from './version.js';
+
+export { applyTransformToSvg } from './apply-to-svg.js';
+export type { SvgTransformPatch } from './apply-to-svg.js';
+
+export { TransformCache, computeCacheKey, defaultCacheDir } from './cache.js';
+export type { CacheEntry, CacheOptions, CacheStats } from './cache.js';
+
+export { WARNINGS, buildWarning } from './warnings.js';
+export type {
+  BuildWarningOptions,
+  WarningCode,
+  WarningDefinition,
+  WarningRecord,
+  WarningSeverity,
+} from './warnings.js';
