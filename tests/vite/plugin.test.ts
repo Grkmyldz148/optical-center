@@ -3,8 +3,8 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
-import opticalCenterVite from '../src/vite/index.js';
-import { transformHtmlSvgs } from '../src/vite/transform-html-svg.js';
+import opticalCenterVite from '../../src/vite/index.js';
+import { transformHtmlSvgs } from '../../src/vite/transform-html-svg.js';
 
 interface VitePluginShape {
   name: string;

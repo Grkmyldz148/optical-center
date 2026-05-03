@@ -4,7 +4,7 @@ import {
   formatViewBox,
   parseViewBoxFromSvg,
   parseViewBoxString,
-} from '../src/core/parse-viewbox.js';
+} from '../../src/core/parse-viewbox.js';
 
 describe('parseViewBoxString', () => {
   it('parses space-separated values', () => {

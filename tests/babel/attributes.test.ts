@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { jsxAttrNameToSvg } from '../src/babel/attributes.js';
+import { jsxAttrNameToSvg } from '../../src/babel/attributes.js';
 
 describe('jsxAttrNameToSvg', () => {
   it('preserves canonical SVG camelCase names', () => {

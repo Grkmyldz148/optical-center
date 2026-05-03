@@ -1,32 +1,9 @@
-import * as babel from '@babel/core';
 import { describe, expect, it } from 'vitest';
 
-import opticalCenter from '../src/babel/index.js';
-import type { WarningCode } from '../src/core/warnings.js';
+import { runBabel } from '../helpers/babel-runner.js';
 
-interface RunResult {
-  readonly code: string;
-  readonly warnings: ReadonlyArray<{ code: WarningCode; location?: string }>;
-}
-
-function runPlugin(input: string, emitMetadata = false): RunResult {
-  const warnings: { code: WarningCode; location?: string }[] = [];
-  const result = babel.transformSync(input, {
-    plugins: [
-      [
-        opticalCenter,
-        {
-          emitMetadata,
-          onWarning: (w: { code: WarningCode; location?: string }) => warnings.push(w),
-        },
-      ],
-    ],
-    parserOpts: { plugins: ['jsx'] },
-    babelrc: false,
-    configFile: false,
-  });
-  return { code: result?.code ?? '', warnings };
-}
+const runPlugin = (input: string, emitMetadata = false) =>
+  runBabel(input, { emitMetadata });
 
 describe('optical-center Babel plugin', () => {
   it('rewrites viewBox on <svg opticalCenter>', () => {

@@ -4,31 +4,9 @@ import {
   applyOffsetToViewBox,
   getRasterBbox,
   transformViewBox,
-} from '../src/core/transform-viewbox.js';
-import type { RasterImage, ViewBoxNumeric } from '../src/core/types.js';
-
-function emptyRaster(width = 24, height = 24): RasterImage {
-  return {
-    data: new Uint8ClampedArray(width * height * 4),
-    width,
-    height,
-  };
-}
-
-function rasterWithBlock(
-  rect: { x: number; y: number; w: number; h: number },
-  width = 24,
-  height = 24,
-): RasterImage {
-  const data = new Uint8ClampedArray(width * height * 4);
-  for (let y = rect.y; y < rect.y + rect.h; y++) {
-    for (let x = rect.x; x < rect.x + rect.w; x++) {
-      const i = (y * width + x) * 4;
-      data[i + 3] = 255; // opaque
-    }
-  }
-  return { data, width, height };
-}
+} from '../../src/core/transform-viewbox.js';
+import type { ViewBoxNumeric } from '../../src/core/types.js';
+import { emptyRaster, rasterWithBlock } from '../helpers/raster.js';
 
 describe('applyOffsetToViewBox', () => {
   it('shifts the window opposite the visual offset (sign convention)', () => {
