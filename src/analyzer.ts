@@ -43,10 +43,10 @@ export function buildWeightMap(
 
   for (let i = 0; i < width * height; i++) {
     const offset = i * 4;
-    const r = data[offset];
-    const g = data[offset + 1];
-    const b = data[offset + 2];
-    const a = data[offset + 3] / 255; // normalize alpha
+    const r = data[offset]!;
+    const g = data[offset + 1]!;
+    const b = data[offset + 2]!;
+    const a = data[offset + 3]! / 255; // normalize alpha
 
     if (a < 0.01) {
       weights[i] = 0;
@@ -91,7 +91,7 @@ export function computeWeightedCentroid(
 
   for (let y = 0; y < height; y++) {
     for (let x = 0; x < width; x++) {
-      const w = weights[y * width + x];
+      const w = weights[y * width + x]!;
       if (w > 0) {
         sumW += w;
         sumXW += (x + 0.5) * w; // use pixel center

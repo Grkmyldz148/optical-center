@@ -42,12 +42,12 @@ export function makeGaussianKernel(
   for (let i = 0; i < size; i++) {
     const x = i - r;
     kernel[i] = Math.exp(-(x * x) / twoSigmaSq);
-    sum += kernel[i];
+    sum += kernel[i]!;
   }
 
   // Normalize
   for (let i = 0; i < size; i++) {
-    kernel[i] /= sum;
+    kernel[i]! /= sum;
   }
 
   return kernel;
@@ -82,7 +82,7 @@ export function gaussianBlur(
       let sum = 0;
       for (let k = -r; k <= r; k++) {
         const sx = Math.max(0, Math.min(width - 1, x + k));
-        sum += data[y * width + sx] * kernel[k + r];
+        sum += data[y * width + sx]! * kernel[k + r]!;
       }
       temp[y * width + x] = sum;
     }
@@ -95,7 +95,7 @@ export function gaussianBlur(
       let sum = 0;
       for (let k = -r; k <= r; k++) {
         const sy = Math.max(0, Math.min(height - 1, y + k));
-        sum += temp[sy * width + x] * kernel[k + r];
+        sum += temp[sy * width + x]! * kernel[k + r]!;
       }
       result[y * width + x] = sum;
     }
@@ -143,7 +143,7 @@ export function applyDoG(
   for (let i = 0; i < result.length; i++) {
     // DoG = narrow - wide (ON-center minus OFF-surround)
     // Half-wave rectification: clamp negatives to 0
-    result[i] = Math.max(0, narrow[i] - wide[i]);
+    result[i] = Math.max(0, narrow[i]! - wide[i]!);
   }
 
   return result;
@@ -178,8 +178,9 @@ export function applyPowerCompression(
 ): Float32Array {
   const result = new Float32Array(weights.length);
   for (let i = 0; i < weights.length; i++) {
-    if (weights[i] > 0) {
-      result[i] = Math.pow(weights[i], exponent);
+    const w = weights[i]!;
+    if (w > 0) {
+      result[i] = Math.pow(w, exponent);
     }
     // weights <= 0 stay 0
   }

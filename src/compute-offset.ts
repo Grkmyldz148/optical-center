@@ -97,19 +97,24 @@ export function computeOffset(
   imageData: { data: Uint8ClampedArray; width: number; height: number },
   options: ComputeOptions = {}
 ): OpticalOffset {
+  return computeOffsetFromWeightMap(buildWeightMap(imageData), options);
+}
+
+/**
+ * Compute offset from a PixelData (pre-built weight map). V1 pipeline.
+ */
+export function computeOffsetFromWeightMap(
+  pixelData: PixelData,
+  options: ComputeOptions = {}
+): OpticalOffset {
   const config: PerceptualConfig = {
     ...DEFAULT_PERCEPTUAL_CONFIG,
     ...options.perceptual,
   };
   const hullStep = options.hullStep ?? 2;
   const scale = options.correctionScale ?? 0.5;
+  const { width, height } = pixelData;
 
-  const { width, height } = imageData;
-
-  // Step 1: Build visual weight map
-  const pixelData = buildWeightMap(imageData);
-
-  // Step 2: Compute weighted mass centroid
   const mass = computeWeightedCentroid(pixelData);
 
   // Short-circuit for empty images (no visible pixels)
@@ -131,79 +136,6 @@ export function computeOffset(
       },
     };
   }
-
-  // Step 3: Compute convex hull centroid
-  const boundaryPoints = extractBoundaryPoints(
-    pixelData.weights,
-    width,
-    height,
-    0.01,
-    hullStep
-  );
-  const hull = convexHull(boundaryPoints);
-  const hullCenter = hullCentroid(hull);
-
-  // Step 4: Blend mass and hull centroids
-  let optical = blendCentroids(
-    { x: mass.cx, y: mass.cy },
-    hullCenter,
-    config.hullWeight
-  );
-
-  // Step 5: Analyze asymmetry and apply shape corrections
-  const asymmetry = analyzeAsymmetry(pixelData.weights, width, height);
-
-  if (config.shapeCorrection) {
-    optical = applyShapeCorrection(
-      optical.x,
-      optical.y,
-      width,
-      height,
-      asymmetry
-    );
-  }
-
-  // Step 6: Apply vertical perceptual bias
-  optical.y = applyVerticalBias(optical.y, height, config.verticalBias);
-
-  // Step 7: Compute offset from geometric center, scaled by correctionScale
-  const geometricCenter = { x: width / 2, y: height / 2 };
-  const dx = (geometricCenter.x - optical.x) * scale;
-  const dy = (geometricCenter.y - optical.y) * scale;
-
-  return {
-    dx,
-    dy,
-    dxPercent: width > 0 ? (dx / width) * 100 : 0,
-    dyPercent: height > 0 ? (dy / height) * 100 : 0,
-    debug: {
-      geometricCenter,
-      massCentroid: { x: mass.cx, y: mass.cy },
-      hullCentroid: hullCenter,
-      opticalCenter: optical,
-      asymmetry,
-      totalWeight: mass.totalWeight,
-      pipelineVersion: 'v1',
-    },
-  };
-}
-
-/**
- * Compute offset from a PixelData (pre-built weight map). V1 pipeline.
- */
-export function computeOffsetFromWeightMap(
-  pixelData: PixelData,
-  options: ComputeOptions = {}
-): OpticalOffset {
-  const config: PerceptualConfig = {
-    ...DEFAULT_PERCEPTUAL_CONFIG,
-    ...options.perceptual,
-  };
-  const hullStep = options.hullStep ?? 2;
-  const scale = options.correctionScale ?? 0.5;
-  const { width, height } = pixelData;
-
-  const mass = computeWeightedCentroid(pixelData);
 
   const boundaryPoints = extractBoundaryPoints(
     pixelData.weights,
