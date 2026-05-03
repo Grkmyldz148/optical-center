@@ -12,6 +12,9 @@ export type { TransformViewBoxFromSvgOptions } from './transform-viewbox-from-sv
 export { sanitizeSvg } from './sanitize.js';
 export type { SanitizeOptions } from './sanitize.js';
 
+export { TimeoutError, isTimeoutError, withTimeout } from './timeout.js';
+export type { TimeoutOptions } from './timeout.js';
+
 // Re-export the browser-safe API for convenience: a single import line
 // from `optical-center/node` covers the whole pipeline.
 export {

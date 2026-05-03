@@ -11,7 +11,9 @@ import { performance } from 'node:perf_hooks';
 
 import { applyTransformToSvg } from '../../core/apply-to-svg.js';
 import { TransformCache, computeCacheKey } from '../../cache/index.js';
+import { DEFAULT_TIMEOUT_MS } from '../../core/constants.js';
 import { transformViewBoxFromSvg } from '../../node/transform-viewbox-from-svg.js';
+import { isTimeoutError, withTimeout } from '../../node/timeout.js';
 import { buildWarning } from '../../core/warnings.js';
 import type { WarningRecord } from '../../core/warnings.js';
 
@@ -70,6 +72,7 @@ export async function runTransform(
   const strict = getBoolFlag(flags, 'strict');
   const emitMetadata = getBoolFlag(flags, 'emit-metadata');
   const cacheDir = getStringFlag(flags, 'cache-dir');
+  const timeoutMs = parseTimeout(getStringFlag(flags, 'timeout'));
 
   const cache = useCache
     ? new TransformCache<CachedTransform>(
@@ -97,6 +100,7 @@ export async function runTransform(
       outputRoot,
       cache,
       emitMetadata,
+      timeoutMs,
       output,
     });
     reports.push(report);
@@ -119,6 +123,7 @@ interface ProcessContext {
   readonly outputRoot: string;
   readonly cache: TransformCache<CachedTransform> | null;
   readonly emitMetadata: boolean;
+  readonly timeoutMs: number;
   readonly output: OutputOptions;
 }
 
@@ -168,14 +173,21 @@ async function processFile(
   } else {
     let transformed: ReturnType<typeof transformViewBoxFromSvg>;
     try {
-      transformed = transformViewBoxFromSvg(svg, {
-        emitMetadata: ctx.emitMetadata,
-      });
+      transformed = await withTimeout(
+        () =>
+          Promise.resolve(
+            transformViewBoxFromSvg(svg, { emitMetadata: ctx.emitMetadata }),
+          ),
+        { limitMs: ctx.timeoutMs, location: relPath },
+      );
     } catch (error) {
+      const code = isTimeoutError(error)
+        ? 'OPTICAL_TIMEOUT'
+        : 'OPTICAL_RASTERIZE_FAILED';
       return {
         file: relPath,
         status: 'failed',
-        warning: buildWarning('OPTICAL_RASTERIZE_FAILED', {
+        warning: buildWarning(code, {
           message: describe(error),
           location: relPath,
         }),
@@ -305,6 +317,12 @@ function formatSummary(summary: Summary): string {
 
 function describe(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
+}
+
+function parseTimeout(raw: string | undefined): number {
+  if (raw === undefined) return DEFAULT_TIMEOUT_MS;
+  const n = Number.parseInt(raw, 10);
+  return Number.isFinite(n) && n > 0 ? n : DEFAULT_TIMEOUT_MS;
 }
 
 // keep the unused-import linter happy; computeCacheKey is part of the
