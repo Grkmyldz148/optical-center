@@ -25,6 +25,7 @@ import {
   writeStdout,
 } from '../output.js';
 import type { OutputOptions } from '../output.js';
+import { PathSafetyError, checkPathSafety } from '../path-safety.js';
 
 interface CachedTransform {
   readonly viewBox: string;
@@ -73,6 +74,20 @@ export async function runTransform(
   const emitMetadata = getBoolFlag(flags, 'emit-metadata');
   const cacheDir = getStringFlag(flags, 'cache-dir');
   const timeoutMs = parseTimeout(getStringFlag(flags, 'timeout'));
+  const allowOutsideCwd = getBoolFlag(flags, 'allow-outside-cwd');
+
+  try {
+    await checkPathSafety(inputArg, { allowOutsideCwd });
+    if (positionals[1]) {
+      await checkPathSafety(positionals[1], { allowOutsideCwd });
+    }
+  } catch (error) {
+    if (error instanceof PathSafetyError) {
+      writeStderr(`error: ${error.message}`, output);
+      return 3;
+    }
+    throw error;
+  }
 
   const cache = useCache
     ? new TransformCache<CachedTransform>(
