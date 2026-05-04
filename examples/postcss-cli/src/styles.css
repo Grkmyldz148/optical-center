@@ -1,11 +1,13 @@
 /*
- * Author CSS as if the icons were just static SVGs. The optical-center
- * PostCSS plugin sees the `?optical` query suffix at build time and
- * inlines a corrected SVG as a data URI. No runtime, no JavaScript on
- * the client.
+ * Author CSS as if you were just dropping in static SVGs. Add
+ * `optical-center: auto;` to any rule and the plugin walks every
+ * other declaration in that rule, rewriting every `url('…svg')` to
+ * an inline data URI of the corrected SVG. The directive itself is
+ * stripped from the output. No runtime, no JavaScript, no
+ * bundler-specific syntax.
  *
- * Same fixture pool the rest of the project uses, addressed through the
- * `@fixtures` alias configured in postcss.config.js.
+ * Same fixture pool the rest of the project uses, addressed through
+ * the `@fixtures` alias configured in postcss.config.js.
  */
 
 :root {
@@ -52,24 +54,52 @@ h2 { letter-spacing: -0.015em; font-size: 1.15rem; margin-top: 32px; }
 }
 
 /*
- * Pairs of geometric vs. optical. Same SVG asset, only difference is
- * the `?optical` query — PostCSS handles the rewrite, the browser sees
- * a corrected viewBox.
+ * Pairs of geometric vs. optical. Identical CSS on both sides — the
+ * only thing the optical variants add is `optical-center: auto`.
  */
 .icon-play-geom    { background-image: url('@fixtures/lucide/play.svg'); }
-.icon-play-optical { background-image: url('@fixtures/lucide/play.svg?optical'); }
+.icon-play-optical {
+  background-image: url('@fixtures/lucide/play.svg');
+  optical-center: auto;
+}
 
 .icon-triangle-geom    { background-image: url('@fixtures/edge-cases/asymmetric-triangle.svg'); }
-.icon-triangle-optical { background-image: url('@fixtures/edge-cases/asymmetric-triangle.svg?optical'); }
+.icon-triangle-optical {
+  background-image: url('@fixtures/edge-cases/asymmetric-triangle.svg');
+  optical-center: auto;
+}
 
-.icon-fa-play-geom     { background-image: url('@fixtures/fontawesome/play-solid.svg'); }
-.icon-fa-play-optical  { background-image: url('@fixtures/fontawesome/play-solid.svg?optical'); }
+.icon-fa-play-geom    { background-image: url('@fixtures/fontawesome/play-solid.svg'); }
+.icon-fa-play-optical {
+  background-image: url('@fixtures/fontawesome/play-solid.svg');
+  optical-center: auto;
+}
 
-.icon-tabler-geom      { background-image: url('@fixtures/tabler/send.svg'); }
-.icon-tabler-optical   { background-image: url('@fixtures/tabler/send.svg?optical'); }
+.icon-tabler-geom    { background-image: url('@fixtures/tabler/send.svg'); }
+.icon-tabler-optical {
+  background-image: url('@fixtures/tabler/send.svg');
+  optical-center: auto;
+}
 
-/* Apply the icon color as a CSS mask — works because the plugin
- * doesn't care which property the url() lives in. */
+/*
+ * Same directive works inside the `background` shorthand — the plugin
+ * doesn't care which property holds the url().
+ */
+.icon-shorthand {
+  background:
+    var(--badge-bg)
+    url('@fixtures/lucide/play.svg')
+    center / 36px 36px no-repeat;
+  optical-center: auto;
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+}
+
+/*
+ * mask-image: a re-tintable icon. One directive, both vendor-prefix
+ * and standard property get rewritten.
+ */
 .mask-row {
   display: grid;
   grid-template-columns: 80px 80px 1fr;
@@ -98,5 +128,12 @@ h2 { letter-spacing: -0.015em; font-size: 1.15rem; margin-top: 32px; }
   -webkit-mask-size: contain;
           mask-size: contain;
 }
-.mask-heart-geom    { -webkit-mask-image: url('@fixtures/lucide/heart.svg');           mask-image: url('@fixtures/lucide/heart.svg'); }
-.mask-heart-optical { -webkit-mask-image: url('@fixtures/lucide/heart.svg?optical');   mask-image: url('@fixtures/lucide/heart.svg?optical'); }
+.mask-heart-geom {
+  -webkit-mask-image: url('@fixtures/lucide/heart.svg');
+          mask-image: url('@fixtures/lucide/heart.svg');
+}
+.mask-heart-optical {
+  -webkit-mask-image: url('@fixtures/lucide/heart.svg');
+          mask-image: url('@fixtures/lucide/heart.svg');
+  optical-center: auto;
+}

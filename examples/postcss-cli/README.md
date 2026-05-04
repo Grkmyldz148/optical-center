@@ -1,9 +1,20 @@
 # PostCSS CLI
 
 The bundler-agnostic path. Pure PostCSS — no Vite, no webpack, no
-JavaScript at runtime. Author CSS as if the icons were just static
-SVGs; the plugin sees `?optical` at build time and inlines a
-corrected SVG as a `data:image/svg+xml,…` URI.
+JavaScript at runtime. The opt-in is a single CSS declaration:
+
+```css
+.icon {
+  background-image: url('icons/play.svg');
+  optical-center: auto;
+}
+```
+
+When the plugin sees `optical-center: auto;` in a rule, it walks
+every other declaration in that rule, rewrites every `url('…svg')`
+to a corrected `data:image/svg+xml,…` URI, and strips the directive
+from the output. Shipped CSS is plain, browser-native,
+zero-runtime.
 
 ## Run it
 
@@ -16,8 +27,8 @@ open examples/postcss-cli/index.html
 
 ## How it's wired
 
-`postcss.config.js` registers `optical-center/postcss` with an alias
-that points at the shared fixture pool:
+`postcss.config.js` registers the plugin with an alias for the
+shared fixture pool:
 
 ```js
 import opticalCenter from 'optical-center/postcss';
@@ -31,23 +42,55 @@ export default {
 };
 ```
 
-`src/styles.css` writes the URLs as if they were sibling files:
+`src/styles.css` writes URLs as if they were sibling files. Every
+rule that wants optical centering adds one line:
 
 ```css
 .icon-play-optical {
-  background-image: url('@fixtures/lucide/play.svg?optical');
+  background-image: url('@fixtures/lucide/play.svg');
+  optical-center: auto;
+}
+
+.mask-heart-optical {
+  -webkit-mask-image: url('@fixtures/lucide/heart.svg');
+          mask-image: url('@fixtures/lucide/heart.svg');
+  optical-center: auto;          /* one directive — both URLs corrected */
 }
 ```
 
-The plugin runs during `postcss-cli`'s build and replaces every
-`?optical` URL with an inline data URI of the rewritten SVG. The
-shipped `dist/styles.css` is plain CSS — works in any browser, no
-JavaScript required.
+Editors that lint unknown properties may flag `optical-center`. Use
+`--optical-center: auto` instead — the plugin treats both forms
+identically and `--*` is a valid CSS custom property by spec.
+
+## Why a directive (not a query suffix or function)?
+
+Earlier drafts tried `url('play.svg?optical')` and
+`optical(url('play.svg'))`. Both worked, both felt grafted on. A
+property-shaped directive matches how CSS already opts into
+behavior elsewhere (`will-change`, `contain`, `content-visibility`)
+and reads naturally inside any rule:
+
+- It's local to the rule it's declared on.
+- It applies to every URL the rule contains, not just one.
+- Source URLs stay as plain `url('…')` — copy-paste from anywhere.
+
+## What gets emitted
+
+Look at `dist/styles.css` after the build. Each opted-in rule looks
+like:
+
+```css
+.icon-play-optical {
+  background-image: url("data:image/svg+xml;utf8,%3Csvg viewBox=%22-1.293 -0.628 24 24%22…");
+}
+```
+
+The viewBox is shifted; the rest of the SVG is preserved
+byte-for-byte. The `optical-center: auto` declaration is gone.
 
 ## Why this matters
 
-Anywhere PostCSS runs, the optical-center plugin can run. That
-covers:
+Anywhere PostCSS runs, the optical-center plugin can run. That covers:
 
 - Tailwind CSS (PostCSS plugin chain)
 - Next.js (PostCSS by default)
@@ -58,19 +101,6 @@ covers:
 
 So a CSS-only icon system gets perceptually correct centering at
 build time, with zero runtime cost and zero framework lock-in.
-
-## What gets emitted
-
-Look at `dist/styles.css` after running the build. Each `?optical`
-URL has been replaced with something like:
-
-```css
-.icon-play-optical {
-  background-image: url("data:image/svg+xml;utf8,%3Csvg viewBox=%22-1.293 -0.628 24 24%22…");
-}
-```
-
-The viewBox is shifted; the rest of the SVG is preserved byte-for-byte.
 
 ## Shared fixture pool
 

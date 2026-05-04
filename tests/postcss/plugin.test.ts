@@ -1,8 +1,10 @@
 /**
- * PostCSS plugin contract: every `url('…svg?optical')` in declaration
- * values is replaced with an inline `data:image/svg+xml,…` URI whose
- * SVG has a rewritten viewBox. Pulls SVGs from the shared fixture
- * pool so tests stay in sync with what examples render.
+ * PostCSS plugin contract: a rule that contains
+ * `optical-center: auto;` (or `--optical-center: auto;`) gets every
+ * `url('…svg')` in its other declarations rewritten to an inline
+ * `data:image/svg+xml,…` URI. The directive itself is stripped from
+ * the output. Pulls SVGs from the shared fixture pool so tests stay
+ * in sync with what examples render.
  */
 
 import { describe, expect, it } from 'vitest';
@@ -40,41 +42,102 @@ function pickDataUri(css: string): string {
 }
 
 describe('opticalCenterPostcss', () => {
-  it('rewrites a background-image url with ?optical to a data URI', async () => {
-    const css = `.icon { background-image: url('${iconPath('lucide/play')}?optical'); }`;
+  it('rewrites url() in a rule that opts in via optical-center: auto', async () => {
+    const css = `
+      .icon {
+        background-image: url('${iconPath('lucide/play')}');
+        optical-center: auto;
+      }
+    `;
     const { css: out } = await run(css);
 
     expect(out).toContain('data:image/svg+xml;utf8,');
-    expect(out).not.toContain('?optical');
+    // Directive itself is stripped from the rule (the `data-optical-center`
+    // breadcrumb that appears inside the inlined SVG is not the directive).
+    expect(out).not.toMatch(/optical-center\s*:\s*auto/);
 
     const svg = decodeDataUri(pickDataUri(out));
     expect(svg).toMatch(/<svg[^>]*viewBox="-?\d+(\.\d+)?\s+-?\d+(\.\d+)?\s+\d+\s+\d+"/);
     expect(svg).toContain('<polygon');
   });
 
-  it('leaves non-?optical urls alone', async () => {
+  it('also accepts the --optical-center custom-property form', async () => {
+    const css = `
+      .icon {
+        background-image: url('${iconPath('lucide/play')}');
+        --optical-center: auto;
+      }
+    `;
+    const { css: out } = await run(css);
+    expect(out).toContain('data:image/svg+xml;utf8,');
+    expect(out).not.toMatch(/--optical-center\s*:\s*auto/);
+  });
+
+  it('leaves rules without the directive untouched', async () => {
     const css = `.icon { background-image: url('${iconPath('lucide/play')}'); }`;
     const { css: out } = await run(css);
     expect(out).toBe(css);
   });
 
-  it('handles multiple url() in the same declaration', async () => {
+  it('does not process rules whose value is not "auto"', async () => {
     const css = `
       .icon {
-        background-image:
-          url('${iconPath('lucide/play')}?optical'),
-          url('${iconPath('feather/camera')}?optical');
+        background-image: url('${iconPath('lucide/play')}');
+        optical-center: none;
+      }
+    `;
+    const { css: out } = await run(css);
+    expect(out).not.toContain('data:image/svg+xml');
+    expect(out).toContain('optical-center: none');
+  });
+
+  it('rewrites every url() in the rule, not just the first', async () => {
+    const css = `
+      .icon {
+        background-image: url('${iconPath('lucide/play')}');
+        mask-image: url('${iconPath('feather/camera')}');
+        optical-center: auto;
       }
     `;
     const { css: out } = await run(css);
     const dataUris = out.match(/data:image\/svg\+xml;utf8,[^"]+/g);
     expect(dataUris).toHaveLength(2);
-    expect(decodeDataUri(`data:image/svg+xml;utf8,${dataUris![0]!.split(',')[1]!}`))
-      .toContain('<polygon');
+  });
+
+  it('handles multiple url() inside a single declaration value', async () => {
+    const css = `
+      .icon {
+        background-image:
+          url('${iconPath('lucide/play')}'),
+          url('${iconPath('feather/camera')}');
+        optical-center: auto;
+      }
+    `;
+    const { css: out } = await run(css);
+    const dataUris = out.match(/data:image\/svg\+xml;utf8,[^"]+/g);
+    expect(dataUris).toHaveLength(2);
+  });
+
+  it('processes the background shorthand too', async () => {
+    const css = `
+      .icon {
+        background: #fff url('${iconPath('lucide/play')}') center / contain no-repeat;
+        optical-center: auto;
+      }
+    `;
+    const { css: out } = await run(css);
+    expect(out).toContain('data:image/svg+xml;utf8,');
+    expect(out).toContain('center / contain');
+    expect(out).toContain('#fff');
   });
 
   it('resolves alias prefixes', async () => {
-    const css = `.icon { mask-image: url('@fixtures/icons/heroicons/bell-solid.svg?optical'); }`;
+    const css = `
+      .icon {
+        mask-image: url('@fixtures/icons/heroicons/bell-solid.svg');
+        optical-center: auto;
+      }
+    `;
     const { css: out } = await run(css, {
       aliases: { '@fixtures': FIXTURES_ROOT.replace(/\/icons$/, '') },
     });
@@ -82,21 +145,42 @@ describe('opticalCenterPostcss', () => {
     expect(svg).toContain('viewBox=');
   });
 
-  it('rewrites mask-image too', async () => {
-    const css = `.icon { mask-image: url('${iconPath('phosphor/triangle-fill')}?optical'); }`;
+  it('treats every rule independently — sibling without directive is untouched', async () => {
+    const css = `
+      .a {
+        background-image: url('${iconPath('lucide/play')}');
+        optical-center: auto;
+      }
+      .b {
+        background-image: url('${iconPath('lucide/play')}');
+      }
+    `;
     const { css: out } = await run(css);
-    expect(out).toContain('data:image/svg+xml;utf8,');
+    const dataUris = out.match(/data:image\/svg\+xml;utf8,[^"]+/g);
+    expect(dataUris).toHaveLength(1);
+    expect(out).toMatch(/\.b \{[^}]*url\('[^']+lucide\/play\.svg'\)/);
   });
 
-  it('emits a PostCSS warning on unresolvable url, leaves value untouched', async () => {
-    const css = `.icon { background-image: url('/no/such/file.svg?optical'); }`;
+  it('emits a PostCSS warning on unresolvable path, leaves value untouched', async () => {
+    const css = `
+      .icon {
+        background-image: url('/no/such/file.svg');
+        optical-center: auto;
+      }
+    `;
     const { css: out, warnings } = await run(css);
-    expect(out).toContain('?optical');
+    expect(out).not.toContain('data:image/svg+xml');
+    expect(out).toContain('/no/such/file.svg');
     expect(warnings.some((w) => w.includes('failed to read'))).toBe(true);
   });
 
-  it('resolves urls relative to the source CSS file', async () => {
-    const css = `.icon { background-image: url('./play.svg?optical'); }`;
+  it('resolves paths relative to the source CSS file', async () => {
+    const css = `
+      .icon {
+        background-image: url('./play.svg');
+        optical-center: auto;
+      }
+    `;
     const { css: out } = await run(css, undefined, iconPath('lucide/__styles.css'));
     const svg = decodeDataUri(pickDataUri(out));
     expect(svg).toContain('<polygon');
@@ -104,7 +188,12 @@ describe('opticalCenterPostcss', () => {
 
   it('shifts the viewBox compared to the original SVG', async () => {
     const original = loadIcon('lucide/play');
-    const css = `.icon { background-image: url('${iconPath('lucide/play')}?optical'); }`;
+    const css = `
+      .icon {
+        background-image: url('${iconPath('lucide/play')}');
+        optical-center: auto;
+      }
+    `;
     const { css: out } = await run(css);
     const transformed = decodeDataUri(pickDataUri(out));
 
@@ -116,19 +205,26 @@ describe('opticalCenterPostcss', () => {
 
   it('reports a clip warning when the SVG content sits at the edge', async () => {
     const warnings: Array<{ code: string; location?: string }> = [];
-    const css = `.icon { background-image: url('${iconPath('edge-cases/asymmetric-triangle')}?optical'); }`;
+    const css = `
+      .icon {
+        background-image: url('${iconPath('edge-cases/asymmetric-triangle')}');
+        optical-center: auto;
+      }
+    `;
     await run(css, { onWarning: (w) => warnings.push(w) });
     const codes = warnings.map((w) => w.code);
     expect(codes).toContain('OPTICAL_CLIP_DETECTED');
   });
 
-  it('skips http(s) and data: urls without throwing', async () => {
+  it('skips http(s) urls without throwing', async () => {
     const css = `
-      .a { background-image: url('https://example.com/x.svg?optical'); }
-      .b { background-image: url('data:image/svg+xml;utf8,<svg/>?optical'); }
+      .a {
+        background-image: url('https://example.com/x.svg');
+        optical-center: auto;
+      }
     `;
-    const { css: out } = await run(css);
-    expect(out).toContain('https://example.com/x.svg?optical');
-    expect(out).toContain('data:image/svg+xml;utf8,<svg/>?optical');
+    const { css: out, warnings } = await run(css);
+    expect(out).toContain('https://example.com/x.svg');
+    expect(warnings.some((w) => w.includes('unresolvable'))).toBe(true);
   });
 });

@@ -1,23 +1,28 @@
 /**
- * `optical-center/postcss` — bundler-agnostic build-time path for any
- * `url('…svg?optical')` reference that lives in CSS. Mirrors the
- * `?optical` contract of the Vite plugin so the same authoring style
- * works in webpack/Tailwind/PostCSS-CLI/Next without a Vite dep.
+ * `optical-center/postcss` — bundler-agnostic build-time CSS path. The
+ * opt-in is a rule-level directive:
  *
- * What it does on every declaration value containing `?optical`:
- *   1. Resolve the URL against aliases → CSS file directory → root.
- *   2. Read the SVG from disk and sanitize.
- *   3. Run the rasterize → optical-center → viewBox-rewrite pipeline.
- *   4. Inline the rewritten SVG as a `url("data:image/svg+xml,…")` URI.
+ *   .icon {
+ *     background-image: url('icons/play.svg');
+ *     optical-center: auto;
+ *   }
  *
- * Inline data URIs (vs. emitting a sibling file) keep the plugin pure:
- * no asset hooks, no graph awareness, works in any PostCSS host.
+ * When the plugin sees `optical-center: auto` (or `--optical-center: auto`,
+ * for editors/linters that flag unknown properties), it walks every
+ * other declaration in the same rule, runs every `url('…svg')` through
+ * the rasterize → optical-center → viewBox-rewrite pipeline, and
+ * inlines the rewritten SVG as a `data:image/svg+xml,…` URI. The
+ * directive itself is stripped from the output.
+ *
+ * Works in any property: `background-image`, `mask-image`,
+ * `border-image-source`, `content`, `cursor`, custom properties — if
+ * a `url('*.svg')` lives in the rule, it gets corrected.
  */
 
 import { readFile } from 'node:fs/promises';
 import { dirname, isAbsolute, resolve } from 'node:path';
 
-import type { Declaration, PluginCreator, Result, Root } from 'postcss';
+import type { Declaration, PluginCreator, Result, Root, Rule } from 'postcss';
 
 import { applyTransformToSvg } from '../core/apply-to-svg.js';
 import { MAX_INPUT_BYTES } from '../core/constants.js';
@@ -30,12 +35,12 @@ export interface PostcssPluginOptions {
   /**
    * Alias prefixes that resolve to absolute filesystem paths. Mirrors
    * the Vite `resolve.alias` convention so a CSS that writes
-   * `url('@fixtures/icons/play.svg?optical')` keeps working under
-   * postcss-cli/webpack/Tailwind without relying on Vite.
+   * `url('@fixtures/icons/play.svg')` keeps working under
+   * postcss-cli/webpack/Tailwind without a Vite dep.
    */
   readonly aliases?: Readonly<Record<string, string>>;
   /**
-   * Fallback resolution root used when a URL is relative but the CSS
+   * Fallback resolution root used when a path is relative but the CSS
    * source has no `from` (e.g. inline strings passed to PostCSS).
    * Defaults to `process.cwd()`.
    */
@@ -50,8 +55,10 @@ export interface PostcssPluginOptions {
   readonly maxInputBytes?: number;
 }
 
+const DIRECTIVE_PROPS = new Set(['optical-center', '--optical-center']);
+
 const URL_PATTERN =
-  /url\(\s*(['"]?)([^'")]+?\.svg\?optical(?:&[^'")]*)?)\1\s*\)/gi;
+  /url\(\s*(['"]?)([^'")]+?\.svg)\1\s*\)/gi;
 
 const PLUGIN_NAME = 'optical-center';
 
@@ -84,13 +91,42 @@ const opticalCenterPostcss: PluginCreator<PostcssPluginOptions> = (
         : root ?? process.cwd();
 
       const tasks: Array<Promise<void>> = [];
-      cssRoot.walkDecls((decl) => {
-        if (!decl.value.includes('?optical')) return;
-        tasks.push(rewriteDeclaration(decl, baseDir, helpers.result));
+      cssRoot.walkRules((rule) => {
+        const directive = findDirective(rule);
+        if (!directive) return;
+        if (directive.value.trim() !== 'auto') {
+          // Future-proofing: `optical-center: none` could opt a nested
+          // rule out of an inherited setting. For now `auto` is the
+          // only honored value — anything else is left as-is so it's
+          // visible in the output if the author meant something.
+          return;
+        }
+        directive.remove();
+        tasks.push(processRule(rule, baseDir, helpers.result));
       });
       await Promise.all(tasks);
     },
   };
+
+  async function processRule(
+    rule: Rule,
+    baseDir: string,
+    result: Result,
+  ): Promise<void> {
+    const decls: Declaration[] = [];
+    rule.walkDecls((decl) => {
+      if (DIRECTIVE_PROPS.has(decl.prop)) return;
+      // Cheap substring filter — `URL_PATTERN.test` would mutate the
+      // shared regex's lastIndex (it has the /g flag) and break the
+      // next call. The full match runs in rewriteDeclaration.
+      if (!decl.value.includes('url(')) return;
+      decls.push(decl);
+    });
+
+    await Promise.all(
+      decls.map((decl) => rewriteDeclaration(decl, baseDir, result)),
+    );
+  }
 
   async function rewriteDeclaration(
     decl: Declaration,
@@ -98,12 +134,12 @@ const opticalCenterPostcss: PluginCreator<PostcssPluginOptions> = (
     result: Result,
   ): Promise<void> {
     const original = decl.value;
-    const matches = collectMatches(original);
+    const matches = collectUrls(original);
     if (matches.length === 0) return;
 
     let next = original;
-    for (const { full, rawUrl } of matches) {
-      const dataUri = await loadAndTransform(rawUrl, baseDir, result, decl);
+    for (const { full, path } of matches) {
+      const dataUri = await loadAndTransform(path, baseDir, result, decl);
       if (dataUri === null) continue;
       next = next.split(full).join(`url("${dataUri}")`);
     }
@@ -111,15 +147,14 @@ const opticalCenterPostcss: PluginCreator<PostcssPluginOptions> = (
   }
 
   async function loadAndTransform(
-    rawUrl: string,
+    rawPath: string,
     baseDir: string,
     result: Result,
     decl: Declaration,
   ): Promise<string | null> {
-    const cleanUrl = rawUrl.replace(/\?optical(&.*)?$/, '');
-    const filePath = resolveUrl(cleanUrl, baseDir);
+    const filePath = resolveUrl(rawPath, baseDir);
     if (!filePath) {
-      result.warn(`unresolvable url: ${rawUrl}`, { node: decl });
+      result.warn(`unresolvable url: ${rawPath}`, { node: decl });
       return null;
     }
 
@@ -179,17 +214,29 @@ opticalCenterPostcss.postcss = true;
 
 export default opticalCenterPostcss;
 
-interface UrlMatch {
-  readonly full: string;
-  readonly rawUrl: string;
+function findDirective(rule: Rule): Declaration | undefined {
+  let found: Declaration | undefined;
+  rule.walkDecls((decl) => {
+    if (DIRECTIVE_PROPS.has(decl.prop)) {
+      found = decl;
+      return false;
+    }
+    return undefined;
+  });
+  return found;
 }
 
-function collectMatches(value: string): ReadonlyArray<UrlMatch> {
+interface UrlMatch {
+  readonly full: string;
+  readonly path: string;
+}
+
+function collectUrls(value: string): ReadonlyArray<UrlMatch> {
   const matches: UrlMatch[] = [];
   URL_PATTERN.lastIndex = 0;
   let match: RegExpExecArray | null;
   while ((match = URL_PATTERN.exec(value)) !== null) {
-    matches.push({ full: match[0], rawUrl: match[2]! });
+    matches.push({ full: match[0], path: match[2]! });
   }
   return matches;
 }
