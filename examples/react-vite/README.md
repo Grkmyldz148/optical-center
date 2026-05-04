@@ -5,9 +5,9 @@ JS at the icon mount point.
 
 | # | Scenario | Tooling | When to use |
 |---|----------|---------|-------------|
-| 1 | Inline `<svg opticalCenter>` JSX | Babel plugin | You author the SVG inline. |
-| 2 | `import './x.svg?optical'` | Vite plugin (`load` hook) | You import SVG asset files. |
-| 3 | CSS-mounted icons + `optical-center: auto` | PostCSS plugin | You use installed icon packages. |
+| 1 | `<Play />` / `<Heart />` style icon components — CSS-only centering | PostCSS plugin | The default. Real npm icon packages, lucide-react DX. |
+| 2 | Inline JSX `<svg optical-center="auto">` | Babel plugin | You author the SVG inline (paste from a design tool). |
+| 3 | `import './x.svg?optical'` | Vite plugin (`load` hook) | You import individual SVG asset files. |
 
 ## Run it
 
@@ -19,45 +19,66 @@ npm install
 npm --workspace optical-center-example-react-vite run dev
 ```
 
-## Scenario 3 in detail
+## Scenario 1 — lucide-react DX, CSS-only centering
 
-The recommended path for everything that isn't hand-authored JSX.
-Real installed icon packages, no React component wrapper, no runtime
-hook. The recipe:
+```tsx
+import { Play, Heart, ArrowRight } from './components/icons';
+
+<Play />        {/* identical call signature to lucide-react */}
+<Heart />
+<ArrowRight />
+```
+
+Each named export is a plain `<span>` wrapper around a CSS class:
+
+```tsx
+// components/icons.tsx
+const make = (cls: string) => () =>
+  <span className={`icon ${cls} optical`} />;
+
+export const Play       = make('icon-lucide-play');
+export const Heart      = make('icon-lucide-heart');
+export const ArrowRight = make('icon-lucide-arrow-right');
+```
+
+The CSS does the rest:
 
 ```css
 /* src/styles/icons.css */
-.icon-play.optical {
+.icon-lucide-play.optical {
   -webkit-mask-image: url('lucide-static/icons/play.svg');
           mask-image: url('lucide-static/icons/play.svg');
-  optical-center: auto;          /* ← the plugin inlines the corrected SVG */
+  optical-center: auto;          /* ← only line that differs */
 }
 ```
 
-```tsx
-function PlayButton() {
-  return <span className="icon icon-lucide-play optical" />;
-}
-```
+When `postcss.config.js` registers the optical-center plugin (Vite
+picks it up automatically), every rule with `optical-center: auto`
+gets each `url('…svg')` rewritten to an inline `data:image/svg+xml,…`
+URI of the corrected SVG. The directive is stripped from the
+output. The shipped CSS is plain, browser-native, framework-agnostic.
 
-The PostCSS plugin (registered via `postcss.config.js`) walks every
-rule that declares `optical-center: auto`, pulls each
-`url('…svg')` from disk through the rasterize → optical-center →
-viewBox-rewrite pipeline, and replaces it with an inline
-`data:image/svg+xml,…` URI. The directive is stripped from the
-output. Your shipped CSS is plain, browser-native, framework-agnostic.
+### Why a wrapper component?
+
+You could write `<span className="icon icon-lucide-play optical" />`
+directly — that's what the wrappers do. But `<Play />` is shorter,
+typed, autocompletes, and matches what people expect when they reach
+for icons in React. The wrapper is one line per icon. Compared to
+`lucide-react`'s React component (which emits `<svg>` at render
+time and would need a runtime hook to center), the wrapper is
+strictly cheaper: no JSX traversal, no SVG diffing, no `viewBox`
+mutation per mount.
 
 ### Real packages used
 
-- **`lucide-static`** — npm package, raw Lucide SVGs (24x24).
-- **`heroicons`** — npm package, raw Heroicons SVGs (24x24, different style).
-- **`@fortawesome/fontawesome-free`** — npm package, non-square viewBoxes (e.g. 384x512, 576x512).
+- **`lucide-static`** — npm, raw Lucide SVGs (24x24).
+- **`heroicons`** — npm, raw Heroicons SVGs (24x24, different style).
+- **`@fortawesome/fontawesome-free`** — npm, non-square viewBoxes (e.g. 384x512, 576x512).
 
-The PostCSS plugin resolves bare specifiers through Node's module
-resolution, so installed packages work with no alias config —
-`url('lucide-static/icons/play.svg')` just works.
+Bare specifiers (`url('lucide-static/icons/play.svg')`) resolve
+through Node's module resolution. No alias config needed.
 
-## Why no React component?
+## Why no runtime?
 
 Earlier drafts shipped `<OpticalIcon>`, `<OpticalRef>`, and a
 `useOpticalCenter()` hook for icon libraries that emit `<svg>` at
