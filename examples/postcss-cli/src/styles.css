@@ -1,0 +1,102 @@
+/*
+ * Author CSS as if the icons were just static SVGs. The optical-center
+ * PostCSS plugin sees the `?optical` query suffix at build time and
+ * inlines a corrected SVG as a data URI. No runtime, no JavaScript on
+ * the client.
+ *
+ * Same fixture pool the rest of the project uses, addressed through the
+ * `@fixtures` alias configured in postcss.config.js.
+ */
+
+:root {
+  --badge-bg: #111;
+  --icon-color: #fff;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  font: 16px/1.5 system-ui, sans-serif;
+  max-width: 880px;
+  margin: 40px auto;
+  padding: 0 24px;
+  color: #111;
+}
+
+h1 { letter-spacing: -0.02em; margin: 0 0 12px; }
+h2 { letter-spacing: -0.015em; font-size: 1.15rem; margin-top: 32px; }
+.lede { color: #666; }
+
+.row {
+  display: grid;
+  grid-template-columns: 80px 80px 1fr;
+  gap: 16px;
+  align-items: center;
+  margin: 16px 0;
+}
+
+.badge {
+  width: 80px;
+  height: 80px;
+  background: var(--badge-bg);
+  border-radius: 50%;
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: 36px 36px;
+}
+
+.name {
+  font-family: ui-monospace, monospace;
+  font-size: 13px;
+  color: #555;
+}
+
+/*
+ * Pairs of geometric vs. optical. Same SVG asset, only difference is
+ * the `?optical` query — PostCSS handles the rewrite, the browser sees
+ * a corrected viewBox.
+ */
+.icon-play-geom    { background-image: url('@fixtures/lucide/play.svg'); }
+.icon-play-optical { background-image: url('@fixtures/lucide/play.svg?optical'); }
+
+.icon-triangle-geom    { background-image: url('@fixtures/edge-cases/asymmetric-triangle.svg'); }
+.icon-triangle-optical { background-image: url('@fixtures/edge-cases/asymmetric-triangle.svg?optical'); }
+
+.icon-fa-play-geom     { background-image: url('@fixtures/fontawesome/play-solid.svg'); }
+.icon-fa-play-optical  { background-image: url('@fixtures/fontawesome/play-solid.svg?optical'); }
+
+.icon-tabler-geom      { background-image: url('@fixtures/tabler/send.svg'); }
+.icon-tabler-optical   { background-image: url('@fixtures/tabler/send.svg?optical'); }
+
+/* Apply the icon color as a CSS mask — works because the plugin
+ * doesn't care which property the url() lives in. */
+.mask-row {
+  display: grid;
+  grid-template-columns: 80px 80px 1fr;
+  gap: 16px;
+  align-items: center;
+  margin: 16px 0;
+}
+
+.mask-badge {
+  width: 80px;
+  height: 80px;
+  background: var(--badge-bg);
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+}
+
+.mask-icon {
+  width: 36px;
+  height: 36px;
+  background: var(--icon-color);
+  -webkit-mask-repeat: no-repeat;
+          mask-repeat: no-repeat;
+  -webkit-mask-position: center;
+          mask-position: center;
+  -webkit-mask-size: contain;
+          mask-size: contain;
+}
+.mask-heart-geom    { -webkit-mask-image: url('@fixtures/lucide/heart.svg');           mask-image: url('@fixtures/lucide/heart.svg'); }
+.mask-heart-optical { -webkit-mask-image: url('@fixtures/lucide/heart.svg?optical');   mask-image: url('@fixtures/lucide/heart.svg?optical'); }

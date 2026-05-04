@@ -33,6 +33,10 @@
       "types": "./dist/vite/index.d.ts",
       "import": "./dist/vite/index.js"
     },
+    "./postcss": {
+      "types": "./dist/postcss/index.d.ts",
+      "import": "./dist/postcss/index.js"
+    },
     "./package.json": "./package.json"
   },
   "bin": {
@@ -76,16 +80,21 @@
     "@types/react": "^19.2.14",
     "@types/write-file-atomic": "^4.0.3",
     "@vitest/coverage-v8": "^3.2.4",
+    "postcss": "^8.4.0",
     "typescript": "^5.4.0",
     "vite": "^7.3.2",
     "vitest": "^3.0.0"
   },
   "peerDependencies": {
     "@babel/core": "^7.29.0",
+    "postcss": "^8.5.13",
     "vite": ">=5"
   },
   "peerDependenciesMeta": {
     "@babel/core": {
+      "optional": true
+    },
+    "postcss": {
       "optional": true
     },
     "vite": {
