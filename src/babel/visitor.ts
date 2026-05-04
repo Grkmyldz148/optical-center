@@ -90,7 +90,12 @@ export function visitJsxElement(
     }
   }
 
-  const opticalAttr = findAttribute(opening.attributes, 'opticalCenter');
+  // Accept either the idiomatic JSX camelCase prop (opticalCenter) or
+  // the kebab-case form (optical-center) that mirrors the CSS / HTML
+  // syntax exactly. Same semantics either way.
+  const opticalAttr =
+    findAttribute(opening.attributes, 'opticalCenter') ??
+    findAttribute(opening.attributes, 'optical-center');
   if (!opticalAttr) return;
   const enabled = readOpticalCenterValue(opticalAttr);
   if (enabled === 'disabled') return;
@@ -158,9 +163,11 @@ export function visitJsxElement(
   }
 
   // 4. Commit — mutate the AST ----------------------------------------
-  opening.attributes = opening.attributes.filter(
-    (a) => !(t.isJSXAttribute(a) && t.isJSXIdentifier(a.name, { name: 'opticalCenter' })),
-  );
+  opening.attributes = opening.attributes.filter((a) => {
+    if (!t.isJSXAttribute(a)) return true;
+    if (!t.isJSXIdentifier(a.name)) return true;
+    return a.name.name !== 'opticalCenter' && a.name.name !== 'optical-center';
+  });
   upsertAttribute(opening, 'viewBox', viewBox);
   for (const [name, value] of Object.entries(breadcrumb)) {
     if (value === undefined) continue;

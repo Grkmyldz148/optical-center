@@ -24,6 +24,27 @@ describe('optical-center Babel plugin', () => {
     expect(out.code).not.toContain('opticalCenter');
   });
 
+  it('accepts the kebab-case optical-center="auto" form (mirrors CSS exactly)', () => {
+    const out = runPlugin(
+      'const X = <svg optical-center="auto" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>;',
+    );
+    expect(out.code).toMatch(/viewBox="-?\d+\.?\d*\s+-?\d+\.?\d*\s+24\s+24"/);
+    expect(out.code).toContain('data-optical-center=""');
+    // `optical-center="auto"` is gone; the only remaining occurrence is
+    // the `data-optical-center` breadcrumb.
+    expect(out.code).not.toContain('optical-center="auto"');
+    expect(out.warnings).toEqual([]);
+  });
+
+  it('accepts the kebab-case form as a boolean attribute', () => {
+    const out = runPlugin(
+      'const X = <svg optical-center viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>;',
+    );
+    expect(out.code).toContain('data-optical-center=""');
+    // Boolean form has no `=`; rewritten output should not have the bare attr.
+    expect(out.code).not.toMatch(/<svg[^>]*\boptical-center\b[^=]/);
+  });
+
   it('leaves opticalCenter={false} alone (disabled)', () => {
     const out = runPlugin(
       'const X = <svg opticalCenter={false} viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>;',

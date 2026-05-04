@@ -38,6 +38,15 @@ declare module 'react' {
      * to apply the standard correction.
      */
     opticalCenter?: boolean | 'auto';
+    /**
+     * Kebab-case alias for `opticalCenter` — mirrors the CSS
+     * `optical-center: auto` directive and the HTML
+     * `<svg optical-center="auto">` attribute exactly.
+     *
+     * Same semantics as `opticalCenter`. Pick whichever reads better
+     * for your codebase; the Babel plugin treats them identically.
+     */
+    'optical-center'?: boolean | 'auto';
   }
 }
 

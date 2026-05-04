@@ -52,7 +52,7 @@ function serializeAttribute(
   }
 
   const rawName = readAttrName(attr.name);
-  if (rawName === 'opticalCenter') return null;
+  if (rawName === 'opticalCenter' || rawName === 'optical-center') return null;
 
   const svgName = t.isJSXNamespacedName(attr.name)
     ? rawName
