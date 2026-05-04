@@ -7,12 +7,10 @@
  * declares `optical-center: auto` and rewrites the `url(...)` inside
  * to a corrected data URI at build time.
  *
- * This scenario covers three sources side by side:
- *   - lucide-static (npm, raw SVGs)
- *   - heroicons     (npm, raw SVGs)
- *   - fontawesome   (npm, raw SVGs, non-square viewBoxes)
- *   - local fixtures via the `@fixtures` alias (alias config only,
- *     authoring stays as plain `url(...)`).
+ * Three real npm icon packages, side by side:
+ *   - lucide-static (square 24x24)
+ *   - heroicons     (square 24x24, different style)
+ *   - @fortawesome/fontawesome-free (non-square viewBoxes)
  *
  * The point: optical centering happens entirely in CSS. Whoever writes
  * the markup never sees the pipeline.
@@ -45,12 +43,12 @@ export function LibraryIcons() {
       description={
         <>
           Real installed npm packages — <code>lucide-static</code>,{' '}
-          <code>heroicons</code>, <code>@fortawesome/fontawesome-free</code> —
-          plus local SVGs through an alias. Each icon is a plain
-          <code>&lt;span&gt;</code>; the optical variants add one class
-          (<code>.optical</code>). The PostCSS plugin sees{' '}
-          <code>optical-center: auto</code> in those rules and rewrites
-          the masked SVG at build time. No runtime, no React hook.
+          <code>heroicons</code>, <code>@fortawesome/fontawesome-free</code>.
+          Each icon is a plain <code>&lt;span&gt;</code>; the optical
+          variants add one class (<code>.optical</code>). The PostCSS
+          plugin sees <code>optical-center: auto</code> in those rules
+          and rewrites the masked SVG at build time. No runtime, no
+          React hook, no JS at the icon mount point.
         </>
       }
     >
@@ -58,23 +56,21 @@ export function LibraryIcons() {
       <IconRow label=".icon-lucide-play"        className="icon-lucide-play" />
       <IconRow label=".icon-lucide-arrow-right" className="icon-lucide-arrow-right" />
       <IconRow label=".icon-lucide-heart"       className="icon-lucide-heart" />
+      <IconRow label=".icon-lucide-send"        className="icon-lucide-send" />
 
       <h3>heroicons</h3>
       <IconRow label=".icon-heroicons-bell"             className="icon-heroicons-bell" />
       <IconRow label=".icon-heroicons-magnifying-glass" className="icon-heroicons-magnifying-glass" />
 
-      <h3>@fortawesome/fontawesome-free (non-square)</h3>
-      <IconRow label=".icon-fa-play" className="icon-fa-play" />
-      <IconRow label=".icon-fa-star" className="icon-fa-star" />
+      <h3>@fortawesome/fontawesome-free (non-square viewBoxes)</h3>
+      <IconRow label=".icon-fa-play"        className="icon-fa-play" />
+      <IconRow label=".icon-fa-star"        className="icon-fa-star" />
+      <IconRow label=".icon-fa-paper-plane" className="icon-fa-paper-plane" />
 
-      <h3>local @fixtures alias</h3>
-      <IconRow label=".icon-local-asym"        className="icon-local-asym" />
-      <IconRow label=".icon-local-tabler-send" className="icon-local-tabler-send" />
-
-      <h3>background-image (full-color)</h3>
+      <h3>background-image (full-color, FA flag)</h3>
       <IconRow
-        label=".bg-icon-multicolor (background-image)"
-        className="bg-icon-multicolor"
+        label=".bg-icon-fa-flag (background-image)"
+        className="bg-icon-fa-flag"
         mode="background"
       />
     </Section>

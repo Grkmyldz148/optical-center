@@ -3,10 +3,10 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "transform": "optical-center transform ../../fixtures/icons ./icons-centered --allow-outside-cwd",
-    "info": "optical-center info ../../fixtures/icons/lucide/play.svg --allow-outside-cwd",
-    "analyze": "optical-center analyze ../../fixtures/icons --allow-outside-cwd",
-    "report": "optical-center transform ../../fixtures/icons ./icons-centered --json --allow-outside-cwd"
+    "transform": "optical-center transform ./icons ./icons-centered",
+    "info": "optical-center info ./icons/play.svg",
+    "analyze": "optical-center analyze ./icons",
+    "report": "optical-center transform ./icons ./icons-centered --json"
   },
   "devDependencies": {
     "optical-center": "file:../.."

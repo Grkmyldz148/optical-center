@@ -38,11 +38,11 @@
   <body>
     <h1>optical-center · asset import</h1>
     <p class="lede">
-      Every icon in <code>fixtures/icons/</code> imported twice — once
+      Every icon in <code>src/icons/</code> imported twice — once
       raw, once with <code>?optical</code>. The right column is
       rewritten by the Vite plugin at build time. Pulled via
-      <code>import.meta.glob</code> so the example scales with the
-      shared pool.
+      <code>import.meta.glob</code> so dropping a new SVG into the
+      folder picks it up automatically.
     </p>
     <div id="root"></div>
     <script type="module" src="/src/main.ts"></script>

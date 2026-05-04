@@ -7,8 +7,12 @@
     "build": "vite build",
     "preview": "vite preview"
   },
+  "dependencies": {
+    "lucide-static": "^0.460.0"
+  },
   "devDependencies": {
     "optical-center": "file:../..",
+    "postcss": "^8.4.0",
     "vite": "^7.0.0"
   }
 }

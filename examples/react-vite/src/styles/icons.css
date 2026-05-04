@@ -1,14 +1,16 @@
 /*
- * CSS-mounted icons. Each rule pulls a real SVG from an installed
- * icon package (or the shared fixture pool) and opts in to optical
- * centering with one declaration. The PostCSS plugin handles the
- * rewrite at build time — no runtime, no React component, no JS at
- * the icon mount point.
+ * Real icon packages, mounted via CSS, corrected at build time.
  *
- * Bare specifiers like `lucide-static/icons/play.svg` resolve through
- * Node's resolution, so installed packages work without any alias.
- * The `@fixtures` alias is configured in postcss.config.js for the
- * shared fixture pool.
+ * Each icon has two rules: a baseline (.icon-foo) and an opted-in
+ * variant (.icon-foo.optical) that adds a single `optical-center: auto`
+ * declaration. The PostCSS plugin walks every rule with that
+ * directive, runs each url('…svg') through the rasterize → optical
+ * center → viewBox-rewrite pipeline, and replaces it with an inline
+ * `data:image/svg+xml,…` URI. The directive is stripped from the
+ * output. No runtime, no React hook, no JS at the icon mount point.
+ *
+ * Bare specifiers (`lucide-static/icons/play.svg`) resolve through
+ * Node's module resolution — installed icon packages just work.
  */
 
 .icon {
@@ -25,9 +27,7 @@
 }
 
 /*
- * lucide-static — npm package, ships raw SVG icons.
- * Single source of icon data, two CSS rules per icon (geometric
- * default + opted-in optical variant).
+ * lucide-static — square 24x24 viewBox.
  */
 .icon-lucide-play {
   -webkit-mask-image: url('lucide-static/icons/play.svg');
@@ -59,8 +59,18 @@
   optical-center: auto;
 }
 
+.icon-lucide-send {
+  -webkit-mask-image: url('lucide-static/icons/send.svg');
+          mask-image: url('lucide-static/icons/send.svg');
+}
+.icon-lucide-send.optical {
+  -webkit-mask-image: url('lucide-static/icons/send.svg');
+          mask-image: url('lucide-static/icons/send.svg');
+  optical-center: auto;
+}
+
 /*
- * heroicons — npm package with raw SVGs in 24/solid, 24/outline, 20/solid.
+ * heroicons — different SVG style, same square viewBox.
  */
 .icon-heroicons-bell {
   -webkit-mask-image: url('heroicons/24/solid/bell.svg');
@@ -83,8 +93,8 @@
 }
 
 /*
- * @fortawesome/fontawesome-free — non-square viewBoxes. Shows the
- * algorithm holding up under uneven canvases.
+ * @fortawesome/fontawesome-free — non-square viewBoxes (e.g. 384x512,
+ * 576x512). Stresses the algorithm under uneven canvases.
  */
 .icon-fa-play {
   -webkit-mask-image: url('@fortawesome/fontawesome-free/svgs/solid/play.svg');
@@ -106,34 +116,19 @@
   optical-center: auto;
 }
 
-/*
- * Local SVGs from the shared fixture pool — addressed through the
- * `@fixtures` alias declared in postcss.config.js. Demonstrates the
- * "I have my own icons folder" path.
- */
-.icon-local-asym {
-  -webkit-mask-image: url('@fixtures/edge-cases/asymmetric-triangle.svg');
-          mask-image: url('@fixtures/edge-cases/asymmetric-triangle.svg');
+.icon-fa-paper-plane {
+  -webkit-mask-image: url('@fortawesome/fontawesome-free/svgs/solid/paper-plane.svg');
+          mask-image: url('@fortawesome/fontawesome-free/svgs/solid/paper-plane.svg');
 }
-.icon-local-asym.optical {
-  -webkit-mask-image: url('@fixtures/edge-cases/asymmetric-triangle.svg');
-          mask-image: url('@fixtures/edge-cases/asymmetric-triangle.svg');
-  optical-center: auto;
-}
-
-.icon-local-tabler-send {
-  -webkit-mask-image: url('@fixtures/tabler/send.svg');
-          mask-image: url('@fixtures/tabler/send.svg');
-}
-.icon-local-tabler-send.optical {
-  -webkit-mask-image: url('@fixtures/tabler/send.svg');
-          mask-image: url('@fixtures/tabler/send.svg');
+.icon-fa-paper-plane.optical {
+  -webkit-mask-image: url('@fortawesome/fontawesome-free/svgs/solid/paper-plane.svg');
+          mask-image: url('@fortawesome/fontawesome-free/svgs/solid/paper-plane.svg');
   optical-center: auto;
 }
 
 /*
- * background-image instead of mask-image — the directive doesn't care
- * which property holds the url(). Uses the SVG's own colors.
+ * background-image instead of mask-image — directive doesn't care
+ * which property holds the url(). Keeps the SVG's own colors.
  */
 .bg-icon {
   display: inline-block;
@@ -143,10 +138,10 @@
   background-position: center;
   background-size: contain;
 }
-.bg-icon-multicolor {
-  background-image: url('@fixtures/edge-cases/multicolor.svg');
+.bg-icon-fa-flag {
+  background-image: url('@fortawesome/fontawesome-free/svgs/solid/flag.svg');
 }
-.bg-icon-multicolor.optical {
-  background-image: url('@fixtures/edge-cases/multicolor.svg');
+.bg-icon-fa-flag.optical {
+  background-image: url('@fortawesome/fontawesome-free/svgs/solid/flag.svg');
   optical-center: auto;
 }

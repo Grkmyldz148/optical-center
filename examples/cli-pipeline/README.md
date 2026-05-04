@@ -1,9 +1,8 @@
 # CLI pipeline
 
-The build-time CLI run against the shared `fixtures/icons/` pool —
-30 real icons from Lucide, Heroicons, Feather, FontAwesome, Phosphor,
-Tabler, plus a stress set of edge cases. Mirrors them into
-`icons-centered/` with rewritten viewBoxes plus a JSON report.
+The build-time CLI run against a project's own `icons/` folder —
+the way a design system would consume it. Mirrors the corrected SVGs
+into `icons-centered/` with a JSON report.
 
 ## Run it
 
@@ -11,7 +10,7 @@ Tabler, plus a stress set of edge cases. Mirrors them into
 # from repo root
 npm install
 
-# transform every icon in the pool, mirror to ./icons-centered
+# transform every icon in ./icons → ./icons-centered
 npm --workspace optical-center-example-cli-pipeline run transform
 
 # get a structured JSON report
@@ -35,16 +34,16 @@ npx optical-center clear-cache
   "schemaVersion": 1,
   "data": {
     "summary": {
-      "inputCount": 30,
-      "transformed": 30,
+      "inputCount": 8,
+      "transformed": 8,
       "failed": 0,
-      "clipDetected": 1,
-      "durationMs": 412
+      "clipDetected": 3,
+      "durationMs": 85
     },
     "files": [
-      { "file": "lucide/play.svg",   "status": "transformed", "viewBox": "-0.32 -0.62 24 24" },
-      { "file": "fontawesome/star-solid.svg", "status": "transformed", "viewBox": "..." },
-      { "file": "edge-cases/edge-clipped.svg", "status": "transformed", "clipDetected": true }
+      { "file": "play.svg",            "status": "transformed", "viewBox": "-1.293 -0.628 24 24" },
+      { "file": "star-solid.svg",      "status": "transformed", "clipDetected": true },
+      { "file": "play-solid.svg",      "status": "transformed", "clipDetected": true }
     ]
   }
 }
@@ -60,11 +59,3 @@ screen-scraping. Exit codes make gating easy:
 - `1` warnings only (clip detection)
 - `2` failures (rasterize / write errors)
 - `3` invalid args
-
-## Shared fixture pool
-
-This example doesn't ship its own icons. It points at the repo-root
-`fixtures/icons/` folder — the same pool the tests, the React example,
-the asset-import example, and the vanilla-HTML example all use.
-Adding an icon to `fixtures/icons/<family>/` automatically exercises
-every example.

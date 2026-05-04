@@ -1,13 +1,13 @@
 /*
- * Author CSS as if you were just dropping in static SVGs. Add
- * `optical-center: auto;` to any rule and the plugin walks every
- * other declaration in that rule, rewriting every `url('…svg')` to
- * an inline data URI of the corrected SVG. The directive itself is
- * stripped from the output. No runtime, no JavaScript, no
- * bundler-specific syntax.
+ * Author CSS as if you were just dropping in static SVGs from your
+ * installed icon packages. Add `optical-center: auto;` to a rule and
+ * the plugin walks every other declaration in that rule, rewriting
+ * every `url('…svg')` to an inline data URI of the corrected SVG.
+ * The directive is stripped from the output. No runtime, no
+ * JavaScript, no bundler-specific syntax.
  *
- * Same fixture pool the rest of the project uses, addressed through
- * the `@fixtures` alias configured in postcss.config.js.
+ * Bare specifiers — `lucide-static/icons/play.svg` — resolve through
+ * Node's module resolution. No alias config.
  */
 
 :root {
@@ -54,41 +54,47 @@ h2 { letter-spacing: -0.015em; font-size: 1.15rem; margin-top: 32px; }
 }
 
 /*
- * Pairs of geometric vs. optical. Identical CSS on both sides — the
- * only thing the optical variants add is `optical-center: auto`.
+ * Pairs of geometric vs. optical. Identical CSS on both sides; the
+ * only thing the optical variant adds is one declaration.
  */
-.icon-play-geom    { background-image: url('@fixtures/lucide/play.svg'); }
-.icon-play-optical {
-  background-image: url('@fixtures/lucide/play.svg');
+.icon-lucide-play         { background-image: url('lucide-static/icons/play.svg'); }
+.icon-lucide-play.optical {
+  background-image: url('lucide-static/icons/play.svg');
   optical-center: auto;
 }
 
-.icon-triangle-geom    { background-image: url('@fixtures/edge-cases/asymmetric-triangle.svg'); }
-.icon-triangle-optical {
-  background-image: url('@fixtures/edge-cases/asymmetric-triangle.svg');
+.icon-lucide-heart         { background-image: url('lucide-static/icons/heart.svg'); }
+.icon-lucide-heart.optical {
+  background-image: url('lucide-static/icons/heart.svg');
   optical-center: auto;
 }
 
-.icon-fa-play-geom    { background-image: url('@fixtures/fontawesome/play-solid.svg'); }
-.icon-fa-play-optical {
-  background-image: url('@fixtures/fontawesome/play-solid.svg');
+.icon-heroicons-bell         { background-image: url('heroicons/24/solid/bell.svg'); }
+.icon-heroicons-bell.optical {
+  background-image: url('heroicons/24/solid/bell.svg');
   optical-center: auto;
 }
 
-.icon-tabler-geom    { background-image: url('@fixtures/tabler/send.svg'); }
-.icon-tabler-optical {
-  background-image: url('@fixtures/tabler/send.svg');
+.icon-fa-play         { background-image: url('@fortawesome/fontawesome-free/svgs/solid/play.svg'); }
+.icon-fa-play.optical {
+  background-image: url('@fortawesome/fontawesome-free/svgs/solid/play.svg');
+  optical-center: auto;
+}
+
+.icon-fa-star         { background-image: url('@fortawesome/fontawesome-free/svgs/solid/star.svg'); }
+.icon-fa-star.optical {
+  background-image: url('@fortawesome/fontawesome-free/svgs/solid/star.svg');
   optical-center: auto;
 }
 
 /*
- * Same directive works inside the `background` shorthand — the plugin
- * doesn't care which property holds the url().
+ * background shorthand — the directive doesn't care which property
+ * holds the url().
  */
 .icon-shorthand {
   background:
     var(--badge-bg)
-    url('@fixtures/lucide/play.svg')
+    url('lucide-static/icons/play.svg')
     center / 36px 36px no-repeat;
   optical-center: auto;
   width: 80px;
@@ -97,8 +103,8 @@ h2 { letter-spacing: -0.015em; font-size: 1.15rem; margin-top: 32px; }
 }
 
 /*
- * mask-image: a re-tintable icon. One directive, both vendor-prefix
- * and standard property get rewritten.
+ * mask-image — re-tintable icon. Both -webkit-mask-image and the
+ * standard property are rewritten by a single directive.
  */
 .mask-row {
   display: grid;
@@ -128,12 +134,12 @@ h2 { letter-spacing: -0.015em; font-size: 1.15rem; margin-top: 32px; }
   -webkit-mask-size: contain;
           mask-size: contain;
 }
-.mask-heart-geom {
-  -webkit-mask-image: url('@fixtures/lucide/heart.svg');
-          mask-image: url('@fixtures/lucide/heart.svg');
+.mask-arrow-right {
+  -webkit-mask-image: url('lucide-static/icons/arrow-right.svg');
+          mask-image: url('lucide-static/icons/arrow-right.svg');
 }
-.mask-heart-optical {
-  -webkit-mask-image: url('@fixtures/lucide/heart.svg');
-          mask-image: url('@fixtures/lucide/heart.svg');
+.mask-arrow-right.optical {
+  -webkit-mask-image: url('lucide-static/icons/arrow-right.svg');
+          mask-image: url('lucide-static/icons/arrow-right.svg');
   optical-center: auto;
 }

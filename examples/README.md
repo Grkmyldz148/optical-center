@@ -1,19 +1,18 @@
 # Examples
 
-Five runnable demos covering every realistic way to drop
-`optical-center` into a project. Every path is build-time. They all
-share one [`fixtures/icons/`](../fixtures/icons/) pool — 30 real icons
-from Lucide, Heroicons, Feather, FontAwesome, Phosphor, Tabler, plus
-a stress set of edge cases (asymmetric, multicolor, edge-clipped,
-stroke-only, non-square, negative viewBox, gradient).
+Five runnable demos. Every path is build-time, every example uses
+real-world idioms — installed npm packages or a project's own local
+SVG folder. No alias workarounds, no shared `@fixtures` plumbing.
+The repo-root [`fixtures/icons/`](../fixtures/icons/) pool is for
+the test suite only.
 
-| Folder | Scenarios it demonstrates | When to reach for it |
-|--------|---------------------------|----------------------|
-| [`react-vite/`](./react-vite/) | inline JSX `<svg opticalCenter>`, `?optical` asset imports, CSS-mounted icons via `lucide-static` / `heroicons` / `@fortawesome/fontawesome-free` (PostCSS) | React apps — every path is build-time, no React hook |
-| [`asset-import/`](./asset-import/) | every fixture imported via `?optical` (build-time), side-by-side with the raw original | Bundler users with their own SVG files |
-| [`vanilla-html/`](./vanilla-html/) | inline `<svg optical-center>`, CSS `optical-center: auto` directive on `background-image` + `mask-image` | No-framework HTML pages |
-| [`postcss-cli/`](./postcss-cli/) | pure PostCSS — `optical-center: auto` rewrites every `url()` in the rule to an inline data URI, no bundler | Tailwind / Next / webpack / postcss-cli — anywhere PostCSS runs |
-| [`cli-pipeline/`](./cli-pipeline/) | CLI run against the shared fixture pool with structured JSON output | Design-system pipelines, CI gating, npm-publishable icon sets |
+| Folder | Real-world idiom it demonstrates | When to reach for it |
+|--------|----------------------------------|----------------------|
+| [`react-vite/`](./react-vite/) | inline JSX + `?optical` asset imports + CSS-mounted icons from `lucide-static` / `heroicons` / `@fortawesome/fontawesome-free` (PostCSS) | React apps using real npm icon packages |
+| [`asset-import/`](./asset-import/) | `import.meta.glob` over a local `src/icons/` folder, raw + `?optical` side by side | Bundler users with their own SVG folder |
+| [`vanilla-html/`](./vanilla-html/) | inline `<svg optical-center>` + CSS `optical-center: auto` against `lucide-static/icons/...` bare specifiers | No-framework HTML pages with installed icon packages |
+| [`postcss-cli/`](./postcss-cli/) | pure PostCSS — `optical-center: auto` against npm-resolved icon paths, no bundler | Tailwind / Next / webpack / postcss-cli — anywhere PostCSS runs |
+| [`cli-pipeline/`](./cli-pipeline/) | CLI run against a project's own `./icons/` folder with structured JSON output | Design-system pipelines, CI gating, npm-publishable icon sets |
 
 ## Run any of them
 
@@ -21,7 +20,7 @@ stroke-only, non-square, negative viewBox, gradient).
 # from the repo root
 npm install                                                         # links workspaces
 npm --workspace optical-center-example-react-vite     run dev       # React grid
-npm --workspace optical-center-example-asset-import   run dev       # full ?optical sweep
+npm --workspace optical-center-example-asset-import   run dev       # local ?optical sweep
 npm --workspace optical-center-example-vanilla-html   run dev       # plain HTML
 npm --workspace optical-center-example-postcss-cli    run build     # postcss only
 npm --workspace optical-center-example-cli-pipeline   run transform # CLI batch
@@ -29,9 +28,9 @@ npm --workspace optical-center-example-cli-pipeline   run transform # CLI batch
 
 ## Build-time only
 
-Every example runs the optical-center pass at compile time. There is
-no browser runtime — the library was deliberately stripped of one.
-Four entry points, overlapping coverage:
+Every path the library exposes is build-time. There is no browser
+runtime — it was deliberately stripped out. Four entry points,
+overlapping coverage:
 
 - the **Babel plugin** — `<svg opticalCenter>` in JSX,
 - the **Vite plugin** — `import x from 'play.svg?optical'` + HTML `<svg optical-center>`,
@@ -43,12 +42,18 @@ For React, the recommended path is the PostCSS one: install icon
 packages that ship raw SVGs (`lucide-static`, `heroicons`,
 `@fortawesome/fontawesome-free`), author CSS with
 `mask-image: url('lucide-static/icons/play.svg')` + `optical-center: auto`,
-render plain `<span className="icon icon-play" />`. The whole
-correction happens before a byte ships.
+render plain `<span className="icon icon-lucide-play optical" />`.
+The whole correction happens before a byte ships.
 
-## Code duplication
+## No alias config needed
 
-Zero. Every example pulls SVGs from `fixtures/icons/` via the
-`@fixtures` alias (Vite or PostCSS), `import.meta.glob`, or a
-relative path. Adding an icon to `fixtures/icons/<family>/`
-automatically picks it up in all five examples and the test suite.
+The PostCSS plugin resolves bare specifiers through Node's module
+resolution. So `url('lucide-static/icons/play.svg')` just works —
+no `@alias`, no path-juggling. Every example sets up nothing more
+than registering the plugin:
+
+```js
+// postcss.config.js
+import opticalCenter from 'optical-center/postcss';
+export default { plugins: [opticalCenter()] };
+```

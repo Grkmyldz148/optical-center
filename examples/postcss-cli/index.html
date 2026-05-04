@@ -8,32 +8,38 @@
   <body>
     <h1>optical-center · postcss-cli</h1>
     <p class="lede">
-      Pure PostCSS — no bundler, no JavaScript on the client. The plugin
-      runs at build time and inlines corrected SVGs as
-      <code>data:</code> URIs.
+      Pure PostCSS — no bundler, no JavaScript on the client. Icons
+      come from the installed <code>lucide-static</code>,
+      <code>heroicons</code>, and
+      <code>@fortawesome/fontawesome-free</code> packages.
     </p>
 
     <h2>background-image</h2>
 
     <div class="row">
-      <div class="badge icon-play-geom"></div>
-      <div class="badge icon-play-optical"></div>
-      <span class="name">lucide/play <code>optical-center: auto</code></span>
+      <div class="badge icon-lucide-play"></div>
+      <div class="badge icon-lucide-play optical"></div>
+      <span class="name">lucide-static / play</span>
     </div>
     <div class="row">
-      <div class="badge icon-triangle-geom"></div>
-      <div class="badge icon-triangle-optical"></div>
-      <span class="name">edge-cases/asymmetric-triangle</span>
+      <div class="badge icon-lucide-heart"></div>
+      <div class="badge icon-lucide-heart optical"></div>
+      <span class="name">lucide-static / heart</span>
     </div>
     <div class="row">
-      <div class="badge icon-fa-play-geom"></div>
-      <div class="badge icon-fa-play-optical"></div>
-      <span class="name">fontawesome/play-solid (384x512)</span>
+      <div class="badge icon-heroicons-bell"></div>
+      <div class="badge icon-heroicons-bell optical"></div>
+      <span class="name">heroicons / 24/solid/bell</span>
     </div>
     <div class="row">
-      <div class="badge icon-tabler-geom"></div>
-      <div class="badge icon-tabler-optical"></div>
-      <span class="name">tabler/send</span>
+      <div class="badge icon-fa-play"></div>
+      <div class="badge icon-fa-play optical"></div>
+      <span class="name">fontawesome / solid/play (384x512)</span>
+    </div>
+    <div class="row">
+      <div class="badge icon-fa-star"></div>
+      <div class="badge icon-fa-star optical"></div>
+      <span class="name">fontawesome / solid/star (576x512)</span>
     </div>
 
     <h2>background shorthand</h2>
@@ -46,9 +52,9 @@
     <h2>mask-image (re-tintable)</h2>
 
     <div class="mask-row">
-      <div class="mask-badge"><div class="mask-icon mask-heart-geom"></div></div>
-      <div class="mask-badge"><div class="mask-icon mask-heart-optical"></div></div>
-      <span class="name">lucide/heart — mask, currentColor-friendly</span>
+      <div class="mask-badge"><div class="mask-icon mask-arrow-right"></div></div>
+      <div class="mask-badge"><div class="mask-icon mask-arrow-right optical"></div></div>
+      <span class="name">lucide-static / arrow-right (currentColor)</span>
     </div>
   </body>
 </html>
