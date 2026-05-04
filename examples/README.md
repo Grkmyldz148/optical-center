@@ -1,18 +1,18 @@
 # Examples
 
 Five runnable demos covering every realistic way to drop
-`optical-center` into a project. They all share one
-[`fixtures/icons/`](../fixtures/icons/) pool — 30 real icons from
-Lucide, Heroicons, Feather, FontAwesome, Phosphor, Tabler, plus a
-stress set of edge cases (asymmetric, multicolor, edge-clipped,
+`optical-center` into a project. Every path is build-time. They all
+share one [`fixtures/icons/`](../fixtures/icons/) pool — 30 real icons
+from Lucide, Heroicons, Feather, FontAwesome, Phosphor, Tabler, plus
+a stress set of edge cases (asymmetric, multicolor, edge-clipped,
 stroke-only, non-square, negative viewBox, gradient).
 
 | Folder | Scenarios it demonstrates | When to reach for it |
 |--------|---------------------------|----------------------|
 | [`react-vite/`](./react-vite/) | inline JSX `<svg opticalCenter>`, `?optical` asset imports, CSS-mounted icons via `lucide-static` / `heroicons` / `@fortawesome/fontawesome-free` (PostCSS) | React apps — every path is build-time, no React hook |
 | [`asset-import/`](./asset-import/) | every fixture imported via `?optical` (build-time), side-by-side with the raw original | Bundler users with their own SVG files |
-| [`vanilla-html/`](./vanilla-html/) | inline `<svg optical-center>`, CSS `background-image: url('…?optical')`, Iconify CDN + runtime hook | No-framework projects, third-party CDN icon sets |
-| [`postcss-cli/`](./postcss-cli/) | pure PostCSS — `background-image` + `mask-image` rewritten via `optical-center: auto`, no bundler | Tailwind / Next / webpack / postcss-cli — anywhere PostCSS runs |
+| [`vanilla-html/`](./vanilla-html/) | inline `<svg optical-center>`, CSS `optical-center: auto` directive on `background-image` + `mask-image` | No-framework HTML pages |
+| [`postcss-cli/`](./postcss-cli/) | pure PostCSS — `optical-center: auto` rewrites every `url()` in the rule to an inline data URI, no bundler | Tailwind / Next / webpack / postcss-cli — anywhere PostCSS runs |
 | [`cli-pipeline/`](./cli-pipeline/) | CLI run against the shared fixture pool with structured JSON output | Design-system pipelines, CI gating, npm-publishable icon sets |
 
 ## Run any of them
@@ -27,11 +27,11 @@ npm --workspace optical-center-example-postcss-cli    run build     # postcss on
 npm --workspace optical-center-example-cli-pipeline   run transform # CLI batch
 ```
 
-## Build-time first
+## Build-time only
 
-Every example except the Iconify CDN block in `vanilla-html/` runs
-the optical-center pass at compile time. Four entry points,
-overlapping coverage:
+Every example runs the optical-center pass at compile time. There is
+no browser runtime — the library was deliberately stripped of one.
+Four entry points, overlapping coverage:
 
 - the **Babel plugin** — `<svg opticalCenter>` in JSX,
 - the **Vite plugin** — `import x from 'play.svg?optical'` + HTML `<svg optical-center>`,
@@ -45,13 +45,6 @@ packages that ship raw SVGs (`lucide-static`, `heroicons`,
 `mask-image: url('lucide-static/icons/play.svg')` + `optical-center: auto`,
 render plain `<span className="icon icon-play" />`. The whole
 correction happens before a byte ships.
-
-## Runtime is the escape hatch
-
-`optical-center/runtime` exists for the one case build-time can't
-cover: a third-party web component that fetches its SVG from a CDN
-at runtime (e.g. `<iconify-icon>`). The vanilla-HTML example shows
-this clearly marked. Nothing else uses it.
 
 ## Code duplication
 

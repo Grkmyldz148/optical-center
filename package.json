@@ -14,10 +14,6 @@
       "types": "./dist/node/index.d.ts",
       "import": "./dist/node/index.js"
     },
-    "./runtime": {
-      "types": "./dist/runtime/index.d.ts",
-      "import": "./dist/runtime/index.js"
-    },
     "./cli": {
       "types": "./dist/cli/index.d.ts",
       "import": "./dist/cli/index.js"

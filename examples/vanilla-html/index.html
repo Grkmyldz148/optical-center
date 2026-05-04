@@ -4,9 +4,6 @@
     <meta charset="UTF-8" />
     <title>optical-center · vanilla HTML</title>
 
-    <!-- Scenario 3: Iconify CDN — runtime third-party icon set, no bundler. -->
-    <script src="https://code.iconify.design/iconify-icon/1.0.7/iconify-icon.min.js"></script>
-
     <style>
       * { box-sizing: border-box; }
       body {
@@ -19,6 +16,7 @@
       h1 { letter-spacing: -0.02em; margin: 0 0 12px; }
       h2 { letter-spacing: -0.015em; font-size: 1.15rem; margin-top: 32px; }
       .lede { color: #666; }
+
       .row {
         display: grid;
         grid-template-columns: 80px 80px 1fr;
@@ -33,47 +31,75 @@
         display: grid; place-items: center;
       }
       .badge svg { width: 36px; height: 36px; color: #fff; fill: #fff; stroke: #fff; }
-      .badge iconify-icon { font-size: 36px; color: #fff; }
       .name { font-family: ui-monospace, monospace; font-size: 13px; color: #555; }
       .pill {
         font-size: 11px; font-weight: 600; text-transform: uppercase;
         letter-spacing: 0.06em; padding: 2px 8px; border-radius: 999px;
         margin-left: 8px; vertical-align: middle;
+        background: #e0e7ff; color: #3730a3;
       }
-      .pill-bt { background: #e0e7ff; color: #3730a3; }
-      .pill-rt { background: #fef3c7; color: #92400e; }
       code {
         background: #fff; border: 1px solid #ddd;
         padding: 1px 6px; border-radius: 4px; font-size: 90%;
       }
 
       /*
-       * Scenario 2: CSS background-image with ?optical.
-       * Vite's load() hook sees the suffix and rewrites the SVG, so
-       * the same CSS gets a perceptually centered background.
+       * CSS path. Add `optical-center: auto` to a rule and the PostCSS
+       * plugin walks every other declaration in that rule, rewriting
+       * url('…svg') to a corrected data: URI at build time. The
+       * directive is stripped from the output. Vite picks up the
+       * postcss.config.js automatically.
        */
       .bg-icon {
         background-repeat: no-repeat;
         background-position: center;
         background-size: 36px 36px;
       }
-      .bg-icon-geom    { background-image: url('@fixtures/lucide/play.svg'); }
-      .bg-icon-optical { background-image: url('@fixtures/lucide/play.svg?optical'); }
+      .bg-icon-geom        { background-image: url('@fixtures/lucide/play.svg'); }
+      .bg-icon-optical {
+        background-image: url('@fixtures/lucide/play.svg');
+        optical-center: auto;
+      }
 
-      .bg-icon-geom-2    { background-image: url('@fixtures/edge-cases/asymmetric-triangle.svg'); }
-      .bg-icon-optical-2 { background-image: url('@fixtures/edge-cases/asymmetric-triangle.svg?optical'); }
+      .bg-icon-geom-2      { background-image: url('@fixtures/edge-cases/asymmetric-triangle.svg'); }
+      .bg-icon-optical-2 {
+        background-image: url('@fixtures/edge-cases/asymmetric-triangle.svg');
+        optical-center: auto;
+      }
+
+      /*
+       * mask-image — same directive, currentColor-tintable.
+       */
+      .mask-icon {
+        width: 36px; height: 36px;
+        background: #fff;
+        -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat;
+        -webkit-mask-position: center;  mask-position: center;
+        -webkit-mask-size: contain;     mask-size: contain;
+      }
+      .mask-heart-geom {
+        -webkit-mask-image: url('@fixtures/lucide/heart.svg');
+                mask-image: url('@fixtures/lucide/heart.svg');
+      }
+      .mask-heart-optical {
+        -webkit-mask-image: url('@fixtures/lucide/heart.svg');
+                mask-image: url('@fixtures/lucide/heart.svg');
+        optical-center: auto;
+      }
     </style>
   </head>
   <body>
     <h1>optical-center · vanilla HTML</h1>
     <p class="lede">
-      Three integration paths without React, without JSX. Same shared
-      <code>fixtures/icons/</code> pool the rest of the project uses.
+      Two integration paths, both build-time, no JavaScript on the
+      client. Same shared <code>fixtures/icons/</code> pool the rest
+      of the project uses.
     </p>
 
-    <h2>1. Inline <code>&lt;svg optical-center&gt;</code> <span class="pill pill-bt">build-time</span></h2>
+    <h2>1. Inline <code>&lt;svg optical-center&gt;</code> <span class="pill">build-time</span></h2>
     <p>The Vite plugin's <code>transformIndexHtml</code> hook scans
-    this HTML at build time and rewrites the marked SVG.</p>
+    this HTML at build time and rewrites every marked SVG. The
+    shipped HTML is just a corrected <code>&lt;svg&gt;</code>.</p>
 
     <div class="row">
       <div class="badge">
@@ -89,45 +115,25 @@
       <span class="name">lucide / play (inline)</span>
     </div>
 
-    <h2>2. CSS <code>background-image</code> with <code>?optical</code> <span class="pill pill-bt">build-time</span></h2>
-    <p>The same SVG asset, served via CSS — the only thing that
-    changes is the URL query suffix.</p>
+    <h2>2. CSS <code>optical-center: auto</code> <span class="pill">build-time</span></h2>
+    <p>Plain <code>url('…')</code> in the stylesheet — the rule opts
+    in by adding one declaration. The PostCSS plugin (registered via
+    <code>postcss.config.js</code>) inlines a corrected SVG.</p>
 
     <div class="row">
       <div class="badge bg-icon bg-icon-geom"></div>
       <div class="badge bg-icon bg-icon-optical"></div>
-      <span class="name">background-image: url('@fixtures/lucide/play.svg?optical')</span>
+      <span class="name">background-image · lucide/play</span>
     </div>
     <div class="row">
       <div class="badge bg-icon bg-icon-geom-2"></div>
       <div class="badge bg-icon bg-icon-optical-2"></div>
-      <span class="name">edge-cases/asymmetric-triangle</span>
-    </div>
-
-    <h2>3. Iconify CDN + runtime hook <span class="pill pill-rt">runtime</span></h2>
-    <p>Third-party icon set loaded from a CDN script — no npm package,
-    no build step. The runtime hook reaches into the
-    <code>&lt;iconify-icon&gt;</code>'s shadow root once it renders.</p>
-
-    <div class="row">
-      <div class="badge">
-        <iconify-icon icon="mdi:play" width="36"></iconify-icon>
-      </div>
-      <div class="badge">
-        <iconify-icon class="optical" icon="mdi:play" width="36"></iconify-icon>
-      </div>
-      <span class="name">iconify-icon · mdi:play</span>
+      <span class="name">background-image · edge-cases/asymmetric-triangle</span>
     </div>
     <div class="row">
-      <div class="badge">
-        <iconify-icon icon="ph:triangle-fill" width="36"></iconify-icon>
-      </div>
-      <div class="badge">
-        <iconify-icon class="optical" icon="ph:triangle-fill" width="36"></iconify-icon>
-      </div>
-      <span class="name">iconify-icon · ph:triangle-fill</span>
+      <div class="badge"><div class="mask-icon mask-heart-geom"></div></div>
+      <div class="badge"><div class="mask-icon mask-heart-optical"></div></div>
+      <span class="name">mask-image · lucide/heart (currentColor)</span>
     </div>
-
-    <script type="module" src="/src/main.ts"></script>
   </body>
 </html>

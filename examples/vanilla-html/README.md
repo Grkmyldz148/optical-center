@@ -1,8 +1,7 @@
 # Vanilla HTML
 
-No React, no JSX, no framework. Three integration paths covering the
-full surface — build-time inline SVG, build-time CSS background, and
-runtime third-party web components.
+No framework, no JSX, no JavaScript on the client. Two build-time
+paths, both running through plugins Vite picks up automatically.
 
 ## Run it
 
@@ -14,7 +13,7 @@ npm --workspace optical-center-example-vanilla-html run dev
 
 ## What's inside
 
-### 1. Inline `<svg optical-center>` (build-time)
+### 1. Inline `<svg optical-center>` (Vite plugin)
 
 The Vite plugin's `transformIndexHtml` hook scans `index.html` at
 build time, finds every `<svg optical-center>`, rewrites the
@@ -27,49 +26,39 @@ shipped HTML is just a corrected `<svg>`.
 </svg>
 ```
 
-### 2. CSS `background-image` with `?optical` (build-time)
+### 2. CSS `optical-center: auto` (PostCSS plugin)
 
-Vite's `load` hook recognises the `?optical` query suffix on SVG
-imports — including the ones that come in via `url(...)` inside CSS.
-The browser receives a corrected SVG; the CSS author never sees the
-math.
+Plain `url('…svg')` in the stylesheet — the rule opts in by adding
+one declaration. The PostCSS plugin (registered in
+`postcss.config.js`, which Vite picks up automatically) walks the
+rule, rewrites every URL inside to an inline `data:image/svg+xml,…`
+URI, and strips the directive from the output.
 
 ```css
-.icon-after  { background-image: url('@fixtures/lucide/play.svg?optical'); }
-.icon-before { background-image: url('@fixtures/lucide/play.svg'); }
+.icon-after {
+  background-image: url('@fixtures/lucide/play.svg');
+  optical-center: auto;
+}
+
+.icon-tinted {
+  -webkit-mask-image: url('@fixtures/lucide/heart.svg');
+          mask-image: url('@fixtures/lucide/heart.svg');
+  optical-center: auto;          /* one directive — both URLs corrected */
+}
 ```
 
-### 3. Iconify CDN + runtime hook
+## No runtime
 
-Third-party icon set loaded from a CDN `<script>` — no npm package,
-no build step, no bundler awareness of the icons. `<iconify-icon>` is
-a custom element that fetches its data and renders an `<svg>` into
-its open shadow root.
-
-We listen for the `load` event Iconify dispatches, traverse into the
-shadow root, and call `applyOpticalCenter(svg)`:
-
-```html
-<iconify-icon class="optical" icon="mdi:play" width="36"></iconify-icon>
-```
-
-```ts
-import { applyOpticalCenter } from 'optical-center/runtime';
-
-document.querySelectorAll('iconify-icon.optical').forEach((host) => {
-  host.addEventListener('load', () => {
-    const svg = host.shadowRoot?.querySelector('svg');
-    if (svg) void applyOpticalCenter(svg as SVGSVGElement);
-  }, { once: true });
-});
-```
-
-This pattern works for any icon library that emits an `<svg>` at
-runtime — including ones that aren't installed via npm at all.
+Earlier drafts shipped an `optical-center/runtime` entry that
+rasterized `<svg>` elements in the browser. It's gone. Every path
+this library exposes is build-time. Anything that genuinely couldn't
+be solved at build time (e.g. a CDN-loaded `<iconify-icon>` whose
+SVG content the bundler never sees) is out of scope — install the
+icon package as a dependency and use the CSS path instead.
 
 ## Shared fixture pool
 
-Both build-time scenarios pull SVGs from `fixtures/icons/` via the
-`@fixtures` Vite alias. The same pool drives the test suite, the
-React example, and the asset-import example — adding an icon to
-`fixtures/icons/` automatically makes it available everywhere.
+Pulls SVGs from the repo-root `fixtures/icons/` folder via the
+`@fixtures` alias — same pool the tests, the React example, the
+asset-import example, the postcss-cli example, and the CLI pipeline
+all share.
