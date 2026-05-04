@@ -1,16 +1,13 @@
-# React + Vite — every integration path in one place
+# React + Vite — every build-time path in one place
 
-Six scenarios side-by-side so you can see exactly which approach
-applies to your icons:
+Three scenarios, all build-time. Zero runtime, zero React hook, zero
+JS at the icon mount point.
 
-| # | Scenario | Path | When to use |
-|---|----------|------|-------------|
-| 1 | Inline `<svg opticalCenter>` JSX | build-time | You author the SVG inline. |
-| 2 | `import './x.svg?optical'` | build-time | You import SVG asset files. |
-| 3 | `lucide-react` + ref hook | runtime | Component lib that forwards refs. |
-| 4 | `@heroicons/react` + ref hook | runtime | Same as Lucide. |
-| 5 | `react-icons` + `<OpticalIcon>` wrapper | runtime | Lib that doesn't forward refs. |
-| 6 | `@iconify/react` (200K+ icons) | runtime | Async icon data, dynamic sets. |
+| # | Scenario | Tooling | When to use |
+|---|----------|---------|-------------|
+| 1 | Inline `<svg opticalCenter>` JSX | Babel plugin | You author the SVG inline. |
+| 2 | `import './x.svg?optical'` | Vite plugin (`load` hook) | You import SVG asset files. |
+| 3 | CSS-mounted icons + `optical-center: auto` | PostCSS plugin | You use installed icon packages or your own SVG folder. |
 
 ## Run it
 
@@ -22,30 +19,55 @@ npm install
 npm --workspace optical-center-example-react-vite run dev
 ```
 
-Open the printed URL. Each section has a "build-time" or "runtime"
-pill explaining what's happening.
+## Scenario 3 in detail
 
-## Which to use in your own app
+This is the path the project recommends for everything that isn't
+hand-authored JSX. Real installed icon packages, no React component
+wrapper, no runtime hook. The recipe:
 
-- **You write `<svg>` inline?** Use scenario 1. It's free at runtime.
-- **You import `.svg` files?** Use scenario 2. The Vite plugin's
-  `?optical` query lets you opt in per import.
-- **You use `lucide-react`, `@heroicons/react`, or any lib that
-  forwards refs?** Scenario 3/4 — `useOpticalCenterRef()` is one
-  line.
-- **You use `react-icons`, `@fortawesome/react-fontawesome`, or any
-  lib that hides its `<svg>`?** Scenario 5 — `<OpticalIcon>` wraps
-  any of them.
-- **You use `@iconify/react`?** Scenario 6 — same `<OpticalIcon>`
-  wrapper handles its async render too.
+```css
+/* src/styles/icons.css */
+.icon-play.optical {
+  -webkit-mask-image: url('lucide-static/icons/play.svg');
+          mask-image: url('lucide-static/icons/play.svg');
+  optical-center: auto;          /* ← the plugin inlines the corrected SVG */
+}
+```
 
-## What the runtime hook costs
+```tsx
+function PlayButton() {
+  return <span className="icon icon-play optical" />;
+}
+```
 
-For runtime scenarios (3–6), the optical-center pass runs once per
-SVG on mount: serialize, rasterize via Image+canvas, compute, mutate
-viewBox. ~5–10ms per icon on a typical machine. The result is
-cached on the DOM element via `data-optical-center`, so re-renders
-don't redo the work.
+The PostCSS plugin (registered via `postcss.config.js`) walks every
+rule that declares `optical-center: auto`, pulls each
+`url('…svg')` from disk through the rasterize → optical-center →
+viewBox-rewrite pipeline, and replaces it with an inline
+`data:image/svg+xml,…` URI. The directive is stripped from the
+output. Your shipped CSS is plain, browser-native, framework-agnostic.
 
-For static icon sets, prefer the build-time path (scenarios 1–2)
-where the cost is paid once at build, not per-page-view.
+### Sources demonstrated
+
+- **`lucide-static`** — npm package with raw Lucide SVGs.
+- **`heroicons`** — npm package with raw Heroicons SVGs.
+- **`@fortawesome/fontawesome-free`** — npm package, non-square viewBoxes.
+- **`@fixtures/...`** — local SVG folder via a Vite + PostCSS alias.
+
+The PostCSS plugin resolves bare specifiers through Node's module
+resolution, so npm packages work with no alias config.
+
+## Why no React component?
+
+Earlier drafts shipped `<OpticalIcon>`, `<OpticalRef>`, and a
+`useOpticalCenter()` hook for icon libraries that emit `<svg>` at
+render time. They worked, but they pushed the optical-center pass to
+the browser — ~5–10ms per icon on every mount, plus a `data-optical-center`
+breadcrumb hanging off every node. The CSS path skips all of that:
+the math runs once at build, the browser sees a corrected SVG, the
+React tree never touches the pipeline.
+
+The runtime hook (`optical-center/runtime`) still ships in the
+package as the documented escape hatch for genuinely dynamic cases
+(e.g., `<iconify-icon>` from a CDN — see `examples/vanilla-html/`).
+The React example doesn't need it.

@@ -216,6 +216,22 @@ describe('opticalCenterPostcss', () => {
     expect(codes).toContain('OPTICAL_CLIP_DETECTED');
   });
 
+  it('resolves bare specifiers via node_modules (no alias needed)', async () => {
+    // Use the package's own package.json — guaranteed to exist,
+    // mimics how `lucide-static/icons/play.svg` would resolve.
+    const css = `
+      .icon {
+        background-image: url('postcss/package.json');
+        optical-center: auto;
+      }
+    `;
+    const { css: out, warnings } = await run(css);
+    // package.json isn't an SVG so the rewrite will fail gracefully —
+    // we only need to verify that resolution found the file (no
+    // "failed to read" warning, just an SVG parse error).
+    expect(warnings.some((w) => w.includes('failed to read'))).toBe(false);
+  });
+
   it('skips http(s) urls without throwing', async () => {
     const css = `
       .a {

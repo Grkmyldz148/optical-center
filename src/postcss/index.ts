@@ -20,7 +20,8 @@
  */
 
 import { readFile } from 'node:fs/promises';
-import { dirname, isAbsolute, resolve } from 'node:path';
+import { createRequire } from 'node:module';
+import { dirname, isAbsolute, join, resolve } from 'node:path';
 
 import type { Declaration, PluginCreator, Result, Root, Rule } from 'postcss';
 
@@ -206,7 +207,21 @@ const opticalCenterPostcss: PluginCreator<PostcssPluginOptions> = (
     }
 
     if (isAbsolute(rawUrl)) return rawUrl;
-    return resolve(baseDir, rawUrl);
+    if (rawUrl.startsWith('./') || rawUrl.startsWith('../')) {
+      return resolve(baseDir, rawUrl);
+    }
+
+    // Bare specifier — try Node's resolution against the CSS source's
+    // directory. This makes `url('lucide-static/icons/play.svg')` and
+    // `url('@fortawesome/fontawesome-free/svgs/solid/play.svg')` work
+    // without any alias config, which is the whole point of using
+    // installed icon packages.
+    try {
+      const req = createRequire(join(baseDir, '_placeholder'));
+      return req.resolve(rawUrl);
+    } catch {
+      return resolve(baseDir, rawUrl);
+    }
   }
 };
 
