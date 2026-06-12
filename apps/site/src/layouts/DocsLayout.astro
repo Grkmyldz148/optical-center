@@ -1,0 +1,497 @@
+---
+/*
+ * Docs layout — wraps Base.astro and lays out the three docs columns
+ * (sidebar / content / on-this-page). Each docs page imports this and
+ * fills the default slot with its prose; everything else (breadcrumb,
+ * prev/next pager, sticky rails) is automatic, driven by the current
+ * URL and the shared SIDEBAR data in components/docs/nav.ts.
+ */
+import Base from "./Base.astro";
+import Sidebar from "../components/docs/Sidebar.astro";
+import Toc, { type TocItem } from "../components/docs/Toc.astro";
+import { adjacent, breadcrumb } from "../components/docs/nav";
+
+type Props = {
+  title: string;
+  description?: string;
+  toc?: readonly TocItem[];
+};
+
+const { title, description, toc = [] } = Astro.props as Props;
+const path = Astro.url.pathname.replace(/\/$/, "") || "/docs";
+const crumbs = breadcrumb(path);
+const { prev, next } = adjacent(path);
+---
+
+<Base title={`${title} · Docs · Optical Center`}>
+  <div class="docs">
+    <Sidebar />
+
+    <article class="docs__article">
+      <header class="docs__head">
+        <nav class="docs__breadcrumb" aria-label="Breadcrumb">
+          <ol>
+            <li>
+              <a href="/docs">Docs</a>
+            </li>
+            {crumbs && crumbs.group !== "Get started" && (
+              <li>
+                <span class="docs__crumb-sep" aria-hidden="true">/</span>
+                <span class="docs__crumb-static">{crumbs.group}</span>
+              </li>
+            )}
+            {crumbs && (
+              <li>
+                <span class="docs__crumb-sep" aria-hidden="true">/</span>
+                <span class="docs__crumb-current" aria-current="page">
+                  {crumbs.page}
+                </span>
+              </li>
+            )}
+          </ol>
+        </nav>
+
+        <h1 class="docs__title">{title}</h1>
+        {description && <p class="docs__lead">{description}</p>}
+      </header>
+
+      <div class="docs__body">
+        <slot />
+      </div>
+
+      {(prev || next) && (
+        <nav class="docs__pager" aria-label="Continue reading">
+          {prev ? (
+            <a class="docs__pager-link docs__pager-link--prev" href={prev.href}>
+              <span class="docs__pager-dir">
+                <svg viewBox="0 0 14 14" width="12" height="12" aria-hidden="true">
+                  <path
+                    d="M 9 12 L 4 7 L 9 2"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="1.6"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  />
+                </svg>
+                Previous
+              </span>
+              <span class="docs__pager-label">{prev.label}</span>
+            </a>
+          ) : (
+            <span class="docs__pager-spacer" aria-hidden="true"></span>
+          )}
+          {next ? (
+            <a class="docs__pager-link docs__pager-link--next" href={next.href}>
+              <span class="docs__pager-dir">
+                Next
+                <svg viewBox="0 0 14 14" width="12" height="12" aria-hidden="true">
+                  <path
+                    d="M 5 2 L 10 7 L 5 12"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="1.6"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  />
+                </svg>
+              </span>
+              <span class="docs__pager-label">{next.label}</span>
+            </a>
+          ) : (
+            <span class="docs__pager-spacer" aria-hidden="true"></span>
+          )}
+        </nav>
+      )}
+    </article>
+
+    <Toc items={toc} />
+  </div>
+</Base>
+
+<style is:global>
+  /* ─────────────────────────  Page shell  ─────────────────────────── */
+  /* Three-column grid with a sidebar on the left, the article in the
+     middle, and the on-this-page TOC on the right. The middle column
+     gets a max-width for comfortable line length (~72ch). */
+  .docs {
+    width: 100%;
+    max-width: var(--page-max-w);
+    margin-inline: auto;
+    padding-inline: var(--page-px);
+    display: grid;
+    grid-template-columns: 240px minmax(0, 1fr) 200px;
+    gap: var(--sp-12);
+    align-items: start;
+  }
+
+  @media (max-width: 1180px) {
+    .docs {
+      grid-template-columns: 220px minmax(0, 1fr);
+      gap: var(--sp-8);
+    }
+  }
+  @media (max-width: 960px) {
+    .docs {
+      grid-template-columns: 1fr;
+      gap: var(--sp-6);
+    }
+  }
+
+  /* ─────────────────────────  Article  ─────────────────────────── */
+  .docs__article {
+    min-width: 0;
+    padding-block: var(--sp-12);
+    max-width: 72ch;
+  }
+  @media (max-width: 960px) {
+    .docs__article {
+      padding-block: var(--sp-6);
+    }
+  }
+
+  .docs__head {
+    display: grid;
+    gap: var(--sp-4);
+    margin-bottom: var(--sp-8);
+  }
+
+  /* Breadcrumb — small mono row at the top so the reader always knows
+     where they are without scrolling to the URL bar. */
+  .docs__breadcrumb ol {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--sp-2);
+    font-family: var(--font-mono);
+    font-size: var(--fs-xs);
+    color: var(--color-muted-fg);
+  }
+  .docs__breadcrumb li {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--sp-2);
+  }
+  .docs__breadcrumb a {
+    color: var(--color-muted-fg);
+    transition: color 0.16s ease;
+  }
+  .docs__breadcrumb a:hover,
+  .docs__breadcrumb a:focus-visible {
+    color: var(--color-fg);
+  }
+  .docs__crumb-sep {
+    color: var(--color-line-strong);
+  }
+  .docs__crumb-static {
+    color: var(--color-muted-fg);
+  }
+  .docs__crumb-current {
+    color: var(--color-fg);
+  }
+
+  .docs__title {
+    font-family: var(--font-display);
+    font-size: clamp(2rem, 3.6vw, 2.75rem);
+    font-weight: var(--fw-semibold);
+    line-height: var(--lh-tight);
+    letter-spacing: -0.025em;
+    color: var(--color-fg);
+    margin: 0;
+  }
+
+  .docs__lead {
+    font-family: var(--font-body);
+    font-size: var(--fs-md);
+    line-height: var(--lh-body);
+    color: var(--color-soft-fg);
+    max-width: 64ch;
+    margin: 0;
+  }
+
+  /* ──────────────────────  Prose typography  ────────────────────── */
+  /* Scoped via :global because the slot content lives outside this
+     component's Astro CSS scope. Tuned for dense reading: tighter
+     spacing than the landing page, more vertical rhythm, code-block-
+     aware margins. */
+  .docs__body {
+    display: grid;
+    gap: var(--sp-5);
+    color: var(--color-fg);
+    font-family: var(--font-body);
+    font-size: var(--fs-base);
+    line-height: var(--lh-body);
+  }
+  .docs__body > * {
+    margin: 0;
+  }
+
+  .docs__body h2 {
+    font-family: var(--font-display);
+    font-size: var(--fs-lg);
+    font-weight: var(--fw-semibold);
+    letter-spacing: -0.02em;
+    line-height: var(--lh-snug);
+    color: var(--color-fg);
+    margin-top: var(--sp-8);
+    /* Sticky-header offset for anchor jumps. 73px header + a small gap. */
+    scroll-margin-top: calc(73px + var(--sp-4));
+  }
+  .docs__body h2:first-child {
+    margin-top: 0;
+  }
+  .docs__body h3 {
+    font-family: var(--font-display);
+    font-size: var(--fs-md);
+    font-weight: var(--fw-semibold);
+    letter-spacing: var(--ls-tight);
+    line-height: var(--lh-snug);
+    color: var(--color-fg);
+    margin-top: var(--sp-6);
+    scroll-margin-top: calc(73px + var(--sp-4));
+  }
+
+  /* Heading anchor: each H2/H3 with an id gets a hover-only "#" link.
+     Implemented via ::before that contains a static "#" — the heading
+     itself is wrapped in <a> by the page if a self-link is desired. */
+  .docs__body :is(h2, h3) > a[href^="#"] {
+    color: inherit;
+    text-decoration: none;
+    position: relative;
+  }
+  .docs__body :is(h2, h3) > a[href^="#"]::before {
+    content: "#";
+    position: absolute;
+    left: -1.2ch;
+    color: var(--color-line-strong);
+    opacity: 0;
+    transition: opacity 0.16s ease;
+  }
+  .docs__body :is(h2, h3):hover > a[href^="#"]::before,
+  .docs__body :is(h2, h3) > a[href^="#"]:focus-visible::before {
+    opacity: 1;
+    color: var(--color-accent-text);
+  }
+
+  .docs__body p {
+    color: var(--color-soft-fg);
+  }
+
+  .docs__body a {
+    color: var(--color-accent-text);
+    text-decoration: underline;
+    text-underline-offset: 3px;
+    text-decoration-thickness: 1px;
+    text-decoration-color: color-mix(in oklab, var(--color-accent) 40%, transparent);
+    transition: text-decoration-color 0.16s ease;
+  }
+  .docs__body a:hover,
+  .docs__body a:focus-visible {
+    text-decoration-color: var(--color-accent);
+  }
+
+  /* Inline code — surface bg, accent text, mono. Stand out without
+     screaming. */
+  .docs__body :not(pre) > code {
+    font-family: var(--font-mono);
+    font-size: 0.875em;
+    color: var(--color-accent-text);
+    background: var(--color-surface);
+    border: var(--line-w) solid var(--color-line);
+    padding: 0.1em 0.4em;
+    border-radius: var(--radius-sm);
+    white-space: nowrap;
+  }
+
+  /* Lists */
+  .docs__body ul,
+  .docs__body ol {
+    padding-left: var(--sp-5);
+    display: grid;
+    gap: var(--sp-2);
+    color: var(--color-soft-fg);
+  }
+  .docs__body li::marker {
+    color: var(--color-muted-fg);
+  }
+  .docs__body li > ul,
+  .docs__body li > ol {
+    margin-top: var(--sp-2);
+  }
+
+  /* Tables — reference info gets a compact bordered table, mono header,
+     body in regular sans. Wrapped in a scroll container so narrow viewports
+     don't blow out horizontal layout when a table is wider than the column. */
+  .docs__body table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: var(--fs-sm);
+    background: var(--color-surface);
+    border: var(--line-w) solid var(--color-line);
+    border-radius: var(--radius-sm);
+    overflow: hidden;
+    display: block;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    /* border-radius + collapse fight; isolation keeps the rounded corners
+       visible by clipping the inner cells. */
+  }
+  .docs__body th,
+  .docs__body td {
+    padding: var(--sp-3) var(--sp-4);
+    text-align: left;
+    border-bottom: var(--line-w) solid var(--color-line);
+    vertical-align: top;
+  }
+  .docs__body th {
+    font-family: var(--font-mono);
+    font-size: var(--fs-xs);
+    font-weight: var(--fw-medium);
+    letter-spacing: var(--ls-wide);
+    text-transform: uppercase;
+    color: var(--color-muted-fg);
+    background: var(--color-surface-hi);
+  }
+  .docs__body tr:last-child > td {
+    border-bottom: 0;
+  }
+  .docs__body td code {
+    font-size: 0.85em;
+  }
+
+  /* Callouts — used by pages via <aside class="callout callout--note"> etc. */
+  .docs__body .callout {
+    display: grid;
+    gap: var(--sp-2);
+    padding: var(--sp-4) var(--sp-5);
+    border-left: 3px solid var(--color-line-strong);
+    background: var(--color-surface);
+    border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  }
+  .docs__body .callout--tip {
+    border-left-color: var(--color-accent);
+    background: color-mix(in oklab, var(--color-accent) 6%, transparent);
+  }
+  .docs__body .callout--warning {
+    border-left-color: var(--color-accent);
+    background: color-mix(in oklab, var(--color-accent) 10%, transparent);
+  }
+  .docs__body .callout-label {
+    font-family: var(--font-mono);
+    font-size: var(--fs-xs);
+    letter-spacing: var(--ls-wide);
+    text-transform: uppercase;
+    color: var(--color-accent-text);
+    margin: 0;
+  }
+  .docs__body .callout p:last-child {
+    margin: 0;
+  }
+
+  /* ─────────────────────────  Pager  ─────────────────────────── */
+  .docs__pager {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--sp-4);
+    margin-top: var(--sp-12);
+    padding-top: var(--sp-6);
+    border-top: var(--line-w) solid var(--color-line);
+  }
+  .docs__pager-link {
+    display: grid;
+    gap: var(--sp-1);
+    padding: var(--sp-4) var(--sp-5);
+    border: var(--line-w) solid var(--color-line);
+    border-radius: var(--radius-sm);
+    background: var(--color-surface);
+    color: var(--color-fg);
+    text-decoration: none;
+    transition:
+      border-color 0.18s ease,
+      background-color 0.18s ease,
+      transform 0.18s ease;
+  }
+  .docs__pager-link:hover,
+  .docs__pager-link:focus-visible {
+    border-color: var(--color-line-strong);
+    background: var(--color-surface-hi);
+    transform: translateY(-1px);
+  }
+  .docs__pager-link--next {
+    text-align: right;
+  }
+  .docs__pager-dir {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--sp-2);
+    font-family: var(--font-mono);
+    font-size: var(--fs-xs);
+    letter-spacing: var(--ls-wide);
+    text-transform: uppercase;
+    color: var(--color-muted-fg);
+  }
+  .docs__pager-link--next .docs__pager-dir {
+    justify-content: flex-end;
+  }
+  .docs__pager-label {
+    font-family: var(--font-display);
+    font-size: var(--fs-md);
+    font-weight: var(--fw-medium);
+    color: var(--color-accent-text);
+    letter-spacing: var(--ls-tight);
+  }
+  .docs__pager-spacer {
+    display: block;
+  }
+
+  /* ─────────────────────────  Mobile tightening  ─────────────────── */
+  @media (max-width: 720px) {
+    .docs__article {
+      padding-block: var(--sp-5);
+    }
+    .docs__head {
+      gap: var(--sp-3);
+      margin-bottom: var(--sp-5);
+    }
+    .docs__title {
+      font-size: clamp(1.75rem, 7vw, 2.25rem);
+    }
+    .docs__lead {
+      font-size: var(--fs-base);
+    }
+    .docs__body {
+      gap: var(--sp-4);
+    }
+    .docs__body h2 {
+      margin-top: var(--sp-6);
+    }
+    .docs__body h3 {
+      margin-top: var(--sp-5);
+    }
+    /* Pager: keep 2 columns but tighten paddings so labels don't crowd. */
+    .docs__pager {
+      gap: var(--sp-3);
+      margin-top: var(--sp-8);
+    }
+    .docs__pager-link {
+      padding: var(--sp-3) var(--sp-4);
+    }
+    .docs__pager-label {
+      font-size: var(--fs-sm);
+    }
+  }
+
+  /* Very narrow phones — stack the pager so the next/prev labels can be
+     read at full length without wrapping awkwardly mid-word. */
+  @media (max-width: 480px) {
+    .docs__pager {
+      grid-template-columns: 1fr;
+    }
+    .docs__pager-spacer {
+      display: none;
+    }
+  }
+</style>

@@ -1,0 +1,885 @@
+---
+/*
+ * Hero — left says it, right shows it.
+ *
+ *   LEFT  → words. Eyebrow + headline + sub.
+ *   RIGHT → the proof, top to bottom:
+ *             1.  play.jsx │ container.css   (side-by-side panels)
+ *             2.  <div><PlayIcon /></div>     (the canvas)
+ *             3.  optical-center [off] [auto] (interactive toggle)
+ *
+ * The JSX panel is static — it just shows the structure. The CSS panel
+ * is the demo: it types and erases between the drop-in `optical-center: auto`
+ * line and the older flex centering pair (`justify-content`, `align-items`).
+ * Two SVGs stack inside the canvas. Only `--after` carries
+ * `optical-center="auto"` — the Astro integration rewrites its viewBox
+ * at build time, so flipping the toggle is the actual library at work,
+ * not an animation. Click the canvas or the radios; the loop stops and
+ * manual control takes over.
+ */
+---
+
+<section class="hero">
+  <div class="hero__inner">
+  <div class="hero__text">
+    <p class="hero__eyebrow">v0.2 &middot; drop-in</p>
+
+    <h1 class="hero__title">
+      <span class="hero__title-line hero__title-line--em">Math centers your icon.</span>
+      <span class="hero__title-line">Your eye <span class="hero__title-accent">disagrees</span>.</span>
+    </h1>
+
+    <p class="hero__sub">
+      <code class="hero__sub-code">optical-center: auto</code> shifts the
+      viewBox at build time.
+    </p>
+
+    <button
+      type="button"
+      class="hero__terminal"
+      aria-label="Copy install command"
+      data-copy-trigger
+      data-copy="npm install optical-center"
+    >
+      <span class="hero__terminal-prompt" aria-hidden="true">$</span>
+      <code>npm install optical-center</code>
+      <span class="hero__terminal-icon" aria-hidden="true">
+        <svg
+          class="hero__terminal-icon-glyph hero__terminal-icon-glyph--copy"
+          viewBox="0 0 16 16"
+          width="14"
+          height="14"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.25"
+          stroke-linejoin="round"
+        >
+          <rect x="5.5" y="5.5" width="7.5" height="7.5" rx="1.5"></rect>
+          <path d="M3 10.5V4.25A1.25 1.25 0 0 1 4.25 3h6.25"></path>
+        </svg>
+        <svg
+          class="hero__terminal-icon-glyph hero__terminal-icon-glyph--check"
+          viewBox="0 0 16 16"
+          width="14"
+          height="14"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.6"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        >
+          <polyline points="3 8.5 6.5 12 13 4.5"></polyline>
+        </svg>
+      </span>
+    </button>
+  </div>
+
+  <div class="hero__story">
+    <div class="hero__demo">
+      <div
+        class="hero__canvas"
+        data-optical-state="auto"
+        role="button"
+        tabindex="0"
+        aria-label="Toggle optical-center attribute on the icon"
+        data-demo-canvas
+      >
+        <svg
+          class="hero__svg hero__svg--before"
+          viewBox="0 0 24 24"
+          fill="currentColor"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linejoin="round"
+          aria-hidden="true"
+        >
+          <polygon points="6 3 20 12 6 21 6 3"></polygon>
+        </svg>
+        <svg
+          class="hero__svg hero__svg--after"
+          viewBox="0 0 24 24"
+          optical-center="auto"
+          fill="currentColor"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linejoin="round"
+          aria-hidden="true"
+        >
+          <polygon points="6 3 20 12 6 21 6 3"></polygon>
+        </svg>
+      </div>
+
+      <div class="hero__code-stack">
+        <div class="hero__code-wrap hero__code-wrap--jsx">
+          <span class="hero__code-tab" aria-hidden="true">play.jsx</span>
+          <pre class="hero__code"><code><!--
+            Comments absorb the source newlines so <pre> doesn't render them
+            on top of each .hero__code-line's `display: block` break.
+          --><span class="hero__code-line">&lt;div class=&quot;<span class="hero__code-token">container</span>&quot;&gt;</span><!--
+          --><span class="hero__code-line">  &lt;PlayIcon /&gt;</span><!--
+          --><span class="hero__code-line">&lt;/div&gt;</span><!--
+          --></code></pre>
+        </div>
+
+        <div class="hero__code-wrap hero__code-wrap--css">
+          <span class="hero__code-tab" aria-hidden="true">container.css</span>
+          <pre class="hero__code"><code><!--
+          --><span class="hero__code-line"><span class="hero__code-selector">.container</span> &#123;</span><!--
+          --><span class="hero__code-props" data-demo-props></span><!--
+          --><span class="hero__code-line">&#125;</span><!--
+          --></code></pre>
+        </div>
+      </div>
+    </div>
+
+    <div class="hero__seg" role="radiogroup" aria-label="optical-center attribute">
+      <span class="hero__seg-label">optical-center</span>
+      <div class="hero__seg-tracks">
+        <button
+          type="button"
+          role="radio"
+          aria-checked="false"
+          data-value="off"
+          data-demo-radio
+        >off</button>
+        <button
+          type="button"
+          role="radio"
+          aria-checked="true"
+          data-value="auto"
+          data-demo-radio
+        >auto</button>
+      </div>
+    </div>
+  </div>
+  </div>
+</section>
+
+<script>
+  type DemoValue = "off" | "auto";
+
+  const canvas = document.querySelector<HTMLElement>("[data-demo-canvas]");
+  const radios = document.querySelectorAll<HTMLButtonElement>("[data-demo-radio]");
+  const propsSlot = document.querySelector<HTMLElement>("[data-demo-props]");
+
+  function setState(value: DemoValue): void {
+    if (!canvas) return;
+    canvas.setAttribute("data-optical-state", value);
+    radios.forEach((r) => {
+      const isThis = r.dataset.value === value;
+      r.setAttribute("aria-checked", isThis ? "true" : "false");
+    });
+  }
+
+  /*
+   * Auto-play loop: type/erase the property block inside `.container { … }`.
+   * The library's `optical-center: auto` line and the older flex-centering
+   * pair (`justify-content` + `align-items`) take turns. The canvas snaps in
+   * sync — when the property is fully typed as `optical-center: auto`, the
+   * icon shows the optical-centered viewBox; otherwise it falls back to the
+   * raw geometric placement. First user click stops the loop forever and
+   * manual control takes over.
+   */
+  const PROPS_AUTO = "  optical-center: auto;";
+  const PROPS_OFF = "  justify-content: center;\n  align-items: center;";
+  const HOLD_AUTO_MS = 2200;
+  const HOLD_OFF_MS = 1400;
+  const ERASE_MS = 18;
+  const TYPE_MS = 34;
+
+  let stopped = false;
+  let pendingTimer: ReturnType<typeof setTimeout> | null = null;
+
+  function stopAuto(): void {
+    if (stopped) return;
+    stopped = true;
+    if (pendingTimer !== null) {
+      clearTimeout(pendingTimer);
+      pendingTimer = null;
+    }
+  }
+
+  function wait(ms: number): Promise<void> {
+    return new Promise((resolve) => {
+      pendingTimer = setTimeout(() => {
+        pendingTimer = null;
+        resolve();
+      }, ms);
+    });
+  }
+
+  function escapeHtml(s: string): string {
+    return s
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;");
+  }
+
+  // Highlight `optical-center` declarations — applied per line so partial
+  // text mid-typing still picks up the accent color from the first char.
+  function highlightLine(line: string): string {
+    const match = line.match(/^(\s*)(.*)$/);
+    if (match && match[2].startsWith("optical-center")) {
+      return (
+        escapeHtml(match[1]) +
+        '<span class="hero__code-token">' +
+        escapeHtml(match[2]) +
+        "</span>"
+      );
+    }
+    return escapeHtml(line);
+  }
+
+  function renderProps(text: string): void {
+    if (!propsSlot) return;
+    const lines = text.length === 0 ? [""] : text.split("\n");
+    propsSlot.innerHTML = lines
+      .map(
+        (line) =>
+          '<span class="hero__code-line">' +
+          (highlightLine(line) || "&nbsp;") +
+          "</span>",
+      )
+      .join("");
+  }
+
+  async function typeText(target: string, perChar: number): Promise<void> {
+    for (let i = 1; i <= target.length; i++) {
+      if (stopped) return;
+      renderProps(target.slice(0, i));
+      await wait(perChar);
+      if (stopped) return;
+    }
+  }
+
+  async function eraseText(source: string, perChar: number): Promise<void> {
+    for (let i = source.length - 1; i >= 0; i--) {
+      if (stopped) return;
+      renderProps(source.slice(0, i));
+      await wait(perChar);
+      if (stopped) return;
+    }
+  }
+
+  async function runLoop(): Promise<void> {
+    while (!stopped) {
+      // Hold AUTO — the library's drop-in is fully present.
+      renderProps(PROPS_AUTO);
+      setState("auto");
+      await wait(HOLD_AUTO_MS);
+      if (stopped) return;
+
+      // Erasing optical-center → the effect is conceptually gone the moment
+      // the value is no longer whole, so snap the canvas to off immediately.
+      setState("off");
+      await eraseText(PROPS_AUTO, ERASE_MS);
+      if (stopped) return;
+
+      // Type the older flex centering pair. Canvas stays off — these
+      // properties don't optically center anything.
+      await typeText(PROPS_OFF, TYPE_MS);
+      if (stopped) return;
+
+      await wait(HOLD_OFF_MS);
+      if (stopped) return;
+
+      // Erase flex pair, then re-type optical-center.
+      await eraseText(PROPS_OFF, ERASE_MS);
+      if (stopped) return;
+
+      await typeText(PROPS_AUTO, TYPE_MS);
+      if (stopped) return;
+      // value is whole again → effect on
+      setState("auto");
+    }
+  }
+
+  // Manual controls — any interaction kills auto mode forever. The slot is
+  // snapped to the final text for the chosen state so a click mid-animation
+  // never leaves the code stuck on a partial string.
+  function commitState(value: DemoValue): void {
+    stopAuto();
+    setState(value);
+    renderProps(value === "auto" ? PROPS_AUTO : PROPS_OFF);
+  }
+
+  radios.forEach((r) => {
+    r.addEventListener("click", () => {
+      const value = r.dataset.value;
+      if (value === "off" || value === "auto") commitState(value);
+    });
+  });
+
+  if (canvas) {
+    const toggle = () => {
+      const next: DemoValue =
+        canvas.getAttribute("data-optical-state") === "auto" ? "off" : "auto";
+      commitState(next);
+    };
+    canvas.addEventListener("click", toggle);
+    canvas.addEventListener("keydown", (e) => {
+      if (e.key === " " || e.key === "Enter") {
+        e.preventDefault();
+        toggle();
+      }
+    });
+  }
+
+  // Respect reduced-motion: skip the loop, leave the initial state visible.
+  const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  if (reduced) {
+    renderProps(PROPS_AUTO);
+    setState("auto");
+  } else if (propsSlot) {
+    void runLoop();
+  }
+
+  // Click-to-copy on the install line. Independent of the auto-loop — copying
+  // the npm command should never stop the demo animation.
+  document.querySelectorAll<HTMLButtonElement>("[data-copy-trigger]").forEach((btn) => {
+    let resetTimer: ReturnType<typeof setTimeout> | null = null;
+    btn.addEventListener("click", async () => {
+      const text = btn.dataset["copy"];
+      if (!text) return;
+      try {
+        await navigator.clipboard.writeText(text);
+      } catch {
+        // Older browsers / insecure context fallback
+        const ta = document.createElement("textarea");
+        ta.value = text;
+        ta.style.position = "fixed";
+        ta.style.opacity = "0";
+        document.body.appendChild(ta);
+        ta.select();
+        try {
+          document.execCommand("copy");
+        } catch {
+          document.body.removeChild(ta);
+          return;
+        }
+        document.body.removeChild(ta);
+      }
+      btn.setAttribute("data-copied", "true");
+      if (resetTimer !== null) clearTimeout(resetTimer);
+      resetTimer = setTimeout(() => {
+        btn.removeAttribute("data-copied");
+        resetTimer = null;
+      }, 1400);
+    });
+  });
+</script>
+
+<style>
+  .hero {
+    /* Full-bleed section so the grid backdrop spans the viewport. */
+    position: relative;
+    isolation: isolate;
+    overflow: hidden;
+    min-height: calc(100vh - 73px);
+    /* Prefer the *small* viewport height on mobile so the hero doesn't
+       grow to fit the address-bar-extended viewport and then leave a tail
+       of empty space when the bar slides up. */
+    min-height: calc(100svh - 73px);
+    display: grid;
+    place-items: center;
+  }
+
+  .hero__inner {
+    /* Constrained content — same shell as the header. */
+    width: 100%;
+    max-width: var(--page-max-w);
+    margin-inline: auto;
+    padding-inline: var(--page-px);
+    padding-block: var(--sp-16);
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--sp-16);
+    align-items: center;
+  }
+
+  /* Section-wide grid backdrop — quiet atmospheric rhythm, fades into the page */
+  .hero::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    background-image:
+      linear-gradient(
+        to right,
+        color-mix(in oklab, var(--color-fg) 5%, transparent) 1px,
+        transparent 1px
+      ),
+      linear-gradient(
+        to bottom,
+        color-mix(in oklab, var(--color-fg) 5%, transparent) 1px,
+        transparent 1px
+      );
+    background-size: 56px 56px;
+    -webkit-mask-image: radial-gradient(
+      ellipse 80% 65% at 50% 50%,
+      black 25%,
+      transparent 92%
+    );
+    mask-image: radial-gradient(
+      ellipse 80% 65% at 50% 50%,
+      black 25%,
+      transparent 92%
+    );
+  }
+
+  /* ─────────────────────────  LEFT — TEXT  ─────────────────────────── */
+  .hero__text {
+    display: grid;
+    gap: var(--sp-6);
+    justify-items: start;
+    text-align: left;
+    max-width: 560px;
+  }
+  .hero__eyebrow {
+    font-family: var(--font-mono);
+    font-size: var(--fs-xs);
+    letter-spacing: var(--ls-wide);
+    text-transform: uppercase;
+    padding: var(--sp-2) var(--sp-3);
+    border: var(--line-w) solid var(--color-line);
+    border-radius: 999px;
+    color: var(--color-muted-fg);
+    background: var(--color-surface);
+  }
+  .hero__title {
+    font-family: var(--font-display);
+    font-size: clamp(2.5rem, 5.2vw, 5.25rem);
+    font-weight: var(--fw-semibold);
+    line-height: var(--lh-tight);
+    letter-spacing: -0.035em;
+    margin: 0;
+    color: var(--color-fg);
+  }
+  .hero__title-line {
+    display: block;
+  }
+  .hero__title-line--em {
+    font-weight: var(--fw-medium);
+    color: var(--color-muted-fg);
+  }
+  .hero__title-accent {
+    color: var(--color-accent-text);
+    font-weight: var(--fw-semibold);
+  }
+  .hero__sub {
+    font-family: var(--font-body);
+    font-size: var(--fs-md);
+    line-height: var(--lh-body);
+    color: var(--color-soft-fg);
+    max-width: 50ch;
+  }
+  /* Inline `optical-center: auto` — the same accent treatment the right-side
+     code block uses, so the eye links the two without thinking. */
+  .hero__sub-code {
+    font-family: var(--font-mono);
+    font-size: 0.92em;
+    color: var(--color-accent-text);
+    white-space: nowrap;
+  }
+
+  /* ────────────────────────  RIGHT — STORY  ────────────────────────── */
+  .hero__story {
+    display: grid;
+    align-content: center;
+    justify-items: start;
+    gap: var(--sp-5, 1.25rem);
+    width: 100%;
+    max-width: 520px;
+    margin-inline: auto;
+  }
+
+  /* Right column shape:
+       canvas │ play.jsx          ← canvas on the left
+              │ container.css       paired with a stacked code column
+       toggle                     ← bottom, under the canvas
+     The HTML structure and the styling sit on the same vertical axis,
+     directly next to the visual they describe — eye moves canvas → code
+     → canvas without crossing the page. */
+  .hero__demo {
+    display: grid;
+    grid-template-columns: 272px 1fr;
+    gap: var(--sp-3);
+    align-items: stretch;
+    width: 100%;
+    max-width: 520px;
+  }
+  /* Inside the demo, the canvas stretches to the row height (set by the
+     code stack) and aspect-ratio: 1/1 (declared on .hero__canvas) keeps
+     it square. The column is sized to match the natural code-stack height
+     (≈272px) so the two halves of the demo end up exactly the same height
+     without leaving a horizontal/vertical mismatch. */
+  .hero__demo .hero__canvas {
+    margin: 0;
+    max-width: none;
+    height: 100%;
+  }
+
+  /* The code column: play.jsx on top, container.css under it. Gap matches the
+     demo's horizontal gap so the two panels feel like one paired block. */
+  .hero__code-stack {
+    display: grid;
+    gap: var(--sp-3);
+    align-self: center;
+  }
+
+  /* 1 — install line. Lives in the left column now, sized to fit content.
+     Whole row is a click-to-copy button; cursor + hover make that obvious. */
+  .hero__terminal {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--sp-3);
+    width: max-content;
+    max-width: 100%;
+    padding: var(--sp-3) var(--sp-4);
+    border: var(--line-w) solid var(--color-line);
+    border-radius: var(--radius-sm);
+    font-family: var(--font-mono);
+    font-size: var(--fs-sm);
+    background: var(--color-surface);
+    color: var(--color-fg);
+    margin-top: var(--sp-2);
+    cursor: copy;
+    transition:
+      border-color 0.16s ease,
+      background-color 0.16s ease,
+      color 0.16s ease;
+  }
+  .hero__terminal:hover,
+  .hero__terminal:focus-visible {
+    border-color: var(--color-line-strong);
+    background: var(--color-surface-hi);
+  }
+  .hero__terminal-prompt {
+    color: var(--color-accent-text);
+    user-select: none;
+  }
+  .hero__terminal code {
+    font-family: inherit;
+    color: inherit;
+  }
+  .hero__terminal-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 16px;
+    height: 16px;
+    margin-left: var(--sp-2);
+    color: var(--color-muted-fg);
+    transition: color 0.16s ease;
+  }
+  .hero__terminal:hover .hero__terminal-icon,
+  .hero__terminal:focus-visible .hero__terminal-icon {
+    color: var(--color-fg);
+  }
+  .hero__terminal-icon-glyph {
+    display: none;
+  }
+  .hero__terminal-icon-glyph--copy {
+    display: block;
+  }
+  /* Copied state: hide the copy glyph, show the check, color it accent. */
+  .hero__terminal[data-copied] .hero__terminal-icon {
+    color: var(--color-accent-text);
+  }
+  .hero__terminal[data-copied] .hero__terminal-icon-glyph--copy {
+    display: none;
+  }
+  .hero__terminal[data-copied] .hero__terminal-icon-glyph--check {
+    display: block;
+  }
+
+  /* 2 — code block, static (no animation) */
+  .hero__code-wrap {
+    border: var(--line-w) solid var(--color-line);
+    border-radius: var(--radius-sm);
+    background: var(--color-surface);
+    overflow: hidden;
+  }
+  .hero__code-tab {
+    display: flex;
+    align-items: center;
+    gap: var(--sp-2);
+    font-family: var(--font-mono);
+    font-size: var(--fs-xs);
+    letter-spacing: 0;
+    text-transform: none;
+    color: var(--color-muted-fg);
+    padding: var(--sp-2) var(--sp-4);
+    border-bottom: var(--line-w) solid var(--color-line);
+    background: var(--color-surface-hi);
+  }
+  .hero__code-tab::before {
+    content: "";
+    width: 6px;
+    height: 6px;
+    border-radius: 999px;
+    background: var(--color-accent);
+    flex-shrink: 0;
+  }
+  .hero__code {
+    padding: var(--sp-3) var(--sp-4);
+    font-family: var(--font-mono);
+    font-size: 0.8125rem;
+    line-height: 1.5;
+    overflow: hidden;
+    color: var(--color-fg);
+    margin: 0;
+    background: transparent;
+  }
+  .hero__code code {
+    font-family: inherit;
+  }
+  .hero__code-line {
+    display: block;
+    white-space: pre;
+  }
+  .hero__code-token,
+  .hero__code-selector {
+    color: var(--color-accent-text);
+  }
+  /* Animated property block inside .container { … }. Reserves enough height
+     for two lines so the closing `}` doesn't jump when the loop swaps between
+     the single optical-center line and the two-line flex pair. */
+  .hero__code-props {
+    display: block;
+    min-height: calc(2 * 1.5em);
+  }
+  /* The TS loop injects fresh <span class="hero__code-line"> / .hero__code-token
+     children into [data-demo-props]; those nodes are created at runtime and
+     never pick up Astro's data-astro-cid scope attribute. Re-declare both
+     classes globally inside the props slot so each line still breaks on its
+     own row and the optical-center token still picks up the accent color. */
+  .hero__code-props :global(.hero__code-line) {
+    display: block;
+    white-space: pre;
+  }
+  .hero__code-props :global(.hero__code-token) {
+    color: var(--color-accent-text);
+  }
+
+  /* 3 — canvas: a measured stage. Inner grid + accent crosshair show exactly
+     how far the icon moves when optical-center kicks in. */
+  .hero__canvas {
+    width: 100%;
+    max-width: 240px;
+    aspect-ratio: 1 / 1;
+    position: relative;
+    margin-top: var(--sp-3);
+    cursor: pointer;
+    user-select: none;
+    border: var(--line-w) solid var(--color-line);
+    border-radius: var(--radius-sm);
+    /* Opaque so the section-wide hero grid stops at the canvas border;
+       only this card's internal 8x8 grid lives inside. No double-grid. */
+    background-color: var(--color-bg);
+    background-image:
+      linear-gradient(
+        to right,
+        color-mix(in oklab, var(--color-fg) 7%, transparent) 1px,
+        transparent 1px
+      ),
+      linear-gradient(
+        to bottom,
+        color-mix(in oklab, var(--color-fg) 7%, transparent) 1px,
+        transparent 1px
+      );
+    background-size: 12.5% 12.5%;
+    overflow: hidden;
+    transition: transform 0.18s ease, border-color 0.18s ease;
+  }
+  .hero__canvas:hover,
+  .hero__canvas:focus-visible {
+    outline: none;
+    transform: translateY(-1px);
+    border-color: var(--color-line-strong);
+  }
+  /* Center crosshair — accent, 1px, the geometric center to compare against */
+  .hero__canvas::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    z-index: 1;
+    background:
+      linear-gradient(
+        color-mix(in oklab, var(--color-accent) 42%, transparent),
+        color-mix(in oklab, var(--color-accent) 42%, transparent)
+      ) 0 50% / 100% 1px no-repeat,
+      linear-gradient(
+        color-mix(in oklab, var(--color-accent) 42%, transparent),
+        color-mix(in oklab, var(--color-accent) 42%, transparent)
+      ) 50% 0 / 1px 100% no-repeat;
+  }
+  .hero__svg {
+    position: absolute;
+    inset: 18%;
+    color: var(--color-fg);
+    transition: opacity 0.16s ease;
+    z-index: 2;
+  }
+  .hero__canvas[data-optical-state="auto"] .hero__svg--before { opacity: 0; }
+  .hero__canvas[data-optical-state="auto"] .hero__svg--after  { opacity: 1; }
+  .hero__canvas[data-optical-state="off"]  .hero__svg--before { opacity: 1; }
+  .hero__canvas[data-optical-state="off"]  .hero__svg--after  { opacity: 0; }
+
+  /* 4 — segmented toggle */
+  .hero__seg {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--sp-3);
+    font-family: var(--font-mono);
+    font-size: var(--fs-xs);
+    letter-spacing: 0;
+    text-transform: none;
+    margin-top: var(--sp-2);
+  }
+  .hero__seg-label {
+    color: var(--color-muted-fg);
+  }
+  .hero__seg-tracks {
+    display: flex;
+    padding: 2px;
+    gap: 2px;
+    border: var(--line-w) solid var(--color-line);
+    border-radius: var(--radius-md);
+    background: var(--color-surface);
+  }
+  .hero__seg [role="radio"] {
+    padding: var(--sp-2) var(--sp-3);
+    color: var(--color-muted-fg);
+    background: transparent;
+    border-radius: calc(var(--radius-md) - 2px);
+    transition:
+      color 0.16s ease,
+      background-color 0.16s ease;
+    min-width: 3em;
+    font-weight: var(--fw-medium);
+  }
+  .hero__seg [role="radio"]:hover:not([aria-checked="true"]) {
+    color: var(--color-fg);
+  }
+  .hero__seg [role="radio"][aria-checked="true"] {
+    color: var(--color-on-accent);
+    background: var(--color-accent);
+  }
+
+  /* ─────────────────────────  Responsive  ──────────────────────────── */
+  @media (max-width: 960px) {
+    .hero {
+      min-height: auto;
+    }
+    .hero__inner {
+      grid-template-columns: 1fr;
+      gap: var(--sp-12);
+      padding-block: var(--sp-12);
+    }
+    .hero__text {
+      max-width: 100%;
+    }
+    .hero__terminal {
+      max-width: 340px;
+    }
+    .hero__story {
+      justify-items: center;
+      max-width: 100%;
+    }
+    .hero__demo {
+      grid-template-columns: 200px minmax(180px, 1fr);
+      max-width: 420px;
+    }
+    .hero__canvas {
+      max-width: 200px;
+    }
+  }
+
+  /* Phone — stack the canvas above the code-stack so each gets the full
+     width. The two halves of the demo were getting cramped at this width
+     when laid out side-by-side. */
+  @media (max-width: 640px) {
+    .hero__inner {
+      gap: var(--sp-8);
+      padding-block: var(--sp-8);
+    }
+    .hero__text {
+      gap: var(--sp-5);
+    }
+    .hero__title {
+      font-size: clamp(2.1rem, 9vw, 3rem);
+    }
+    .hero__sub {
+      font-size: var(--fs-base);
+    }
+    .hero__terminal {
+      width: 100%;
+      max-width: 100%;
+      font-size: 0.8125rem;
+      padding: var(--sp-3);
+    }
+    .hero__terminal code {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      min-width: 0;
+    }
+    .hero__story {
+      gap: var(--sp-4);
+      max-width: 100%;
+    }
+    .hero__demo {
+      grid-template-columns: 1fr;
+      max-width: 100%;
+      gap: var(--sp-4);
+      justify-items: center;
+    }
+    .hero__demo .hero__canvas {
+      height: auto;
+      width: 100%;
+      max-width: 220px;
+      margin-top: 0;
+    }
+    .hero__code-stack {
+      width: 100%;
+      max-width: 360px;
+    }
+  }
+
+  /* Tiny phones — squeeze the canvas a bit more, tighten code-block text. */
+  @media (max-width: 380px) {
+    .hero__inner {
+      padding-block: var(--sp-6);
+    }
+    .hero__title {
+      font-size: 1.9rem;
+    }
+    .hero__demo .hero__canvas {
+      max-width: 180px;
+    }
+    .hero__code {
+      padding: var(--sp-3);
+      font-size: 0.75rem;
+    }
+    .hero__seg {
+      gap: var(--sp-2);
+    }
+    .hero__seg [role="radio"] {
+      padding: var(--sp-2);
+      min-width: 2.5em;
+    }
+  }
+
+  /* ─────────────────────  A11y — reduce motion  ───────────────────── */
+  @media (prefers-reduced-motion: reduce) {
+    .hero__canvas,
+    .hero__svg,
+    .hero__seg [role="radio"] {
+      transition: none;
+    }
+  }
+</style>

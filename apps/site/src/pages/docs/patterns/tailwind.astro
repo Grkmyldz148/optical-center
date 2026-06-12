@@ -1,0 +1,146 @@
+---
+import DocsLayout from "../../../layouts/DocsLayout.astro";
+import CodeBlock from "../../../components/docs/CodeBlock.astro";
+
+const toc = [
+  { id: "when", label: "When to use it", level: 2 as const },
+  { id: "setup", label: "Setup", level: 2 as const },
+  { id: "how", label: "How to write it", level: 2 as const },
+  { id: "emitted", label: "What gets emitted", level: 2 as const },
+  { id: "order", label: "Plugin order matters", level: 2 as const },
+];
+---
+
+<DocsLayout
+  title="Tailwind utility"
+  description="Use optical-center like any other Tailwind class. Same end-state as the CSS-class pattern, registered as a Tailwind component."
+  toc={toc}
+>
+  <h2 id="when">When to use it</h2>
+  <p>
+    Reach for this when you're already in Tailwind and you don't want
+    to write hand-rolled CSS rules just for icon wrappers.
+  </p>
+
+  <h2 id="setup">Setup</h2>
+  <p>
+    Register the plugin in your Tailwind config:
+  </p>
+
+  <CodeBlock
+    filename="tailwind.config.js"
+    lang="js"
+    code={`import opticalCenter from 'optical-center/tailwind';
+
+export default {
+  plugins: [opticalCenter],
+};`}
+  />
+
+  <p>
+    And make sure <code>optical-center/postcss</code> is in your
+    PostCSS chain — the Tailwind plugin ships the directive; the
+    PostCSS plugin resolves it.
+  </p>
+
+  <CodeBlock
+    filename="postcss.config.js"
+    lang="js"
+    code={`import tailwind from 'tailwindcss';
+import opticalCenter from 'optical-center/postcss';
+
+export default {
+  plugins: [tailwind, opticalCenter()],
+};`}
+  />
+
+  <h2 id="how">How to write it</h2>
+  <p>
+    Drop the <code>optical-center</code> class on any wrapper:
+  </p>
+
+  <CodeBlock
+    filename="Button.tsx"
+    lang="tsx"
+    code={`import { Play } from 'lucide-react';
+
+export function PlayButton() {
+  return (
+    <button>
+      <div className="optical-center">
+        <Play />
+      </div>
+    </button>
+  );
+}`}
+  />
+
+  <p>
+    Compose it with any other Tailwind utility you need on the
+    wrapper. <code>.optical-center</code> is just a component-level
+    utility; <code>w-10 h-10 rounded-full bg-zinc-100 optical-center</code>
+    works as you'd expect.
+  </p>
+
+  <h2 id="emitted">What gets emitted</h2>
+  <p>
+    The Tailwind plugin emits one rule:
+  </p>
+
+  <CodeBlock
+    filename="dist/tailwind-output.css"
+    lang="css"
+    code={`.optical-center {
+  optical-center: auto;
+}`}
+  />
+
+  <p>
+    Then the PostCSS plugin picks up that rule the same way it picks
+    up any hand-written CSS rule with <code>optical-center: auto</code>,
+    scans the project's JSX to link <code>.optical-center</code> →
+    icon, and expands to:
+  </p>
+
+  <CodeBlock
+    filename="dist/styles.css"
+    lang="css"
+    code={`.optical-center {
+  display: flex;
+  --optical-center: auto;
+}
+.optical-center > * {
+  margin: auto;
+  translate: 4.3365% 2.604%;
+}`}
+  />
+
+  <p>
+    Identical end-state to the
+    <a href="/docs/patterns/css-class">CSS class</a> pattern — only the
+    way the directive arrived in the PostCSS chain differs.
+  </p>
+
+  <h2 id="order">Plugin order matters</h2>
+  <p>
+    Tailwind must run <em>before</em> <code>optical-center/postcss</code>
+    in your PostCSS chain. Tailwind emits the
+    <code>optical-center: auto</code> declaration; if our plugin
+    runs first, the declaration doesn't exist yet and nothing gets
+    expanded.
+  </p>
+
+  <aside class="callout callout--tip">
+    <p class="callout-label">Why two plugins?</p>
+    <p>
+      The Tailwind plugin deliberately doesn't expand the directive
+      itself. Tailwind plugins run before the rest of the PostCSS
+      chain — expanding the directive there would mean every
+      consumer who uses our Tailwind plugin <em>also</em> needs to
+      register our PostCSS plugin… which they have to anyway. Better
+      to keep one source of truth for "what does
+      <code>optical-center: auto</code> compile to" and let
+      <code>optical-center/postcss</code> own that.
+    </p>
+  </aside>
+</DocsLayout>

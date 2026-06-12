@@ -1,147 +1,86 @@
 /*
- * Real icon packages, mounted via CSS, corrected at build time.
+ * Every `optical-center` directive the demo opts into, grouped by
+ * the mechanism that resolves it. The PostCSS plugin (and, for
+ * inline `<svg>`, Babel) does all the heavy lifting; this file just
+ * declares the directives.
  *
- * Each icon has two rules: a baseline (.icon-foo) and an opted-in
- * variant (.icon-foo.optical) that adds a single `optical-center: auto`
- * declaration. The PostCSS plugin walks every rule with that
- * directive, runs each url('…svg') through the rasterize → optical
- * center → viewBox-rewrite pipeline, and replaces it with an inline
- * `data:image/svg+xml,…` URI. The directive is stripped from the
- * output. No runtime, no React hook, no JS at the icon mount point.
- *
- * Bare specifiers (`lucide-static/icons/play.svg`) resolve through
- * Node's module resolution — installed icon packages just work.
+ * Hard contract followed everywhere below: no rule that opts into
+ * `optical-center` (or its `--optical-center` tracer) ever uses
+ * `align-items: center` or `justify-content: center`. Centering is
+ * the directive's job, and the plugin emits the auto-margin recipe
+ * (`display: flex` on the container + `margin: auto` on the child).
  */
 
-.icon {
+/* ----------------------------------------------------------------
+ * URL-rewrite mode (icon-side).
+ *
+ * The rule's element IS the icon: it mounts the SVG via `mask: url()`
+ * (or `background-image: url()`) and the PostCSS plugin rewrites the
+ * URL to a `data:` URI whose viewBox is shifted by the perceptual
+ * offset. Positioning of the element itself stays the consumer's
+ * layout call.
+ * ---------------------------------------------------------------- */
+.icon-play {
   display: inline-block;
-  width: 36px;
-  height: 36px;
+  width: 24px;
+  height: 24px;
   background: currentColor;
-  -webkit-mask-repeat: no-repeat;
-          mask-repeat: no-repeat;
-  -webkit-mask-position: center;
-          mask-position: center;
-  -webkit-mask-size: contain;
-          mask-size: contain;
-}
-
-/*
- * lucide-static — square 24x24 viewBox.
- */
-.icon-lucide-play {
-  -webkit-mask-image: url('lucide-static/icons/play.svg');
-          mask-image: url('lucide-static/icons/play.svg');
-}
-.icon-lucide-play.optical {
-  -webkit-mask-image: url('lucide-static/icons/play.svg');
-          mask-image: url('lucide-static/icons/play.svg');
+  mask: url('lucide-static/icons/play.svg') center / contain no-repeat;
   optical-center: auto;
 }
 
-.icon-lucide-arrow-right {
-  -webkit-mask-image: url('lucide-static/icons/arrow-right.svg');
-          mask-image: url('lucide-static/icons/arrow-right.svg');
-}
-.icon-lucide-arrow-right.optical {
-  -webkit-mask-image: url('lucide-static/icons/arrow-right.svg');
-          mask-image: url('lucide-static/icons/arrow-right.svg');
-  optical-center: auto;
-}
-
-.icon-lucide-heart {
-  -webkit-mask-image: url('lucide-static/icons/heart.svg');
-          mask-image: url('lucide-static/icons/heart.svg');
-}
-.icon-lucide-heart.optical {
-  -webkit-mask-image: url('lucide-static/icons/heart.svg');
-          mask-image: url('lucide-static/icons/heart.svg');
-  optical-center: auto;
-}
-
-.icon-lucide-send {
-  -webkit-mask-image: url('lucide-static/icons/send.svg');
-          mask-image: url('lucide-static/icons/send.svg');
-}
-.icon-lucide-send.optical {
-  -webkit-mask-image: url('lucide-static/icons/send.svg');
-          mask-image: url('lucide-static/icons/send.svg');
-  optical-center: auto;
-}
-
-/*
- * heroicons — different SVG style, same square viewBox.
- */
-.icon-heroicons-bell {
-  -webkit-mask-image: url('heroicons/24/solid/bell.svg');
-          mask-image: url('heroicons/24/solid/bell.svg');
-}
-.icon-heroicons-bell.optical {
-  -webkit-mask-image: url('heroicons/24/solid/bell.svg');
-          mask-image: url('heroicons/24/solid/bell.svg');
-  optical-center: auto;
-}
-
-.icon-heroicons-magnifying-glass {
-  -webkit-mask-image: url('heroicons/24/solid/magnifying-glass.svg');
-          mask-image: url('heroicons/24/solid/magnifying-glass.svg');
-}
-.icon-heroicons-magnifying-glass.optical {
-  -webkit-mask-image: url('heroicons/24/solid/magnifying-glass.svg');
-          mask-image: url('heroicons/24/solid/magnifying-glass.svg');
-  optical-center: auto;
-}
-
-/*
- * @fortawesome/fontawesome-free — non-square viewBoxes (e.g. 384x512,
- * 576x512). Stresses the algorithm under uneven canvases.
- */
-.icon-fa-play {
-  -webkit-mask-image: url('@fortawesome/fontawesome-free/svgs/solid/play.svg');
-          mask-image: url('@fortawesome/fontawesome-free/svgs/solid/play.svg');
-}
-.icon-fa-play.optical {
-  -webkit-mask-image: url('@fortawesome/fontawesome-free/svgs/solid/play.svg');
-          mask-image: url('@fortawesome/fontawesome-free/svgs/solid/play.svg');
-  optical-center: auto;
-}
-
-.icon-fa-star {
-  -webkit-mask-image: url('@fortawesome/fontawesome-free/svgs/solid/star.svg');
-          mask-image: url('@fortawesome/fontawesome-free/svgs/solid/star.svg');
-}
-.icon-fa-star.optical {
-  -webkit-mask-image: url('@fortawesome/fontawesome-free/svgs/solid/star.svg');
-          mask-image: url('@fortawesome/fontawesome-free/svgs/solid/star.svg');
-  optical-center: auto;
-}
-
-.icon-fa-paper-plane {
-  -webkit-mask-image: url('@fortawesome/fontawesome-free/svgs/solid/paper-plane.svg');
-          mask-image: url('@fortawesome/fontawesome-free/svgs/solid/paper-plane.svg');
-}
-.icon-fa-paper-plane.optical {
-  -webkit-mask-image: url('@fortawesome/fontawesome-free/svgs/solid/paper-plane.svg');
-          mask-image: url('@fortawesome/fontawesome-free/svgs/solid/paper-plane.svg');
-  optical-center: auto;
-}
-
-/*
- * background-image instead of mask-image — directive doesn't care
- * which property holds the url(). Keeps the SVG's own colors.
- */
-.bg-icon {
+/* Demo-only twin used in the comparison row — no directive, so the
+ * mask points at the uncorrected source SVG and the geometric centre
+ * shows through. Not something you'd write in production code. */
+.icon-play-geometric {
   display: inline-block;
-  width: 36px;
-  height: 36px;
-  background-repeat: no-repeat;
-  background-position: center;
-  background-size: contain;
+  width: 24px;
+  height: 24px;
+  background: currentColor;
+  mask: url('lucide-static/icons/play.svg') center / contain no-repeat;
 }
-.bg-icon-fa-flag {
-  background-image: url('@fortawesome/fontawesome-free/svgs/solid/flag.svg');
-}
-.bg-icon-fa-flag.optical {
-  background-image: url('@fortawesome/fontawesome-free/svgs/solid/flag.svg');
-  optical-center: auto;
-}
+
+/* ----------------------------------------------------------------
+ * Container-side mode (CSS-class flavour).
+ *
+ * The rule's selector identifies a WRAPPER around an icon. The
+ * PostCSS plugin scans the project's JSX once, finds an icon
+ * component (lucide-react etc.) nested inside an element with this
+ * class, maps the class to the package's source SVG, and emits:
+ *
+ *   .badge-optical { display: flex; --optical-center: auto; }
+ *   .badge-optical > * { margin: auto; translate: dx% dy%; }
+ *
+ * Distinct class names per scenario are deliberate: the JSX scanner
+ * keeps a global map (one entry per class), so reusing the same
+ * class across modes would over-apply the translate from the JSX
+ * match onto inline / URL-rewrite badges that already shift
+ * themselves internally. In a real consumer codebase you'd typically
+ * use a single class for a single mode.
+ * ---------------------------------------------------------------- */
+.badge-optical { optical-center: auto; }
+.badge-inline { optical-center: auto; }
+.badge-css { optical-center: auto; }
+
+/* ----------------------------------------------------------------
+ * Container-side mode (Tailwind utility flavour).
+ *
+ * In a real project the Tailwind plugin at `optical-center/tailwind`
+ * registers this class as a component utility. The demo hand-rolls
+ * the same declaration so it doesn't take a Tailwind dependency.
+ * The PostCSS expansion is identical to the CSS-class flavour above.
+ * ---------------------------------------------------------------- */
+.optical-center { optical-center: auto; }
+
+/* ----------------------------------------------------------------
+ * Babel breadcrumb.
+ *
+ * For inline `<svg>` and the JSX-attribute scenarios the Babel
+ * plugin processes the directive in JSX, not CSS. It always emits a
+ * `data-optical-center=""` attribute on the transformed element as
+ * a DevTools breadcrumb. No CSS hook on the attribute is needed —
+ * the perceptual shift is baked into the SVG asset (viewBox rewrite)
+ * or into inline styles (translate). Listed here as a pointer for
+ * anyone hunting for "where does the centering for those scenarios
+ * come from?": it's the Babel-injected `style` prop, not a CSS rule.
+ */

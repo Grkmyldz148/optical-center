@@ -1,0 +1,764 @@
+---
+/*
+ * ⌘K command palette. Lives in the header's end cluster (right side) and is
+ * shared across the landing page and the docs.
+ *
+ *   • Trigger     — a pill on desktop (magnifier + "Search" + ⌘K), collapsing
+ *                   to a single icon button on mobile, matching .theme-toggle.
+ *   • Palette      — a native <dialog> opened with showModal() so we inherit
+ *                   the top-layer, focus trap, Esc-to-close, and ::backdrop
+ *                   for free. Opened by the trigger, ⌘K / Ctrl+K, or "/".
+ *   • Index        — SEARCH_ENTRIES, serialised to JSON below and filtered
+ *                   client-side. Zero dependencies, no build step.
+ *
+ * Styles are is:global (namespaced under .search-*) because the result rows
+ * are built in JS — Astro's scoped-style attribute is only stamped onto
+ * elements present in this template, so dynamically created rows would miss
+ * scoped CSS. Every selector here is prefixed to stay collision-free.
+ */
+import { SEARCH_ENTRIES } from "../lib/search";
+
+/* Serialise the index for the inline JSON script tag below. set:html opts
+   out of HTML escaping and JSON.stringify never touches `<`/`>`/`&`, so a
+   stray closing-script sequence (or a future "<" in a label or keyword) would
+   close the tag early — breaking the JSON parse and killing search site-wide.
+   Escape the three markup-significant chars to their \u forms; JSON.parse
+   decodes them back, so the client receives byte-identical data.
+
+   NB: this comment deliberately avoids the literal script open/close tags —
+   Astro tokenises the whole file (frontmatter included), so writing one out
+   verbatim here is mis-read as a real tag and breaks the build. */
+const indexJSON = JSON.stringify(SEARCH_ENTRIES)
+  .replace(/</g, "\\u003c")
+  .replace(/>/g, "\\u003e")
+  .replace(/&/g, "\\u0026");
+---
+
+<button
+  type="button"
+  class="search-trigger"
+  data-search-open
+  aria-label="Search"
+  aria-keyshortcuts="Meta+K Control+K"
+  title="Search (⌘K)"
+>
+  <svg
+    class="search-trigger__icon"
+    viewBox="0 0 16 16"
+    width="16"
+    height="16"
+    aria-hidden="true"
+    fill="none"
+    stroke="currentColor"
+    stroke-width="1.4"
+    stroke-linecap="round"
+  >
+    <circle cx="7" cy="7" r="4.25"></circle>
+    <line x1="10.3" y1="10.3" x2="13.5" y2="13.5"></line>
+  </svg>
+  <span class="search-trigger__label">Search</span>
+  <kbd class="search-trigger__kbd">
+    <span class="search-trigger__kbd-cmd" aria-hidden="true">⌘</span>K
+  </kbd>
+</button>
+
+<dialog class="search-dialog" data-search-dialog aria-label="Search the site">
+  <div class="search-dialog__panel">
+    <div class="search-field">
+      <svg
+        class="search-field__icon"
+        viewBox="0 0 16 16"
+        width="16"
+        height="16"
+        aria-hidden="true"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="1.4"
+        stroke-linecap="round"
+      >
+        <circle cx="7" cy="7" r="4.25"></circle>
+        <line x1="10.3" y1="10.3" x2="13.5" y2="13.5"></line>
+      </svg>
+      <input
+        type="text"
+        class="search-field__input"
+        data-search-input
+        placeholder="Search docs…"
+        role="combobox"
+        aria-expanded="true"
+        aria-controls="search-results"
+        aria-haspopup="listbox"
+        aria-autocomplete="list"
+        aria-label="Search the site"
+        autocomplete="off"
+        autocorrect="off"
+        autocapitalize="off"
+        spellcheck="false"
+      />
+      <kbd class="search-field__esc" data-search-close aria-hidden="true">Esc</kbd>
+    </div>
+
+    <ul
+      class="search-results"
+      id="search-results"
+      role="listbox"
+      aria-label="Search results"
+      data-search-results
+    >
+    </ul>
+
+    <p class="search-empty" data-search-empty hidden>
+      No matches for <span class="search-empty__q" data-search-query></span>.
+    </p>
+
+    {/* Off-screen polite live region — announces the result count / no-results
+        to screen readers as the query changes (the visible empty <p> is purely
+        visual, so it carries no live semantics to avoid double announcements). */}
+    <span class="search-sr-status" role="status" aria-live="polite" data-search-status
+    ></span>
+
+    <div class="search-foot" aria-hidden="true">
+      <span class="search-foot__hint"><kbd>↑</kbd><kbd>↓</kbd> navigate</span>
+      <span class="search-foot__hint"><kbd>↵</kbd> open</span>
+      <span class="search-foot__hint"><kbd>esc</kbd> close</span>
+    </div>
+  </div>
+</dialog>
+
+<script type="application/json" data-search-index set:html={indexJSON} />
+
+<script>
+  type SearchKind = "page" | "heading" | "landing";
+  type SearchEntry = {
+    title: string;
+    href: string;
+    context: string;
+    kind: SearchKind;
+    keywords?: string;
+  };
+  type Scored = { entry: SearchEntry; score: number; positions: number[] };
+
+  const dialog =
+    document.querySelector<HTMLDialogElement>("[data-search-dialog]");
+  const input = document.querySelector<HTMLInputElement>("[data-search-input]");
+  const list = document.querySelector<HTMLUListElement>("[data-search-results]");
+  const empty = document.querySelector<HTMLElement>("[data-search-empty]");
+  const queryOut = document.querySelector<HTMLElement>("[data-search-query]");
+  const status = document.querySelector<HTMLElement>("[data-search-status]");
+  const dataEl = document.querySelector<HTMLScriptElement>("[data-search-index]");
+  const openers = document.querySelectorAll<HTMLButtonElement>("[data-search-open]");
+
+  /* If any piece is missing, fail silent — the page still works without search. */
+  if (dialog && input && list && empty && dataEl) {
+    let entries: SearchEntry[] = [];
+    try {
+      entries = JSON.parse(dataEl.textContent || "[]");
+    } catch {
+      entries = [];
+    }
+
+    /* Default view (empty query): top-level pages + landing, in source order.
+       Deep headings only surface once the user types something. */
+    const DEFAULTS = entries.filter((e) => e.kind !== "heading");
+    const MAX_RESULTS = 12;
+
+    let rows: SearchEntry[] = [];
+    let active = -1;
+
+    /*
+     * Fuzzy subsequence match. Returns null when not every query char is
+     * found in order; otherwise a score (higher = better) plus the matched
+     * character positions in `text` for highlighting. Bonuses reward
+     * consecutive runs and word-start hits; longer text is gently penalised.
+     */
+    function fuzzy(
+      query: string,
+      text: string,
+    ): { score: number; positions: number[] } | null {
+      const q = query.toLowerCase();
+      const t = text.toLowerCase();
+      const positions: number[] = [];
+      let score = 0;
+      let qi = 0;
+      let prev = -2;
+      let run = 0;
+      for (let ti = 0; ti < t.length && qi < q.length; ti++) {
+        if (t[ti] === q[qi]) {
+          let bonus = 1;
+          if (ti === prev + 1) {
+            run++;
+            bonus += run * 2;
+          } else {
+            run = 0;
+          }
+          const before = ti === 0 ? " " : t[ti - 1];
+          if (/[\s\-_/#]/.test(before)) bonus += 4; // word boundary
+          score += bonus;
+          positions.push(ti);
+          prev = ti;
+          qi++;
+        }
+      }
+      if (qi < q.length) return null;
+      score += Math.max(0, 8 - (positions[0] ?? 0)); // earlier first hit wins
+      score -= t.length * 0.05; // prefer concise titles
+      return { score, positions };
+    }
+
+    const WORD_BOUNDARY = /[\s\-_/#]/;
+
+    /* Contiguous case-insensitive substring match → highlight range + score
+       (earlier hits and word-start hits rank higher), or null. */
+    function substr(
+      query: string,
+      text: string,
+    ): { score: number; positions: number[] } | null {
+      const i = text.toLowerCase().indexOf(query.toLowerCase());
+      if (i === -1) return null;
+      const positions: number[] = [];
+      for (let k = 0; k < query.length; k++) positions.push(i + k);
+      const boundary = i === 0 || WORD_BOUNDARY.test(text[i - 1]);
+      return { score: 1000 - i + (boundary ? 50 : 0), positions };
+    }
+
+    /*
+     * Tiered match. Predictable order:
+     *   1. title substring   — contiguous, strongest, highlighted
+     *   2. title fuzzy       — typo tolerance, but only when the matched
+     *                          characters stay close together (so "tail"
+     *                          doesn't light up "The static-subtree rule")
+     *   3. keyword / context — substring only, no highlight, lowest tier
+     */
+    function matchEntry(
+      query: string,
+      entry: SearchEntry,
+    ): { score: number; positions: number[] } | null {
+      const sub = substr(query, entry.title);
+      if (sub) return { score: 2000 + sub.score, positions: sub.positions };
+
+      const fz = fuzzy(query, entry.title);
+      if (fz && fz.positions.length) {
+        const span =
+          fz.positions[fz.positions.length - 1] - fz.positions[0] + 1;
+        if (span <= query.length * 3) {
+          return { score: 1000 + fz.score, positions: fz.positions };
+        }
+      }
+
+      const extra = `${entry.keywords ?? ""} ${entry.context}`.toLowerCase();
+      if (extra.includes(query.toLowerCase())) {
+        return { score: 100, positions: [] };
+      }
+      return null;
+    }
+
+    /* Tiebreak weighting so equal scores fall back to a sensible order. */
+    const KIND_WEIGHT: Record<SearchKind, number> = {
+      page: 2,
+      landing: 1,
+      heading: 0,
+    };
+    const ORDER = new Map(entries.map((e, i) => [e, i]));
+
+    function search(query: string): Scored[] {
+      const scored: Scored[] = [];
+      for (const entry of entries) {
+        const m = matchEntry(query, entry);
+        if (m) scored.push({ entry, score: m.score, positions: m.positions });
+      }
+      scored.sort(
+        (a, b) =>
+          b.score - a.score ||
+          KIND_WEIGHT[b.entry.kind] - KIND_WEIGHT[a.entry.kind] ||
+          (ORDER.get(a.entry) ?? 0) - (ORDER.get(b.entry) ?? 0),
+      );
+      return scored.slice(0, MAX_RESULTS);
+    }
+
+    /* Build the title node, wrapping matched character ranges in <mark>. */
+    function highlight(title: string, positions: number[]): DocumentFragment {
+      const frag = document.createDocumentFragment();
+      if (positions.length === 0) {
+        frag.append(document.createTextNode(title));
+        return frag;
+      }
+      const hit = new Set(positions);
+      let i = 0;
+      while (i < title.length) {
+        const on = hit.has(i);
+        let j = i;
+        while (j < title.length && hit.has(j) === on) j++;
+        const chunk = title.slice(i, j);
+        if (on) {
+          const mark = document.createElement("mark");
+          mark.className = "search-result__mark";
+          mark.textContent = chunk;
+          frag.append(mark);
+        } else {
+          frag.append(document.createTextNode(chunk));
+        }
+        i = j;
+      }
+      return frag;
+    }
+
+    function render(query: string): void {
+      const trimmed = query.trim();
+      const scored: Scored[] = trimmed
+        ? search(trimmed)
+        : DEFAULTS.map((entry) => ({ entry, score: 0, positions: [] }));
+
+      rows = scored.map((s) => s.entry);
+      list!.replaceChildren();
+
+      if (scored.length === 0) {
+        empty!.hidden = false;
+        if (queryOut) queryOut.textContent = `“${trimmed}”`;
+        if (status) status.textContent = `No results for ${trimmed}`;
+        input!.setAttribute("aria-activedescendant", "");
+        active = -1;
+        return;
+      }
+      empty!.hidden = true;
+      if (status) {
+        status.textContent = `${scored.length} result${
+          scored.length === 1 ? "" : "s"
+        }`;
+      }
+
+      scored.forEach(({ entry, positions }, i) => {
+        const li = document.createElement("li");
+        li.id = `search-opt-${i}`;
+        li.className = "search-result";
+        li.setAttribute("role", "option");
+        li.setAttribute("aria-selected", "false");
+        li.dataset.href = entry.href;
+        li.dataset.index = String(i);
+
+        if (entry.kind === "heading") {
+          const hash = document.createElement("span");
+          hash.className = "search-result__hash";
+          hash.setAttribute("aria-hidden", "true");
+          hash.textContent = "#";
+          li.append(hash);
+        }
+
+        const title = document.createElement("span");
+        title.className = "search-result__title";
+        title.append(highlight(entry.title, positions));
+        li.append(title);
+
+        const ctx = document.createElement("span");
+        ctx.className = "search-result__ctx";
+        ctx.textContent = entry.context;
+        li.append(ctx);
+
+        list!.append(li);
+      });
+
+      setActive(0, false);
+    }
+
+    function setActive(i: number, scroll = true): void {
+      const items = list!.children;
+      if (items.length === 0) {
+        active = -1;
+        input!.setAttribute("aria-activedescendant", "");
+        return;
+      }
+      const next = ((i % items.length) + items.length) % items.length;
+      if (active >= 0 && items[active]) {
+        (items[active] as HTMLElement).setAttribute("aria-selected", "false");
+        items[active].classList.remove("is-active");
+      }
+      active = next;
+      const el = items[active] as HTMLElement;
+      el.setAttribute("aria-selected", "true");
+      el.classList.add("is-active");
+      input!.setAttribute("aria-activedescendant", el.id);
+      if (scroll) el.scrollIntoView({ block: "nearest" });
+    }
+
+    function go(href: string): void {
+      close();
+      window.location.assign(href);
+    }
+
+    function open(): void {
+      if (dialog!.open) return;
+      input!.value = "";
+      render("");
+      dialog!.showModal();
+      // Focus after showModal so the modal owns the focus ring.
+      input!.focus();
+    }
+
+    function close(): void {
+      if (dialog!.open) dialog!.close();
+    }
+
+    /* ── Wiring ─────────────────────────────────────────────────────── */
+
+    openers.forEach((btn) => btn.addEventListener("click", open));
+
+    document
+      .querySelector("[data-search-close]")
+      ?.addEventListener("click", close);
+
+    input.addEventListener("input", () => render(input.value));
+
+    input.addEventListener("keydown", (e) => {
+      if (e.key === "ArrowDown") {
+        e.preventDefault();
+        setActive(active + 1);
+      } else if (e.key === "ArrowUp") {
+        e.preventDefault();
+        setActive(active - 1);
+      } else if (e.key === "Home") {
+        e.preventDefault();
+        setActive(0);
+      } else if (e.key === "End") {
+        e.preventDefault();
+        setActive(rows.length - 1);
+      } else if (e.key === "Enter") {
+        e.preventDefault();
+        const entry = rows[active];
+        if (entry) go(entry.href);
+      }
+      // Escape is handled natively by <dialog> (the 'close' event resets us).
+    });
+
+    /* Row interactions via delegation — rows are rebuilt on every keystroke. */
+    list.addEventListener("click", (e) => {
+      const li = (e.target as HTMLElement).closest<HTMLElement>(
+        ".search-result",
+      );
+      if (li?.dataset.href) go(li.dataset.href);
+    });
+    list.addEventListener("mousemove", (e) => {
+      const li = (e.target as HTMLElement).closest<HTMLElement>(
+        ".search-result",
+      );
+      if (li?.dataset.index) {
+        const i = Number(li.dataset.index);
+        if (i !== active) setActive(i, false);
+      }
+    });
+
+    /* Backdrop click (native dialog reports ::backdrop clicks as the dialog
+       element itself) closes the palette. */
+    dialog.addEventListener("click", (e) => {
+      if (e.target === dialog) close();
+    });
+
+    /* Reset on any close path (Esc, backdrop, navigation). */
+    dialog.addEventListener("close", () => {
+      input.value = "";
+      active = -1;
+    });
+
+    /* Global shortcuts: ⌘K / Ctrl+K toggles; "/" opens when not already
+       typing somewhere else. */
+    document.addEventListener("keydown", (e) => {
+      const k = e.key.toLowerCase();
+      if ((e.metaKey || e.ctrlKey) && k === "k") {
+        e.preventDefault();
+        dialog.open ? close() : open();
+        return;
+      }
+      if (k === "/" && !dialog.open && !isTypingTarget(e.target)) {
+        e.preventDefault();
+        open();
+      }
+    });
+
+    function isTypingTarget(target: EventTarget | null): boolean {
+      const el = target as HTMLElement | null;
+      if (!el) return false;
+      const tag = el.tagName;
+      return (
+        tag === "INPUT" ||
+        tag === "TEXTAREA" ||
+        tag === "SELECT" ||
+        el.isContentEditable
+      );
+    }
+  }
+</script>
+
+<style is:global>
+  /* ── Trigger ────────────────────────────────────────────────────── */
+  .search-trigger {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--sp-2);
+    height: 32px;
+    padding-inline: var(--sp-3);
+    color: var(--color-muted-fg);
+    background: var(--color-surface);
+    border: var(--line-w) solid var(--color-line);
+    border-radius: var(--radius-sm);
+    font-family: var(--font-body);
+    font-size: var(--fs-sm);
+    line-height: 1;
+    transition:
+      color 0.18s ease,
+      background-color 0.18s ease,
+      border-color 0.18s ease;
+  }
+  .search-trigger:hover,
+  .search-trigger:focus-visible {
+    color: var(--color-fg);
+    border-color: var(--color-line-strong);
+    background: var(--color-surface-hi);
+  }
+  .search-trigger__icon {
+    display: block;
+    flex-shrink: 0;
+  }
+  .search-trigger__label {
+    font-weight: var(--fw-medium);
+  }
+  .search-trigger__kbd {
+    display: inline-flex;
+    align-items: center;
+    gap: 1px;
+    padding-inline: var(--sp-2);
+    height: 20px;
+    font-family: var(--font-mono);
+    font-size: var(--fs-xs);
+    color: var(--color-muted-fg);
+    background: var(--color-bg);
+    border: var(--line-w) solid var(--color-line);
+    border-radius: var(--radius-sm);
+  }
+  .search-trigger__kbd-cmd {
+    font-size: 0.9em;
+  }
+
+  /* ── Dialog shell ───────────────────────────────────────────────── */
+  /* No `display` here — the UA's `dialog:not([open]) { display: none }` must
+     keep winning so the palette stays hidden until showModal(). */
+  .search-dialog {
+    width: min(560px, calc(100vw - 2 * var(--sp-4)));
+    max-width: none;
+    margin: min(14vh, 120px) auto 0;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: var(--color-fg);
+    overflow: visible;
+  }
+  .search-dialog::backdrop {
+    /* Frosted scrim — same family as the header's own backdrop, never a
+       black overlay. Tints toward the page bg + blur for depth without shadow. */
+    background: color-mix(in oklab, var(--color-bg) 64%, transparent);
+    -webkit-backdrop-filter: saturate(120%) blur(6px);
+    backdrop-filter: saturate(120%) blur(6px);
+  }
+  .search-dialog__panel {
+    display: grid;
+    grid-template-rows: auto 1fr auto;
+    max-height: min(60vh, 30rem);
+    background: var(--color-bg);
+    border: var(--line-w) solid var(--color-line-strong);
+    border-radius: var(--radius-sm);
+    overflow: hidden;
+  }
+
+  /* ── Field ──────────────────────────────────────────────────────── */
+  .search-field {
+    display: flex;
+    align-items: center;
+    gap: var(--sp-3);
+    padding: var(--sp-4) var(--sp-4);
+    border-bottom: var(--line-w) solid var(--color-line);
+  }
+  .search-field__icon {
+    display: block;
+    flex-shrink: 0;
+    color: var(--color-muted-fg);
+  }
+  .search-field__input {
+    flex: 1;
+    min-width: 0;
+    border: 0;
+    background: transparent;
+    color: var(--color-fg);
+    font-family: var(--font-body);
+    font-size: var(--fs-md);
+    line-height: 1.2;
+  }
+  .search-field__input::placeholder {
+    color: var(--color-muted-fg);
+  }
+  .search-field__input:focus {
+    outline: none;
+  }
+  .search-field__esc {
+    flex-shrink: 0;
+    padding: 3px var(--sp-2);
+    font-family: var(--font-mono);
+    font-size: var(--fs-xs);
+    color: var(--color-muted-fg);
+    background: var(--color-surface);
+    border: var(--line-w) solid var(--color-line);
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+  }
+
+  /* ── Results ────────────────────────────────────────────────────── */
+  .search-results {
+    list-style: none;
+    margin: 0;
+    padding: var(--sp-2);
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    display: grid;
+    gap: 1px;
+  }
+  .search-results:empty {
+    padding: 0;
+  }
+  .search-result {
+    display: flex;
+    align-items: baseline;
+    gap: var(--sp-2);
+    padding: var(--sp-3) var(--sp-3);
+    border-radius: var(--radius-sm);
+    border-left: 2px solid transparent;
+    cursor: pointer;
+    scroll-margin-block: var(--sp-2);
+  }
+  .search-result.is-active {
+    background: var(--color-surface-hi);
+    border-left-color: var(--color-accent);
+  }
+  .search-result__hash {
+    font-family: var(--font-mono);
+    font-size: var(--fs-sm);
+    color: var(--color-line-strong);
+    flex-shrink: 0;
+  }
+  .search-result.is-active .search-result__hash {
+    color: var(--color-accent-text);
+  }
+  .search-result__title {
+    flex: 1;
+    min-width: 0;
+    font-family: var(--font-body);
+    font-size: var(--fs-sm);
+    font-weight: var(--fw-medium);
+    color: var(--color-soft-fg);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .search-result.is-active .search-result__title {
+    color: var(--color-fg);
+  }
+  .search-result__mark {
+    background: transparent;
+    color: var(--color-accent-text);
+    font-weight: var(--fw-semibold);
+  }
+  .search-result__ctx {
+    flex-shrink: 0;
+    font-family: var(--font-mono);
+    font-size: var(--fs-xs);
+    letter-spacing: var(--ls-wide);
+    text-transform: uppercase;
+    color: var(--color-muted-fg);
+  }
+
+  /* ── Empty + footer ─────────────────────────────────────────────── */
+  .search-empty {
+    margin: 0;
+    padding: var(--sp-6) var(--sp-4);
+    text-align: center;
+    font-family: var(--font-body);
+    font-size: var(--fs-sm);
+    color: var(--color-muted-fg);
+  }
+  .search-empty[hidden] {
+    display: none;
+  }
+  .search-empty__q {
+    color: var(--color-fg);
+  }
+
+  /* Off-screen but present in the a11y tree — drives the polite live region. */
+  .search-sr-status {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    padding: 0;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+    border: 0;
+  }
+  .search-foot {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--sp-4);
+    padding: var(--sp-3) var(--sp-4);
+    border-top: var(--line-w) solid var(--color-line);
+    background: var(--color-surface);
+  }
+  .search-foot__hint {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--sp-2);
+    font-family: var(--font-mono);
+    font-size: var(--fs-xs);
+    color: var(--color-muted-fg);
+  }
+  .search-foot__hint kbd {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 16px;
+    height: 16px;
+    padding-inline: 4px;
+    font-family: var(--font-mono);
+    font-size: 10px;
+    color: var(--color-soft-fg);
+    background: var(--color-bg);
+    border: var(--line-w) solid var(--color-line);
+    border-radius: var(--radius-sm);
+  }
+
+  /* ── Responsive — collapse trigger to an icon button on mobile ──── */
+  @media (max-width: 720px) {
+    .search-trigger {
+      width: 36px;
+      padding-inline: 0;
+      justify-content: center;
+      background: transparent;
+      border-color: transparent;
+    }
+    .search-trigger:hover,
+    .search-trigger:focus-visible {
+      background: var(--color-surface);
+      border-color: transparent;
+    }
+    .search-trigger__label,
+    .search-trigger__kbd {
+      display: none;
+    }
+    .search-dialog {
+      margin-top: var(--sp-8);
+    }
+    .search-foot {
+      display: none;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .search-trigger {
+      transition: none;
+    }
+  }
+</style>

@@ -1,0 +1,156 @@
+---
+import DocsLayout from "../../layouts/DocsLayout.astro";
+import CodeBlock from "../../components/docs/CodeBlock.astro";
+
+const toc = [
+  { id: "when", label: "When to reach for the API", level: 2 as const },
+  { id: "core", label: "Browser-safe core", level: 2 as const },
+  { id: "node", label: "Node helpers", level: 2 as const },
+  { id: "end-to-end", label: "End-to-end example", level: 2 as const },
+  { id: "types", label: "Types", level: 2 as const },
+];
+---
+
+<DocsLayout
+  title="Programmatic API"
+  description="The engine every adapter calls. Use it directly when you're building a tool, a custom plugin, or a one-off script — not for in-app use, where the build-time plugins are the right surface."
+  toc={toc}
+>
+  <h2 id="when">When to reach for the API</h2>
+  <p>
+    The five <a href="/docs">patterns</a> cover almost every in-app
+    use case — the build-time plugins compute offsets once and ship
+    flat results. Drop down to the API when you're:
+  </p>
+  <ul>
+    <li>Writing a new bundler adapter (your own Webpack loader, esbuild plugin, etc.).</li>
+    <li>Generating a static asset manifest of pre-computed offsets.</li>
+    <li>Running the pipeline inside a Worker, Edge Function, or non-Node runtime that brings its own rasterizer.</li>
+    <li>Investigating the pipeline interactively in a script.</li>
+  </ul>
+
+  <h2 id="core">Browser-safe core</h2>
+  <p>
+    The root <code>optical-center</code> export ships only platform-agnostic
+    code. Feed any RGBA buffer (canvas, OffscreenCanvas, Sharp's raw
+    output, <code>ImageData</code>) into <code>getOpticalCenter</code>
+    and apply the result to an SVG string with
+    <code>transformViewBox</code> + <code>applyTransformToSvg</code>.
+  </p>
+
+  <CodeBlock
+    filename="core.ts"
+    lang="ts"
+    code={`import {
+  getOpticalCenter,
+  transformViewBox,
+  applyTransformToSvg,
+} from 'optical-center';
+
+// raster: any RGBA buffer of the rasterized icon
+const offset = getOpticalCenter(raster);
+//          → { dx, dy, dxPercent, dyPercent }
+
+const result = transformViewBox(svg, raster, offset);
+//          → { viewBox, breadcrumb, clipDetected }
+
+const next = applyTransformToSvg(svg, result);
+//          → string with rewritten <svg>`}
+  />
+
+  <h2 id="node">Node helpers</h2>
+  <p>
+    <code>optical-center/node</code> wraps the core with a rasterizer
+    (<code>resvg</code>) so you can start from an SVG string instead of
+    bringing your own pixel buffer. Import only when you actually need
+    Node-only code — pulling this into a client bundle won't work.
+  </p>
+
+  <CodeBlock
+    filename="node-helpers.ts"
+    lang="ts"
+    code={`import { rasterizeSvg } from 'optical-center/node';
+import { getOpticalCenter } from 'optical-center';
+
+const raster = rasterizeSvg(svgString);
+const offset = getOpticalCenter(raster);`}
+  />
+
+  <p>
+    There is also a one-shot helper that wraps rasterize + center +
+    transform in a single call:
+  </p>
+
+  <CodeBlock
+    filename="node-oneshot.ts"
+    lang="ts"
+    code={`import { transformViewBoxFromSvg } from 'optical-center/node';
+
+const result = transformViewBoxFromSvg(svgString);
+//          → { viewBox, breadcrumb, clipDetected }`}
+  />
+
+  <h2 id="end-to-end">End-to-end example</h2>
+  <p>
+    The flow the CLI and Vite plugin use, written out by hand. Every
+    step is independently testable, which is why the adapters never
+    fork the math.
+  </p>
+
+  <CodeBlock
+    filename="end-to-end.ts"
+    lang="ts"
+    code={`import {
+  getOpticalCenter,
+  transformViewBox,
+  applyTransformToSvg,
+} from 'optical-center';
+import { rasterizeSvg } from 'optical-center/node';
+
+const svg = '<svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>';
+const raster = rasterizeSvg(svg);
+const offset = getOpticalCenter(raster);
+const result = transformViewBox(svg, raster, offset);
+const next = applyTransformToSvg(svg, result);
+
+// next is the same string the Vite/Babel/CLI adapters would ship.`}
+  />
+
+  <h2 id="types">Types</h2>
+  <p>Every public function is fully typed. The shared interfaces:</p>
+
+  <CodeBlock
+    filename="types.ts"
+    lang="ts"
+    code={`type Offset = {
+  dx: number;        // pixels in the rasterized image
+  dy: number;
+  dxPercent: number; // percent of the icon's viewBox width
+  dyPercent: number;
+};
+
+type ViewBox = {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+  source: 'attribute' | 'derived' | 'default';
+};
+
+type TransformResult = {
+  viewBox: string;          // "x y w h" — drop into <svg viewBox="…">
+  breadcrumb: Record<string, string>; // data-* attrs for DevTools
+  clipDetected: boolean;    // true if the shift might cut painted pixels
+};`}
+  />
+
+  <aside class="callout callout--tip">
+    <p class="callout-label">Why split node from core</p>
+    <p>
+      <code>resvg</code> is a native binary; shipping it to the browser
+      would crash the bundler. Keeping the rasterizer behind a subpath
+      means a Worker, a Cloudflare Worker, or any other non-Node runtime
+      can still use the centering math by bringing its own raster.
+    </p>
+  </aside>
+</DocsLayout>

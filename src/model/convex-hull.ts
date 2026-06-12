@@ -35,19 +35,19 @@ export function convexHull(points: Point[]): Point[] {
   // Build lower hull
   const lower: Point[] = [];
   for (let i = 0; i < n; i++) {
-    while (lower.length >= 2 && cross(lower[lower.length - 2]!, lower[lower.length - 1]!, sorted[i]!) <= 0) {
+    while (lower.length >= 2 && cross(lower[lower.length - 2], lower[lower.length - 1], sorted[i]) <= 0) {
       lower.pop();
     }
-    lower.push(sorted[i]!);
+    lower.push(sorted[i]);
   }
 
   // Build upper hull
   const upper: Point[] = [];
   for (let i = n - 1; i >= 0; i--) {
-    while (upper.length >= 2 && cross(upper[upper.length - 2]!, upper[upper.length - 1]!, sorted[i]!) <= 0) {
+    while (upper.length >= 2 && cross(upper[upper.length - 2], upper[upper.length - 1], sorted[i]) <= 0) {
       upper.pop();
     }
-    upper.push(sorted[i]!);
+    upper.push(sorted[i]);
   }
 
   // Remove last point of each half because it's repeated
@@ -72,7 +72,7 @@ export function extractBoundaryPoints(
 
   for (let y = 0; y < height; y += step) {
     for (let x = 0; x < width; x += step) {
-      if (weights[y * width + x]! > threshold) {
+      if (weights[y * width + x] > threshold) {
         points.push({ x: x + 0.5, y: y + 0.5 });
       }
     }
@@ -87,11 +87,11 @@ export function extractBoundaryPoints(
  */
 export function hullCentroid(hull: Point[]): Point {
   if (hull.length === 0) return { x: 0, y: 0 };
-  if (hull.length === 1) return { ...hull[0]! };
+  if (hull.length === 1) return { ...hull[0] };
   if (hull.length === 2) {
     return {
-      x: (hull[0]!.x + hull[1]!.x) / 2,
-      y: (hull[0]!.y + hull[1]!.y) / 2,
+      x: (hull[0].x + hull[1].x) / 2,
+      y: (hull[0].y + hull[1].y) / 2,
     };
   }
 
@@ -101,8 +101,8 @@ export function hullCentroid(hull: Point[]): Point {
 
   for (let i = 0; i < hull.length; i++) {
     const j = (i + 1) % hull.length;
-    const a = hull[i]!;
-    const b = hull[j]!;
+    const a = hull[i];
+    const b = hull[j];
     const f = a.x * b.y - b.x * a.y;
     signedArea += f;
     cx += (a.x + b.x) * f;

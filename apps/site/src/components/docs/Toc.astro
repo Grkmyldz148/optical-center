@@ -1,0 +1,167 @@
+---
+/*
+ * "On this page" — right-rail TOC. Pages pass in their own headings list
+ * (rather than auto-extracted) so the docs author controls exactly what
+ * appears and the indentation is explicit. Scrollspy runs in a tiny TS
+ * snippet at the bottom: as the user scrolls, the heading nearest the top
+ * of the viewport picks up `is-active` styling.
+ */
+export type TocItem = {
+  id: string;
+  label: string;
+  level?: 2 | 3; // 2 = top-level, 3 = nested. Default 2.
+};
+
+type Props = {
+  items: readonly TocItem[];
+};
+
+const { items } = Astro.props as Props;
+---
+
+{items.length > 0 && (
+  <aside class="docs-toc" aria-label="On this page">
+    <p class="docs-toc__label">On this page</p>
+    <nav class="docs-toc__nav">
+      <ul class="docs-toc__list">
+        {items.map((item) => (
+          <li class={`docs-toc__item docs-toc__item--l${item.level ?? 2}`}>
+            <a
+              class="docs-toc__link"
+              href={`#${item.id}`}
+              data-toc-link={item.id}
+            >
+              {item.label}
+            </a>
+          </li>
+        ))}
+      </ul>
+    </nav>
+  </aside>
+)}
+
+<script>
+  /*
+   * Scrollspy — pick the heading whose top is closest to (but not past)
+   * the sticky header's bottom edge. Updates on scroll with rAF
+   * throttling so it stays cheap even on long pages.
+   *
+   * The 88px offset = sticky header (73px) + a small breathing margin so
+   * the "active" link switches a touch before the heading hits the very
+   * top, matching the reader's natural eye position.
+   */
+  const links = document.querySelectorAll<HTMLAnchorElement>("[data-toc-link]");
+  if (links.length > 0) {
+    const headings = Array.from(links)
+      .map((l) => {
+        const id = l.dataset.tocLink;
+        if (!id) return null;
+        const el = document.getElementById(id);
+        return el ? { id, el, link: l } : null;
+      })
+      .filter((x): x is { id: string; el: HTMLElement; link: HTMLAnchorElement } => x !== null);
+
+    const OFFSET = 88;
+    let raf = 0;
+
+    function update(): void {
+      const y = window.scrollY + OFFSET;
+      let activeIndex = 0;
+      for (let i = 0; i < headings.length; i++) {
+        if (headings[i].el.offsetTop <= y) activeIndex = i;
+        else break;
+      }
+      headings.forEach((h, i) => {
+        h.link.classList.toggle("is-active", i === activeIndex);
+      });
+    }
+
+    function schedule(): void {
+      if (raf) return;
+      raf = requestAnimationFrame(() => {
+        raf = 0;
+        update();
+      });
+    }
+
+    update();
+    window.addEventListener("scroll", schedule, { passive: true });
+    window.addEventListener("resize", schedule);
+  }
+</script>
+
+<style>
+  .docs-toc {
+    position: sticky;
+    top: calc(73px + var(--sp-4));
+    align-self: start;
+    max-height: calc(100vh - 73px - var(--sp-8));
+    overflow-y: auto;
+    padding-block: var(--sp-6);
+    padding-left: var(--sp-4);
+    border-left: var(--line-w) solid var(--color-line);
+  }
+
+  .docs-toc__label {
+    font-family: var(--font-mono);
+    font-size: var(--fs-xs);
+    font-weight: var(--fw-medium);
+    letter-spacing: var(--ls-wide);
+    text-transform: uppercase;
+    color: var(--color-muted-fg);
+    margin: 0 0 var(--sp-3);
+    padding-inline: var(--sp-2);
+  }
+
+  .docs-toc__list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    gap: 0;
+  }
+
+  .docs-toc__item--l3 {
+    /* Nested headings: small left indent so they read as children of the
+       previous H2 without a separate visual treatment. */
+    padding-left: var(--sp-4);
+  }
+
+  .docs-toc__link {
+    display: block;
+    padding: var(--sp-2) var(--sp-3);
+    font-family: var(--font-body);
+    font-size: var(--fs-sm);
+    line-height: var(--lh-snug);
+    color: var(--color-muted-fg);
+    border-left: 2px solid transparent;
+    margin-left: -2px;
+    transition:
+      color 0.16s ease,
+      border-color 0.16s ease;
+  }
+  .docs-toc__link:hover,
+  .docs-toc__link:focus-visible {
+    color: var(--color-fg);
+  }
+  .docs-toc__link.is-active {
+    color: var(--color-accent-text);
+    border-left-color: var(--color-accent);
+  }
+
+  /* ─────────────────────────  Responsive  ─────────────────────────── */
+  @media (max-width: 1180px) {
+    /* TOC hidden on medium and below — sidebar + content already fill the
+       width, and the page headings are reachable via the URL fragment if
+       a user really needs them. */
+    .docs-toc {
+      display: none;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .docs-toc__link {
+      transition: none;
+    }
+  }
+</style>

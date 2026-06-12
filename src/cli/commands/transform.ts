@@ -17,6 +17,14 @@ import { isTimeoutError, withTimeout } from '../../node/timeout.js';
 import { buildWarning } from '../../core/warnings.js';
 import type { WarningRecord } from '../../core/warnings.js';
 
+import { banner } from '../caret/components/banner.js';
+import { divider } from '../caret/components/divider.js';
+import { error as caretError } from '../caret/components/error.js';
+import { keyValue } from '../caret/components/key-value.js';
+import { paintAccent, paintBold, paintDim, paintSemantic } from '../caret/lib/paint.js';
+import { defaultTheme } from '../caret/theme/default.js';
+import { capability } from '../caret/lib/capability.js';
+
 import { getBoolFlag, getStringFlag } from '../argv.js';
 import {
   readOutputOptions,
@@ -26,6 +34,8 @@ import {
 } from '../output.js';
 import type { OutputOptions } from '../output.js';
 import { PathSafetyError, checkPathSafety } from '../path-safety.js';
+import { pickMode } from '../render.js';
+import type { RenderMode } from '../render.js';
 
 interface CachedTransform {
   readonly viewBox: string;
@@ -63,9 +73,12 @@ export async function runTransform(
   flags: Readonly<Record<string, string | boolean>>,
 ): Promise<number> {
   const output = readOutputOptions(flags);
+  const mode = pickMode(output);
   const inputArg = positionals[0];
-  if (!inputArg) {
-    writeStderr('error: transform requires an <input> path', output);
+  if (inputArg === undefined) {
+    emitError('transform requires an <input> path', output, mode, {
+      hint: 'optical-center transform path/to/icons [output]',
+    });
     return 3;
   }
   const outputArg = positionals[1] ?? inputArg;
@@ -78,15 +91,15 @@ export async function runTransform(
 
   try {
     await checkPathSafety(inputArg, { allowOutsideCwd });
-    if (positionals[1]) {
+    if (positionals[1] !== undefined) {
       await checkPathSafety(positionals[1], { allowOutsideCwd });
     }
-  } catch (error) {
-    if (error instanceof PathSafetyError) {
-      writeStderr(`error: ${error.message}`, output);
+  } catch (err) {
+    if (err instanceof PathSafetyError) {
+      emitError(err.message, output, mode);
       return 3;
     }
-    throw error;
+    throw err;
   }
 
   const cache = useCache
@@ -101,9 +114,17 @@ export async function runTransform(
   let svgFiles: string[];
   try {
     svgFiles = await collectSvgFiles(inputRoot);
-  } catch (error) {
-    writeStderr(`error: cannot read input ${inputRoot}: ${describe(error)}`, output);
+  } catch (err) {
+    emitError(`cannot read input ${inputRoot}: ${describe(err)}`, output, mode);
     return 3;
+  }
+
+  if (mode === 'tty') {
+    banner({
+      title: 'optical-center transform',
+      subtitle: inputRoot === outputRoot ? `${inputRoot} (in place)` : `${inputRoot} → ${outputRoot}`,
+    });
+    process.stdout.write('\n');
   }
 
   const reports: FileReport[] = [];
@@ -119,13 +140,30 @@ export async function runTransform(
       output,
     });
     reports.push(report);
-    emitProgress(report, output);
+    emitProgress(report, output, mode);
   }
 
   const summary = buildSummary(reports, performance.now() - t0, cache);
 
-  if (output.json) {
+  if (mode === 'json') {
     writeJson('transform', { summary, files: reports }, output);
+  } else if (mode === 'tty') {
+    process.stdout.write('\n');
+    divider({ label: 'Summary', align: 'left' });
+    keyValue({
+      rows: [
+        { key: 'transformed', value: `${summary.transformed} / ${summary.inputCount}` },
+        { key: 'duration', value: `${summary.durationMs.toFixed(0)} ms` },
+        { key: 'clip warnings', value: summary.clipDetected },
+        { key: 'failures', value: summary.failed },
+        {
+          key: 'cache',
+          value: `l1=${summary.cache.l1Hits} l2=${summary.cache.l2Hits} miss=${summary.cache.misses} write=${summary.cache.writes}`,
+        },
+      ],
+      highlightKeys: true,
+      width: 88,
+    });
   } else {
     writeStdout(formatSummary(summary), output);
   }
@@ -150,12 +188,12 @@ async function processFile(
   let svg: string;
   try {
     svg = await readFile(file, 'utf8');
-  } catch (error) {
+  } catch (err) {
     return {
       file: relPath,
       status: 'failed',
       warning: buildWarning('OPTICAL_RASTERIZE_FAILED', {
-        message: `read failed: ${describe(error)}`,
+        message: `read failed: ${describe(err)}`,
         location: relPath,
       }),
     };
@@ -195,15 +233,15 @@ async function processFile(
           ),
         { limitMs: ctx.timeoutMs, location: relPath },
       );
-    } catch (error) {
-      const code = isTimeoutError(error)
+    } catch (err) {
+      const code = isTimeoutError(err)
         ? 'OPTICAL_TIMEOUT'
         : 'OPTICAL_RASTERIZE_FAILED';
       return {
         file: relPath,
         status: 'failed',
         warning: buildWarning(code, {
-          message: describe(error),
+          message: describe(err),
           location: relPath,
         }),
       };
@@ -228,12 +266,12 @@ async function processFile(
   try {
     await mkdir(dirname(target), { recursive: true });
     await writeFile(target, next);
-  } catch (error) {
+  } catch (err) {
     return {
       file: relPath,
       status: 'failed',
       warning: buildWarning('OPTICAL_CACHE_WRITE_FAIL', {
-        message: `write failed: ${describe(error)}`,
+        message: `write failed: ${describe(err)}`,
         location: relPath,
       }),
     };
@@ -309,8 +347,12 @@ function chooseExitCode(reports: ReadonlyArray<FileReport>, strict: boolean): nu
   return 0;
 }
 
-function emitProgress(report: FileReport, output: OutputOptions): void {
-  if (output.json) return;
+function emitProgress(report: FileReport, output: OutputOptions, mode: RenderMode): void {
+  if (mode === 'json') return;
+  if (mode === 'tty') {
+    emitProgressTty(report);
+    return;
+  }
   if (report.status === 'failed') {
     writeStderr(`error: ${report.file}: ${report.warning?.message ?? 'unknown'}`, output);
     return;
@@ -322,12 +364,60 @@ function emitProgress(report: FileReport, output: OutputOptions): void {
   }
 }
 
+function emitProgressTty(report: FileReport): void {
+  const cap = capability();
+  const sym = defaultTheme.symbols;
+  const accent = paintAccent(defaultTheme);
+  const bold = paintBold();
+  const dim = paintDim();
+  const success = paintSemantic(defaultTheme, 'success');
+  const warn = paintSemantic(defaultTheme, 'warning');
+  const danger = paintSemantic(defaultTheme, 'danger');
+
+  let symbol: string;
+  let detail = '';
+  if (report.status === 'failed') {
+    symbol = danger(cap.unicode ? sym.state.failure : 'X');
+    detail = danger(report.warning?.message ?? 'failed');
+  } else if (report.warning !== undefined) {
+    symbol = warn(cap.unicode ? sym.state.warning : '!');
+    detail = warn(report.warning.code);
+  } else if (report.cacheHit !== undefined && report.cacheHit !== null) {
+    symbol = accent(cap.unicode ? sym.state.success : '*');
+    detail = dim(`cache ${report.cacheHit}`);
+  } else {
+    symbol = success(cap.unicode ? sym.state.success : 'v');
+  }
+
+  const line = detail !== ''
+    ? `${symbol} ${bold(report.file)} ${dim('—')} ${detail}`
+    : `${symbol} ${bold(report.file)}`;
+
+  // Progress lines belong on stderr per the Output Contract.
+  process.stderr.write(line + '\n');
+}
+
 function formatSummary(summary: Summary): string {
   return [
     `transformed ${summary.transformed}/${summary.inputCount} svg files in ${summary.durationMs.toFixed(0)}ms`,
     `clip warnings: ${summary.clipDetected}, failures: ${summary.failed}`,
     `cache: l1=${summary.cache.l1Hits} l2=${summary.cache.l2Hits} miss=${summary.cache.misses} write=${summary.cache.writes}`,
   ].join('\n');
+}
+
+function emitError(
+  message: string,
+  output: OutputOptions,
+  mode: RenderMode,
+  options: { hint?: string } = {},
+): void {
+  if (mode === 'tty') {
+    const opts: Parameters<typeof caretError>[1] = {};
+    if (options.hint !== undefined) opts.hint = options.hint;
+    caretError(message, opts);
+    return;
+  }
+  writeStderr(`error: ${message}`, output);
 }
 
 function describe(error: unknown): string {

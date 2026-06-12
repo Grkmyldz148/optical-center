@@ -1,0 +1,223 @@
+---
+import DocsLayout from "../../layouts/DocsLayout.astro";
+import CodeBlock from "../../components/docs/CodeBlock.astro";
+
+const toc = [
+  { id: "when", label: "When to use the CLI", level: 2 as const },
+  { id: "interactive", label: "Interactive wizard", level: 2 as const },
+  { id: "commands", label: "Commands", level: 2 as const },
+  { id: "init", label: "init", level: 3 as const },
+  { id: "transform", label: "transform", level: 3 as const },
+  { id: "info", label: "info", level: 3 as const },
+  { id: "analyze", label: "analyze", level: 3 as const },
+  { id: "clear-cache", label: "clear-cache", level: 3 as const },
+  { id: "version", label: "version", level: 3 as const },
+  { id: "flags", label: "Common flags", level: 2 as const },
+  { id: "exit-codes", label: "Exit codes", level: 2 as const },
+  { id: "json-output", label: "JSON output", level: 2 as const },
+];
+---
+
+<DocsLayout
+  title="CLI"
+  description="The optical-center binary. Asset-level batch processing — point it at a folder of SVGs and it rewrites their viewBoxes on disk. JSON-able output, clean stream contracts, composes inside CI pipelines."
+  toc={toc}
+>
+  <h2 id="when">When to use the CLI</h2>
+  <p>
+    The CLI operates on SVG files directly — it has no view of CSS
+    rules or JSX wrappers. Reach for it when you want to:
+  </p>
+  <ul>
+    <li>Pre-process an icon set once and check the corrected files into a repo.</li>
+    <li>Inspect a single icon to see what the pipeline computes for it.</li>
+    <li>Aggregate a library to find which icons need the largest correction.</li>
+    <li>Run in CI as a check (with <code>--strict</code>) that no icon trips a warning.</li>
+  </ul>
+  <p>
+    For runtime use inside a build, prefer the
+    <a href="/docs/install#wire-vite">Vite</a> or
+    <a href="/docs/install#wire-postcss">PostCSS</a> plugin — the CLI
+    is for batch operations, not per-build wiring.
+  </p>
+
+  <h2 id="interactive">Interactive wizard</h2>
+  <p>
+    Run the binary with no arguments in a real terminal and it opens a
+    menu instead of printing the help page: pick a command with the
+    arrow keys, fill in the inputs (paths are validated against the
+    filesystem before anything runs), and the wizard prints the
+    equivalent one-shot invocation before dispatching — so it doubles
+    as a flag tutorial. After each command the menu returns; run
+    several in one session and leave with <code>exit</code> or esc.
+  </p>
+  <CodeBlock bare lang="bash" code={`npx optical-center`} />
+  <p>
+    The wizard only ever appears on a TTY. Pipes, CI logs,
+    <code>--json</code>, and <code>--silent</code> always get the
+    stable plain-text contract, so nothing scripted ever blocks on a
+    prompt. A session closed normally exits <code>0</code> regardless
+    of per-command warnings — the codes below are the contract for the
+    non-interactive surface.
+  </p>
+
+  <h2 id="commands">Commands</h2>
+
+  <h3 id="init">init</h3>
+  <p>
+    Wires optical-center into a project. Detects the framework
+    (Vite, Astro, Tailwind, PostCSS, Babel) from
+    <code>package.json</code> and existing config files, detects the
+    package manager from the lockfile, installs the dependency, and
+    patches the config — <code>opticalCenter()</code> first in Vite's
+    <code>plugins</code> array, <em>after</em> Tailwind in PostCSS's,
+    and so on. Creates a minimal config when none exists.
+  </p>
+  <CodeBlock
+    bare
+    lang="bash"
+    code={`npx optical-center init                          # interactive: select + confirm
+npx optical-center init --integration vite --yes # non-interactive
+npx optical-center init ./my-app --dry-run       # report, write nothing`}
+  />
+  <p>
+    Flags: <code>--integration=&lt;vite|astro|postcss|tailwind|babel&gt;</code>,
+    <code>--yes</code>, <code>--no-install</code>,
+    <code>--pm=&lt;npm|pnpm|yarn|bun&gt;</code>, <code>--dry-run</code>.
+    When a config file's shape can't be edited confidently, init prints
+    a paste-ready snippet and exits <code>1</code> instead of guessing —
+    it never rewrites code it doesn't recognise, and re-running it is
+    always safe (already-wired files are left untouched).
+  </p>
+
+  <h3 id="transform">transform</h3>
+  <p>Rewrites every SVG in <code>{`<input>`}</code> and writes results to <code>[output]</code>. Folder in, folder out.</p>
+  <CodeBlock bare lang="bash" code={`npx optical-center transform <input> [output]`} />
+
+  <h3 id="info">info</h3>
+  <p>Inspects a single SVG. Returns the original viewBox, the corrected viewBox, and the offset in both pixels and percent.</p>
+  <CodeBlock bare lang="bash" code={`npx optical-center info <svg> [--json]`} />
+
+  <h3 id="analyze">analyze</h3>
+  <p>Aggregates a folder of SVGs. Returns a top-N report sorted by offset magnitude — useful for finding which icons in a library need the largest corrections.</p>
+  <CodeBlock bare lang="bash" code={`npx optical-center analyze <folder> [--json]`} />
+
+  <h3 id="clear-cache">clear-cache</h3>
+  <p>Drops the content-addressable cache. The cache is normally self-managing (keyed by SVG bytes + algorithm version) so manual clears are rarely needed.</p>
+  <CodeBlock bare lang="bash" code={`npx optical-center clear-cache [--all]`} />
+
+  <h3 id="version">version</h3>
+  <p>Prints the package version and algorithm version. Useful inside CI logs.</p>
+  <CodeBlock bare lang="bash" code={`npx optical-center version`} />
+
+  <h2 id="flags">Common flags</h2>
+  <table>
+    <thead>
+      <tr>
+        <th>Flag</th>
+        <th>Effect</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><code>--json</code></td>
+        <td>Emits machine-readable JSON on stdout. Progress and warnings still go to stderr.</td>
+      </tr>
+      <tr>
+        <td><code>--strict</code></td>
+        <td>Promotes warnings to a non-zero exit code so CI fails on (for example) <code>OPTICAL_CLIP_DETECTED</code>.</td>
+      </tr>
+      <tr>
+        <td><code>--no-cache</code></td>
+        <td>Skips the disk cache; recomputes every icon from scratch.</td>
+      </tr>
+      <tr>
+        <td><code>--cache-dir=&lt;path&gt;</code></td>
+        <td>Overrides the cache directory. Defaults to the OS cache location.</td>
+      </tr>
+      <tr>
+        <td><code>--emit-metadata</code></td>
+        <td>
+          Adds <code>data-optical-original-viewbox</code> and
+          <code>data-optical-offset</code> attributes for DevTools
+          inspection. On for <code>info</code>, off for production
+          <code>transform</code>.
+        </td>
+      </tr>
+      <tr>
+        <td><code>--silent</code></td>
+        <td>Suppresses progress logs on stderr. Errors still surface.</td>
+      </tr>
+      <tr>
+        <td><code>--quiet</code></td>
+        <td>Suppresses warnings on stderr. Stronger than <code>--silent</code>.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2 id="exit-codes">Exit codes</h2>
+  <p>The exit code is the contract between the CLI and your CI script. Every command follows the same scheme:</p>
+  <table>
+    <thead>
+      <tr>
+        <th>Code</th>
+        <th>Meaning</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr><td><code>0</code></td><td>Success.</td></tr>
+      <tr><td><code>1</code></td><td>Success with warnings (or <code>--strict</code> tripped on a warning).</td></tr>
+      <tr><td><code>2</code></td><td>Recoverable error — one or more files failed but the run continued.</td></tr>
+      <tr><td><code>3</code></td><td>Fatal — the run aborted (invalid args, IO failure, etc).</td></tr>
+    </tbody>
+  </table>
+  <p>
+    Heads-up for script runners: exit code <code>1</code> means
+    <em>success with warnings</em> (clip detection, derived viewBox),
+    but yarn and npm print a "command failed" banner for any non-zero
+    exit. That banner is the runner talking, not a crash — the actual
+    warning is on stderr. Use <code>--strict</code> when you
+    <em>want</em> warnings to fail CI; otherwise treat <code>1</code>
+    as a soft pass.
+  </p>
+
+  <h2 id="json-output">JSON output</h2>
+  <p>With <code>--json</code>, stdout is data only — pipe it into <code>jq</code> or read from a CI job.</p>
+
+  <CodeBlock
+    filename="terminal"
+    lang="bash"
+    code={`$ optical-center info ./icons/play.svg --json`}
+  />
+
+  <CodeBlock
+    filename="stdout"
+    lang="json"
+    code={`{
+  "schemaVersion": 1,
+  "command": "info",
+  "result": {
+    "file": ".../play.svg",
+    "originalViewBox": { "x": 0, "y": 0, "w": 24, "h": 24, "source": "attribute" },
+    "newViewBox": "-0.3239 -0.6226 24 24",
+    "offset": {
+      "dxPercent": 1.3497,
+      "dyPercent": 2.5944,
+      "dx": 1.62,
+      "dy": 3.11
+    },
+    "clipDetected": false,
+    "breadcrumb": {
+      "data-optical-center": "",
+      "data-optical-original-viewbox": "0 0 24 24",
+      "data-optical-offset": "1.3497% 2.5944%"
+    }
+  },
+  "version": {
+    "package": "0.2.0-alpha.0",
+    "algorithm": "1.0.0-v2",
+    "schema": 1
+  }
+}`}
+  />
+</DocsLayout>

@@ -1,0 +1,981 @@
+---
+/*
+ * Science — how the optical centering algorithm models the human eye.
+ *
+ *   1.  Header — eyebrow + display title + lead. Same rhythm as Hero/Problem.
+ *   2.  Pipeline — a single SVG of the data flow. The blend is the only
+ *       part of the algorithm with structural interest, so it's drawn out
+ *       as a 3-way branch instead of hidden behind a "blend" black box.
+ *       Each chip carries `data-science-chip="<num>"` matching a stage card
+ *       below; hovering / focusing a card highlights its chip via a tiny TS
+ *       handler. Mobile: the SVG scrolls horizontally below ~640px so the
+ *       mono labels never compress below readable size.
+ *   3.  Six stage cards — number + a small line-art glyph + title +
+ *       citation + body + tail. The tail is either a formula (mono code,
+ *       stages 01/02/06) or a weight pill (stages 03/04/05 — the three
+ *       that contribute to the blend, 40/30/30).
+ *
+ * Content kept tight: each body is one short paragraph, the citation lends
+ * credibility without becoming a reference list, and the formulas are short
+ * enough to read inline. The references section from the source page is
+ * intentionally omitted — citations on each card carry the same weight in
+ * less space.
+ */
+type Stage = {
+  num: string;
+  chip: string;
+  title: string;
+  citation: string;
+  body: string;
+  formula?: string;
+  weight?: { value: string; subject: string };
+};
+
+const STAGES: readonly Stage[] = [
+  {
+    num: "01",
+    chip: "dog",
+    title: "Retinal edge detection",
+    citation: "Marr & Hildreth, 1980",
+    body: "Your retina sharpens edges and suppresses flat regions through ON-center / OFF-surround receptive fields. We mirror that with a Difference of Gaussians filter.",
+    formula: "DoG = G(σ=1.0) − G(σ=1.6)",
+  },
+  {
+    num: "02",
+    chip: "compress",
+    title: "Cortical compression",
+    citation: "Naka & Rushton, 1966",
+    body: "V1 neurons respond on a compressive curve. Dense regions get tamed, edges gain weight — which is why a contour reads louder than its fill.",
+    formula: "w′ = w^0.7",
+  },
+  {
+    num: "03",
+    chip: "edge",
+    title: "Contour dominance",
+    citation: "Proffitt, Cutting & Stier, 1983",
+    body: "You see a shape's center by its boundary, not its mass. We take an edge-weighted centroid via a Sobel pass on the compressed weight map.",
+    weight: { value: "40%", subject: "edge centroid" },
+  },
+  {
+    num: "04",
+    chip: "hull",
+    title: "Bounding shape",
+    citation: "Andrew, 1979 · monotone chain",
+    body: "The convex hull of visible pixels traces the shape's outer envelope. Its centroid captures the structural balance the eye picks up at a glance.",
+    weight: { value: "30%", subject: "hull centroid" },
+  },
+  {
+    num: "05",
+    chip: "sym",
+    title: "Symmetry detection",
+    citation: "Sasaki et al., 2005",
+    body: "The Lateral Occipital Complex spots symmetry in ~220 ms. When axes line up, perceived center snaps to their intersection. We scan 36 angles to find the dominant one.",
+    weight: { value: "30%", subject: "symmetry axis" },
+  },
+  {
+    num: "06",
+    chip: "bias",
+    title: "Vertical bias",
+    citation: "Drain & Reuter-Lorenz, 1996",
+    body: "People consistently see a shape's center slightly above its geometric midpoint. We apply a 3.5% upward shift — a well-documented perceptual bias.",
+    formula: "cy −= height × 0.035",
+  },
+];
+
+/*
+ * Stage glyphs — 16×16 line-art, stroke=currentColor. Each one whispers what
+ * the stage does without leaning on emoji. set:html keeps the data terse;
+ * inputs are static strings, not user content.
+ */
+const STAGE_GLYPHS: Record<string, string> = {
+  "01": '<ellipse cx="8" cy="8" rx="6.4" ry="3.6" fill="none" stroke="currentColor" stroke-width="1.4"/><circle cx="8" cy="8" r="1.3" fill="currentColor"/>',
+  "02": '<path d="M 2.5 13.5 L 2.5 2.5 M 2.5 13.5 L 13.5 13.5" stroke="currentColor" stroke-width="1.2" fill="none" stroke-linecap="round"/><path d="M 2.5 13.5 C 5 13.5 8 8 13.5 2.5" stroke="currentColor" stroke-width="1.6" fill="none" stroke-linecap="round"/>',
+  "03": '<polygon points="8 2.6 13.6 13.2 2.4 13.2" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/>',
+  "04": '<polygon points="8 2 13.5 5.5 13.5 10.5 8 14 2.5 10.5 2.5 5.5" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/>',
+  "05": '<line x1="8" y1="1.8" x2="8" y2="14.2" stroke="currentColor" stroke-width="1.2" stroke-dasharray="1.5 1.6"/><polyline points="4.6 6 2.6 8 4.6 10" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/><polyline points="11.4 6 13.4 8 11.4 10" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>',
+  "06": '<line x1="2.6" y1="13.4" x2="13.4" y2="13.4" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/><line x1="8" y1="11.2" x2="8" y2="3.4" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/><polyline points="5.2 6.2 8 3.4 10.8 6.2" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>',
+};
+
+/*
+ * Pipeline chip geometry. Coordinates live in viewBox space (730×180).
+ * Order is the source of truth for both the SVG render and the hover sync;
+ * the `chip` key matches Stage.chip so card → chip highlight is a direct
+ * attribute lookup.
+ */
+type Chip = {
+  id: string;
+  x: number;
+  y: number;
+  w: number;
+  label: string;
+  emphasis?: "out";
+};
+
+const CHIP_H = 36;
+const ROW_Y = 72;
+const TOP_Y = 16;
+const BOT_Y = 128;
+
+const CHIPS: readonly Chip[] = [
+  { id: "pixels",   x: 8,   y: ROW_Y, w: 70,  label: "pixels" },
+  { id: "dog",      x: 98,  y: ROW_Y, w: 100, label: "DoG filter" },
+  { id: "compress", x: 218, y: ROW_Y, w: 86,  label: "compress" },
+  { id: "edge",     x: 324, y: TOP_Y, w: 180, label: "edge centroid · 40%" },
+  { id: "hull",     x: 324, y: ROW_Y, w: 180, label: "hull centroid · 30%" },
+  { id: "sym",      x: 324, y: BOT_Y, w: 180, label: "symmetry axis · 30%" },
+  { id: "bias",     x: 524, y: ROW_Y, w: 76,  label: "+ bias" },
+  { id: "out",      x: 620, y: ROW_Y, w: 100, label: "( dx, dy )", emphasis: "out" },
+];
+
+/* Connector lines — drawn before chips so chips paint on top. */
+const LINES: readonly { x1: number; y1: number; x2: number; y2: number }[] = [
+  { x1: 78,  y1: 90, x2: 98,  y2: 90 },
+  { x1: 198, y1: 90, x2: 218, y2: 90 },
+  { x1: 304, y1: 90, x2: 324, y2: 34 },
+  { x1: 304, y1: 90, x2: 324, y2: 90 },
+  { x1: 304, y1: 90, x2: 324, y2: 146 },
+  { x1: 504, y1: 34, x2: 524, y2: 90 },
+  { x1: 504, y1: 90, x2: 524, y2: 90 },
+  { x1: 504, y1: 146, x2: 524, y2: 90 },
+  { x1: 600, y1: 90, x2: 620, y2: 90 },
+];
+
+/*
+ * References — the published papers behind each stage. Quoted verbatim from
+ * the source: authors, year, paper title, journal, volume(issue), pages.
+ * `stageNum` links a row to its corresponding stage card via fragment;
+ * Heeger gets `framework: true` because it underlies the normalization
+ * framing across stages 01–02 rather than mapping to one of them.
+ */
+type Reference = {
+  id: string;
+  authors: string;
+  year: string;
+  title: string;
+  journal: string;
+  details: string;
+  stageNum?: string;
+  framework?: boolean;
+};
+
+const REFERENCES: readonly Reference[] = [
+  {
+    id: "R1",
+    authors: "Marr, D. & Hildreth, E.",
+    year: "1980",
+    title: "Theory of edge detection.",
+    journal: "Proceedings of the Royal Society B",
+    details: "207(1167), 187–217.",
+    stageNum: "01",
+  },
+  {
+    id: "R2",
+    authors: "Naka, K.I. & Rushton, W.A.H.",
+    year: "1966",
+    title: "S-potentials from luminosity units in the retina of fish.",
+    journal: "Journal of Physiology",
+    details: "185, 587–599.",
+    stageNum: "02",
+  },
+  {
+    id: "R3",
+    authors: "Proffitt, D.R., Cutting, J.E. & Stier, D.M.",
+    year: "1983",
+    title: "Perception of the centroid of irregular shapes.",
+    journal: "Perception & Psychophysics",
+    details: "33(4), 383–388.",
+    stageNum: "03",
+  },
+  {
+    id: "R4",
+    authors: "Sasaki, Y. et al.",
+    year: "2005",
+    title: "Symmetry activates extrastriate visual cortex in human and nonhuman primates.",
+    journal: "PNAS",
+    details: "102(8), 3159–3163.",
+    stageNum: "05",
+  },
+  {
+    id: "R5",
+    authors: "Drain, M. & Reuter-Lorenz, P.A.",
+    year: "1996",
+    title: "Vertical orienting control: Evidence for attentional bias.",
+    journal: "Canadian Journal of Experimental Psychology",
+    details: "50(2), 181–190.",
+    stageNum: "06",
+  },
+  {
+    id: "R6",
+    authors: "Heeger, D.J.",
+    year: "1992",
+    title: "Normalization of cell responses in cat striate cortex.",
+    journal: "Visual Neuroscience",
+    details: "9(2), 181–197.",
+    framework: true,
+  },
+];
+---
+
+<section class="science" id="science" aria-labelledby="science-title">
+  <div class="science__inner">
+    <header class="science__head">
+      <p class="science__eyebrow">Science</p>
+      <h2 class="science__title" id="science-title">
+        How we model <span class="science__title-accent">the human eye</span>.
+      </h2>
+      <p class="science__sub">
+        No guesswork. Each stage of the algorithm simulates a step your visual
+        cortex actually performs &mdash; from retinal edge detection to
+        cortical compression. The pipeline is grounded in published
+        neuroscience.
+      </p>
+    </header>
+
+    <div class="science__pipeline">
+      <div class="science__pipeline-head">
+        <p class="science__pipeline-label">Pipeline</p>
+        <p class="science__pipeline-desc">
+          Every icon passes through this at build time. The output is a
+          single <code>(dx, dy)</code> offset in viewBox units.
+        </p>
+      </div>
+
+      <div class="science__pipeline-frame">
+        <svg
+          class="science__pipeline-svg"
+          viewBox="0 0 730 180"
+          role="img"
+          aria-label="Pipeline: pixels feed a DoG filter, then a power-law compress. The compressed weight map splits three ways into an edge centroid (40%), a hull centroid (30%), and a symmetry axis (30%). The three are blended and shifted by a vertical bias to produce a single (dx, dy) offset."
+        >
+          <defs>
+            <marker
+              id="science-arrow"
+              viewBox="0 0 10 10"
+              refX="9"
+              refY="5"
+              markerWidth="6"
+              markerHeight="6"
+              orient="auto"
+            >
+              <path d="M 0 0 L 10 5 L 0 10 Z" class="science__pipeline-arrowhead" />
+            </marker>
+          </defs>
+
+          {LINES.map((l) => (
+            <line
+              x1={l.x1}
+              y1={l.y1}
+              x2={l.x2}
+              y2={l.y2}
+              class="science__pipeline-line"
+              marker-end="url(#science-arrow)"
+            />
+          ))}
+
+          {CHIPS.map((chip) => (
+            <g
+              class={`science__pipeline-chip${chip.emphasis === "out" ? " science__pipeline-chip--out" : ""}`}
+              data-science-chip={chip.id}
+            >
+              <rect
+                x={chip.x}
+                y={chip.y}
+                width={chip.w}
+                height={CHIP_H}
+                rx="4"
+                class="science__pipeline-chip-rect"
+              />
+              <text
+                x={chip.x + chip.w / 2}
+                y={chip.y + CHIP_H / 2}
+                dominant-baseline="central"
+                text-anchor="middle"
+                class="science__pipeline-chip-text"
+              >
+                {chip.label}
+              </text>
+            </g>
+          ))}
+        </svg>
+      </div>
+    </div>
+
+    <ol class="science__stages" role="list">
+      {STAGES.map((stage) => (
+        <li
+          class="science__stage"
+          id={`science-stage-${stage.num}`}
+          data-science-stage={stage.chip}
+          tabindex="0"
+        >
+          <div class="science__stage-head">
+            <span class="science__stage-num" aria-hidden="true">{stage.num}</span>
+            <svg
+              class="science__stage-glyph"
+              viewBox="0 0 16 16"
+              width="20"
+              height="20"
+              aria-hidden="true"
+              set:html={STAGE_GLYPHS[stage.num]}
+            />
+          </div>
+          <h3 class="science__stage-title">{stage.title}</h3>
+          <p class="science__stage-citation">{stage.citation}</p>
+          <p class="science__stage-body">{stage.body}</p>
+
+          {stage.formula && (
+            <code class="science__stage-formula">{stage.formula}</code>
+          )}
+          {stage.weight && (
+            <p class="science__stage-weight">
+              <span class="science__stage-weight-value">{stage.weight.value}</span>
+              <span class="science__stage-weight-subject">{stage.weight.subject}</span>
+            </p>
+          )}
+        </li>
+      ))}
+    </ol>
+
+    <section class="science__refs" aria-labelledby="science-refs-title">
+      <header class="science__refs-head">
+        <p class="science__refs-label" id="science-refs-title">References</p>
+        <p class="science__refs-desc">
+          The papers behind each stage. Heeger (1992) underlies the
+          normalization framing throughout.
+        </p>
+      </header>
+
+      <ol class="science__refs-list" role="list">
+        {REFERENCES.map((ref) => (
+          <li class="science__refs-item">
+            <span class="science__refs-id" aria-hidden="true">{ref.id}</span>
+            <div class="science__refs-body">
+              <p class="science__refs-meta">
+                <span class="science__refs-authors">{ref.authors}</span>
+                <span class="science__refs-sep" aria-hidden="true">·</span>
+                <span class="science__refs-year">{ref.year}</span>
+              </p>
+              <p class="science__refs-title">{ref.title}</p>
+              <p class="science__refs-source">
+                <span class="science__refs-journal">{ref.journal}</span>
+                <span class="science__refs-sep" aria-hidden="true">·</span>
+                <span class="science__refs-details">{ref.details}</span>
+              </p>
+            </div>
+            {ref.stageNum && (
+              <a
+                class="science__refs-link"
+                href={`#science-stage-${ref.stageNum}`}
+                aria-label={`Jump to stage ${ref.stageNum}`}
+              >
+                <span>stage {ref.stageNum}</span>
+                <svg
+                  viewBox="0 0 12 12"
+                  width="10"
+                  height="10"
+                  aria-hidden="true"
+                >
+                  <path
+                    d="M 2.5 9.5 L 9.5 2.5 M 9.5 2.5 L 9.5 7 M 9.5 2.5 L 5 2.5"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="1.4"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  />
+                </svg>
+              </a>
+            )}
+            {ref.framework && (
+              <span class="science__refs-link science__refs-link--static">
+                framework
+              </span>
+            )}
+          </li>
+        ))}
+      </ol>
+    </section>
+  </div>
+</section>
+
+<script>
+  /*
+   * Card → chip highlight. Hover or focus a stage card; the matching chip in
+   * the pipeline diagram gets the `is-active` state. Mouse and keyboard both
+   * trigger it, so the connection is reachable without a pointer. No-op if
+   * either set is missing (e.g. SVG failed to render).
+   */
+  const cards = document.querySelectorAll<HTMLElement>("[data-science-stage]");
+  const chips = document.querySelectorAll<SVGGElement>("[data-science-chip]");
+
+  function highlight(stageId: string | undefined): void {
+    if (!stageId) return;
+    chips.forEach((chip) => {
+      const isMatch = chip.dataset.scienceChip === stageId;
+      chip.classList.toggle("is-active", isMatch);
+    });
+  }
+
+  function clearHighlight(): void {
+    chips.forEach((chip) => chip.classList.remove("is-active"));
+  }
+
+  cards.forEach((card) => {
+    const stage = card.dataset.scienceStage;
+    card.addEventListener("mouseenter", () => highlight(stage));
+    card.addEventListener("mouseleave", clearHighlight);
+    card.addEventListener("focusin", () => highlight(stage));
+    card.addEventListener("focusout", clearHighlight);
+  });
+</script>
+
+<style>
+  .science {
+    position: relative;
+    padding-block: var(--sp-24);
+    border-top: var(--line-w) solid var(--color-line);
+  }
+
+  .science__inner {
+    width: 100%;
+    max-width: var(--page-max-w);
+    margin-inline: auto;
+    padding-inline: var(--page-px);
+    display: grid;
+    gap: var(--sp-16);
+  }
+
+  /* ─────────────────────────  Header  ──────────────────────────────── */
+  .science__head {
+    display: grid;
+    gap: var(--sp-5);
+    justify-items: start;
+    max-width: 720px;
+  }
+  .science__eyebrow {
+    font-family: var(--font-mono);
+    font-size: var(--fs-xs);
+    letter-spacing: var(--ls-wide);
+    text-transform: uppercase;
+    color: var(--color-muted-fg);
+    padding: var(--sp-2) var(--sp-3);
+    border: var(--line-w) solid var(--color-line);
+    border-radius: 999px;
+    background: var(--color-surface);
+  }
+  .science__title {
+    font-family: var(--font-display);
+    font-size: clamp(2rem, 4.2vw, 3.5rem);
+    font-weight: var(--fw-semibold);
+    line-height: var(--lh-tight);
+    letter-spacing: -0.03em;
+    color: var(--color-fg);
+    max-width: 18ch;
+  }
+  .science__title-accent {
+    color: var(--color-accent-text);
+  }
+  .science__sub {
+    font-family: var(--font-body);
+    font-size: var(--fs-md);
+    line-height: var(--lh-body);
+    color: var(--color-soft-fg);
+    max-width: 60ch;
+  }
+
+  /* ─────────────────────────  Pipeline  ───────────────────────────── */
+  .science__pipeline {
+    display: grid;
+    gap: var(--sp-5);
+  }
+
+  .science__pipeline-head {
+    display: grid;
+    gap: var(--sp-2);
+    max-width: 60ch;
+  }
+  .science__pipeline-label {
+    font-family: var(--font-mono);
+    font-size: var(--fs-xs);
+    letter-spacing: var(--ls-wide);
+    text-transform: uppercase;
+    color: var(--color-accent-text);
+  }
+  .science__pipeline-desc {
+    font-family: var(--font-body);
+    font-size: var(--fs-sm);
+    color: var(--color-muted-fg);
+    line-height: var(--lh-body);
+  }
+  .science__pipeline-desc code {
+    font-family: var(--font-mono);
+    font-size: 0.92em;
+    color: var(--color-fg);
+  }
+
+  /* The frame scrolls horizontally on narrow viewports — the SVG keeps a
+     minimum width so mono labels never shrink below readable size. A soft
+     gradient fade on the right edge hints at the overflow on mobile so the
+     pipeline doesn't look truncated. */
+  .science__pipeline-frame {
+    position: relative;
+    width: 100%;
+    overflow-x: auto;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior-x: contain;
+    border: var(--line-w) solid var(--color-line);
+    border-radius: var(--radius-sm);
+    background:
+      linear-gradient(
+        to right,
+        color-mix(in oklab, var(--color-fg) 4%, transparent) 1px,
+        transparent 1px
+      ) 0 0 / 36px 36px,
+      var(--color-bg);
+    padding: var(--sp-5) var(--sp-6);
+    /* Inline-scroll fade hint — purely decorative, sticks to the visible
+       right edge via scroll-driven positioning supported in all evergreen
+       browsers. Falls back to no fade when unsupported, which is fine. */
+    mask-image: linear-gradient(
+      to right,
+      black 0,
+      black calc(100% - 24px),
+      transparent 100%
+    );
+    -webkit-mask-image: linear-gradient(
+      to right,
+      black 0,
+      black calc(100% - 24px),
+      transparent 100%
+    );
+  }
+  /* Disable the fade when the SVG fits without scrolling — only apply the
+     hint at widths where overflow is actually possible. */
+  @media (min-width: 760px) {
+    .science__pipeline-frame {
+      mask-image: none;
+      -webkit-mask-image: none;
+    }
+  }
+  .science__pipeline-svg {
+    display: block;
+    width: 100%;
+    min-width: 640px;
+    height: auto;
+    color: var(--color-fg);
+  }
+
+  /* Connectors — quiet structural lines, accent arrows so the direction
+     of data flow is unambiguous at a glance. */
+  .science__pipeline-line {
+    stroke: var(--color-line-strong);
+    stroke-width: 1.25;
+    fill: none;
+    vector-effect: non-scaling-stroke;
+  }
+  .science__pipeline-arrowhead {
+    fill: var(--color-line-strong);
+  }
+
+  /* Chips — surface-toned rect + mono label. The output chip gets an
+     accent border + accent-tinted text because it's the answer the whole
+     pipeline exists to compute. */
+  .science__pipeline-chip-rect {
+    fill: var(--color-surface);
+    stroke: var(--color-line);
+    stroke-width: 1;
+    vector-effect: non-scaling-stroke;
+    transition:
+      stroke 0.18s ease,
+      fill 0.18s ease;
+  }
+  .science__pipeline-chip-text {
+    font-family: var(--font-mono);
+    font-size: 13px;
+    fill: var(--color-fg);
+    letter-spacing: 0;
+  }
+  .science__pipeline-chip--out .science__pipeline-chip-rect {
+    stroke: var(--color-accent);
+  }
+  .science__pipeline-chip--out .science__pipeline-chip-text {
+    fill: var(--color-accent-text);
+  }
+
+  /* Hover sync — the corresponding chip gets the accent treatment when its
+     card is hovered or focused. Subtle but unmistakable; the user sees the
+     card-to-chip mapping without ever needing to be told it exists. */
+  .science__pipeline-chip.is-active .science__pipeline-chip-rect {
+    fill: color-mix(in oklab, var(--color-accent) 14%, var(--color-surface));
+    stroke: var(--color-accent);
+  }
+  .science__pipeline-chip.is-active .science__pipeline-chip-text {
+    fill: var(--color-accent-text);
+  }
+
+  /* ─────────────────────────  Stage cards  ──────────────────────────── */
+  .science__stages {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: var(--sp-4);
+  }
+
+  .science__stage {
+    display: grid;
+    gap: var(--sp-3);
+    align-content: start;
+    padding: var(--sp-6);
+    border: var(--line-w) solid var(--color-line);
+    border-radius: var(--radius-sm);
+    background: var(--color-surface);
+    transition:
+      border-color 0.18s ease,
+      background-color 0.18s ease,
+      transform 0.18s ease;
+    /* Clear the sticky header (~73px) plus a breath of space when the card
+       is the URL :target — otherwise the anchor jump from a reference row
+       lands the card title under the header. */
+    scroll-margin-top: calc(73px + var(--sp-4));
+  }
+  /* Hover and keyboard focus share the same lift. The global :focus-visible
+     rule in base.css supplies the 2px accent outline + offset on top, so
+     keyboard users get both cues. */
+  .science__stage:hover,
+  .science__stage:focus-visible {
+    border-color: var(--color-line-strong);
+    background: var(--color-surface-hi);
+    transform: translateY(-1px);
+  }
+
+  .science__stage-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--sp-3);
+  }
+  .science__stage-num {
+    font-family: var(--font-mono);
+    font-size: var(--fs-xs);
+    letter-spacing: var(--ls-wide);
+    color: var(--color-accent-text);
+  }
+  .science__stage-glyph {
+    color: var(--color-muted-fg);
+    transition: color 0.18s ease;
+    flex-shrink: 0;
+  }
+  .science__stage:hover .science__stage-glyph,
+  .science__stage:focus-visible .science__stage-glyph {
+    color: var(--color-accent-text);
+  }
+
+  .science__stage-title {
+    font-family: var(--font-display);
+    font-size: var(--fs-md);
+    font-weight: var(--fw-semibold);
+    letter-spacing: var(--ls-tight);
+    line-height: var(--lh-snug);
+    color: var(--color-fg);
+    margin-top: var(--sp-1);
+  }
+  .science__stage-citation {
+    font-family: var(--font-mono);
+    font-size: var(--fs-xs);
+    letter-spacing: 0;
+    color: var(--color-muted-fg);
+    margin-top: calc(var(--sp-1) * -1);
+  }
+  .science__stage-body {
+    font-family: var(--font-body);
+    font-size: var(--fs-sm);
+    line-height: var(--lh-body);
+    color: var(--color-muted-fg);
+  }
+
+  /* Card tail — either a formula or a weight pill. Both sit on their own
+     row at the bottom of the card, mono, accent-touched. The unifying
+     pattern is "a measured technical thing on its own line at the foot." */
+  .science__stage-formula {
+    display: block;
+    font-family: var(--font-mono);
+    font-size: var(--fs-xs);
+    color: var(--color-fg);
+    padding: var(--sp-2) var(--sp-3);
+    margin-top: var(--sp-1);
+    background: var(--color-bg);
+    border: var(--line-w) solid var(--color-line);
+    border-radius: var(--radius-sm);
+    white-space: nowrap;
+    overflow-x: auto;
+  }
+  .science__stage-weight {
+    display: inline-flex;
+    align-items: baseline;
+    gap: var(--sp-2);
+    font-family: var(--font-mono);
+    font-size: var(--fs-xs);
+    padding: var(--sp-2) var(--sp-3);
+    margin-top: var(--sp-1);
+    background: var(--color-bg);
+    border: var(--line-w) solid var(--color-line);
+    border-radius: 999px;
+    width: max-content;
+  }
+  .science__stage-weight-value {
+    font-weight: var(--fw-semibold);
+    color: var(--color-accent-text);
+  }
+  .science__stage-weight-subject {
+    color: var(--color-muted-fg);
+  }
+
+  /* ─────────────────────────  References  ───────────────────────────── */
+  /* Subsection. A thin top divider separates it from the stage cards so
+     the eye knows it's a related but distinct block — bibliography, not
+     more stages. */
+  .science__refs {
+    display: grid;
+    gap: var(--sp-6);
+    padding-top: var(--sp-8);
+    border-top: var(--line-w) solid var(--color-line);
+  }
+
+  .science__refs-head {
+    display: grid;
+    gap: var(--sp-2);
+    max-width: 60ch;
+  }
+  .science__refs-label {
+    font-family: var(--font-mono);
+    font-size: var(--fs-xs);
+    letter-spacing: var(--ls-wide);
+    text-transform: uppercase;
+    color: var(--color-accent-text);
+  }
+  .science__refs-desc {
+    font-family: var(--font-body);
+    font-size: var(--fs-sm);
+    color: var(--color-muted-fg);
+    line-height: var(--lh-body);
+  }
+
+  /* Reference list — a clean vertical column with hairlines between rows,
+     not cards. References are inherently sequential bibliographic data;
+     a list pattern signals "bibliography" better than a card grid would. */
+  .science__refs-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    border: var(--line-w) solid var(--color-line);
+    border-radius: var(--radius-sm);
+    overflow: hidden;
+    background: var(--color-surface);
+  }
+  .science__refs-item {
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    align-items: start;
+    gap: var(--sp-5);
+    padding: var(--sp-5) var(--sp-6);
+    border-top: var(--line-w) solid var(--color-line);
+    transition: background-color 0.18s ease;
+  }
+  .science__refs-item:first-child {
+    border-top: 0;
+  }
+  .science__refs-item:hover {
+    background: var(--color-surface-hi);
+  }
+
+  /* The R-prefixed id — separate counter from the stage 01-06 numbers so
+     readers don't conflate "R3" with "stage 03" (which happen to match
+     here but won't always — Heeger is R6 with no stage). */
+  .science__refs-id {
+    font-family: var(--font-mono);
+    font-size: var(--fs-xs);
+    letter-spacing: var(--ls-wide);
+    color: var(--color-accent-text);
+    padding-top: 2px;
+    min-width: 2ch;
+  }
+
+  /* Citation body: three stacked lines reproducing the source's structure
+     without leaning on italic (Geist italic isn't loaded). Authors and
+     journal are distinguished by mono + accent-text on key terms. */
+  .science__refs-body {
+    display: grid;
+    gap: var(--sp-1);
+    min-width: 0;
+  }
+  .science__refs-meta {
+    font-family: var(--font-mono);
+    font-size: var(--fs-xs);
+    color: var(--color-soft-fg);
+    line-height: var(--lh-snug);
+  }
+  .science__refs-authors {
+    color: var(--color-fg);
+  }
+  .science__refs-year {
+    color: var(--color-muted-fg);
+  }
+  .science__refs-sep {
+    color: var(--color-muted-fg);
+    margin-inline: 0.5ch;
+  }
+  .science__refs-title {
+    font-family: var(--font-body);
+    font-size: var(--fs-sm);
+    line-height: var(--lh-body);
+    color: var(--color-fg);
+  }
+  .science__refs-source {
+    font-family: var(--font-mono);
+    font-size: var(--fs-xs);
+    color: var(--color-muted-fg);
+    line-height: var(--lh-body);
+  }
+  .science__refs-journal {
+    color: var(--color-accent-text);
+  }
+
+  /* Back-link to the linked stage card. The anchor keeps the reference
+     list bidirectional with the stages above: read a stage's citation,
+     jump down to the full ref; read a ref, jump up to the stage. */
+  .science__refs-link {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--sp-2);
+    font-family: var(--font-mono);
+    font-size: var(--fs-xs);
+    color: var(--color-muted-fg);
+    padding: var(--sp-1) var(--sp-3);
+    border: var(--line-w) solid var(--color-line);
+    border-radius: 999px;
+    background: var(--color-bg);
+    white-space: nowrap;
+    align-self: start;
+    transition:
+      color 0.16s ease,
+      border-color 0.16s ease,
+      background-color 0.16s ease;
+  }
+  .science__refs-link svg {
+    color: var(--color-muted-fg);
+    transition: color 0.16s ease, transform 0.16s ease;
+  }
+  .science__refs-link:hover,
+  .science__refs-link:focus-visible {
+    color: var(--color-accent-text);
+    border-color: var(--color-accent);
+    background: var(--color-surface);
+  }
+  .science__refs-link:hover svg,
+  .science__refs-link:focus-visible svg {
+    color: var(--color-accent-text);
+    transform: translate(1px, -1px);
+  }
+  .science__refs-link--static {
+    color: var(--color-muted-fg);
+    cursor: default;
+  }
+  .science__refs-link--static:hover,
+  .science__refs-link--static:focus-visible {
+    color: var(--color-muted-fg);
+    border-color: var(--color-line);
+    background: var(--color-bg);
+  }
+
+  /* When a stage card is the URL target (clicked from a reference), nudge
+     it visibly so the user can see "this is the one." Subtle, brief.
+     :target sticks until the URL changes — fine here, since clicking a
+     stage card doesn't update the URL and the cue clears on next click. */
+  .science__stage:target {
+    border-color: var(--color-accent);
+    background: var(--color-surface-hi);
+  }
+
+  /* ─────────────────────────  Responsive  ──────────────────────────── */
+  @media (max-width: 960px) {
+    .science {
+      padding-block: var(--sp-16);
+    }
+    .science__inner {
+      gap: var(--sp-12);
+    }
+    .science__stages {
+      grid-template-columns: repeat(2, 1fr);
+    }
+  }
+
+  @media (max-width: 720px) {
+    .science__head {
+      gap: var(--sp-4);
+    }
+    .science__stage {
+      padding: var(--sp-5);
+    }
+    .science__stage-formula {
+      font-size: 0.7rem;
+    }
+  }
+
+  @media (max-width: 560px) {
+    .science {
+      padding-block: var(--sp-12);
+    }
+    .science__inner {
+      gap: var(--sp-8);
+    }
+    .science__stages {
+      grid-template-columns: 1fr;
+    }
+    .science__pipeline-frame {
+      padding: var(--sp-3) var(--sp-4);
+    }
+    .science__pipeline-svg {
+      /* Slightly smaller min-width on phones — chip text still readable but
+         less horizontal scroll required. */
+      min-width: 540px;
+    }
+    /* Stack the reference rows: id on top, body in middle, link wraps to
+       its own row. Keeps every word readable below 560px. */
+    .science__refs-item {
+      grid-template-columns: 1fr;
+      gap: var(--sp-3);
+      padding: var(--sp-4) var(--sp-5);
+    }
+    .science__refs-link {
+      justify-self: start;
+    }
+  }
+
+  @media (max-width: 400px) {
+    .science__stage {
+      padding: var(--sp-4);
+    }
+    .science__refs-item {
+      padding: var(--sp-4);
+    }
+    .science__pipeline-frame {
+      padding: var(--sp-3);
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .science__stage,
+    .science__stage-glyph,
+    .science__pipeline-chip-rect,
+    .science__pipeline-chip-text,
+    .science__refs-item,
+    .science__refs-link,
+    .science__refs-link svg {
+      transition: none;
+    }
+  }
+</style>

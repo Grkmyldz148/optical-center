@@ -1,0 +1,472 @@
+---
+/*
+ * Problem section — show the gap between geometric and optical centering.
+ *
+ * Each tile sits one icon at its bounding-box center, exactly where CSS would
+ * land it. A muted crosshair marks that geometric center. An accent ring
+ * marks the icon's *visual* center — where the eye actually finds the
+ * weight — and a short connector traces the offset between the two.
+ *
+ * Offsets come from the same library that powers the hero: real values from
+ * lucide.json, in viewBox-24 units. The numbers under each tile aren't
+ * decoration — they're the exact correction `optical-center: auto` applies.
+ */
+type IconSpec = {
+  name: string;
+  ox: number;
+  oy: number;
+  d: string;
+};
+
+const icons: readonly IconSpec[] = [
+  {
+    name: "play",
+    ox: -1.04,
+    oy: -0.63,
+    d: "M 6 3 L 20 12 L 6 21 Z",
+  },
+  {
+    name: "heart",
+    ox: 0.01,
+    oy: -1.58,
+    d: "M 12 21 C 5 15 2 11 2 7 C 2 4 4 2 7 2 C 9 2 11 3 12 5 C 13 3 15 2 17 2 C 20 2 22 4 22 7 C 22 11 19 15 12 21 Z",
+  },
+  {
+    name: "triangle",
+    ox: -0.01,
+    oy: 1.4,
+    d: "M 12 4 L 22 20 L 2 20 Z",
+  },
+];
+
+/* Stage geometry — picked so the typical 1-unit offset translates to
+   ~8–10 visible pixels at typical tile widths. */
+const STAGE = 100;
+const ICON = 78;
+const SCALE = ICON / 24;
+const CENTER = STAGE / 2;
+const INSET = (STAGE - ICON) / 2;
+
+const fmt = (n: number): string => {
+  if (Math.abs(n) < 0.005) return "0.00";
+  const sign = n < 0 ? "−" : "+";
+  return sign + Math.abs(n).toFixed(2);
+};
+---
+
+<section class="problem" id="problem" aria-labelledby="problem-title">
+  <div class="problem__inner">
+    <header class="problem__head">
+      <p class="problem__eyebrow">The problem</p>
+      <h2 class="problem__title" id="problem-title">
+        Geometric centering <span class="problem__title-accent">looks off</span>.
+      </h2>
+      <p class="problem__sub">
+        CSS centers the bounding box. Your eye centers the visual mass.
+        They disagree &mdash; and they disagree by a different amount for
+        every shape.
+      </p>
+    </header>
+
+    <div
+      class="problem__viz"
+      role="img"
+      aria-label="Three icons showing the offset between where CSS places their bounding box and where the eye perceives their center."
+    >
+      {icons.map((icon) => {
+        const mx = CENTER + icon.ox * SCALE;
+        const my = CENTER + icon.oy * SCALE;
+        const gridId = `problem-grid-${icon.name}`;
+        return (
+          <figure class="problem__tile">
+            <svg
+              class="problem__stage"
+              viewBox={`0 0 ${STAGE} ${STAGE}`}
+              aria-hidden="true"
+            >
+              <defs>
+                <pattern
+                  id={gridId}
+                  width="12.5"
+                  height="12.5"
+                  patternUnits="userSpaceOnUse"
+                >
+                  <path
+                    d="M 12.5 0 L 0 0 L 0 12.5"
+                    class="problem__grid-line"
+                  />
+                </pattern>
+              </defs>
+              <rect
+                width={STAGE}
+                height={STAGE}
+                fill={`url(#${gridId})`}
+              />
+
+              {/* the icon — bounding-box centered (CSS default) */}
+              <g
+                transform={`translate(${INSET} ${INSET}) scale(${SCALE})`}
+                class="problem__icon"
+              >
+                <path d={icon.d} />
+              </g>
+
+              {/* muted crosshair — geometric (bounding-box) center */}
+              <g class="problem__crosshair">
+                <line
+                  x1={CENTER - 5}
+                  y1={CENTER}
+                  x2={CENTER + 5}
+                  y2={CENTER}
+                />
+                <line
+                  x1={CENTER}
+                  y1={CENTER - 5}
+                  x2={CENTER}
+                  y2={CENTER + 5}
+                />
+              </g>
+
+              {/* the gap — connector from geometric center to visual mass */}
+              <line
+                x1={CENTER}
+                y1={CENTER}
+                x2={mx}
+                y2={my}
+                class="problem__offset"
+              />
+
+              {/* visual-mass marker — where the eye finds center */}
+              <circle cx={mx} cy={my} r="2.6" class="problem__mass" />
+            </svg>
+
+            <figcaption class="problem__caption">
+              <span class="problem__caption-name">{icon.name}</span>
+              <span class="problem__caption-offset">
+                <span class="problem__caption-pair">
+                  <span class="problem__caption-axis">x</span>
+                  {fmt(icon.ox)}
+                </span>
+                <span class="problem__caption-pair">
+                  <span class="problem__caption-axis">y</span>
+                  {fmt(icon.oy)}
+                </span>
+              </span>
+            </figcaption>
+          </figure>
+        );
+      })}
+    </div>
+
+    <ul class="problem__cards" role="list">
+      <li class="problem__card">
+        <span class="problem__card-num" aria-hidden="true">01</span>
+        <h3 class="problem__card-title">Pixel nudging by hand</h3>
+        <p class="problem__card-body">
+          Designers shift every icon, every button, every component &mdash;
+          by eye, with no shared baseline. The fix lives in someone's
+          muscle memory.
+        </p>
+      </li>
+      <li class="problem__card">
+        <span class="problem__card-num" aria-hidden="true">02</span>
+        <h3 class="problem__card-title">Bounding boxes lie</h3>
+        <p class="problem__card-body">
+          CSS centers the rectangle around your shape. Visual mass sits
+          somewhere else, and &ldquo;centered&rdquo; quietly stops meaning
+          centered.
+        </p>
+      </li>
+      <li class="problem__card">
+        <span class="problem__card-num" aria-hidden="true">03</span>
+        <h3 class="problem__card-title">No CSS primitive</h3>
+        <p class="problem__card-body">
+          Type has ascender, descender, baseline. Icons have nothing
+          &mdash; no built-in way to express where a shape <em>looks</em>
+          centered.
+        </p>
+      </li>
+    </ul>
+  </div>
+</section>
+
+<style>
+  .problem {
+    position: relative;
+    padding-block: var(--sp-24);
+  }
+
+  .problem__inner {
+    width: 100%;
+    max-width: var(--page-max-w);
+    margin-inline: auto;
+    padding-inline: var(--page-px);
+    display: grid;
+    gap: var(--sp-16);
+  }
+
+  /* ─────────────────────────  Header  ──────────────────────────────── */
+  .problem__head {
+    display: grid;
+    gap: var(--sp-5);
+    justify-items: start;
+    max-width: 720px;
+  }
+  .problem__eyebrow {
+    font-family: var(--font-mono);
+    font-size: var(--fs-xs);
+    letter-spacing: var(--ls-wide);
+    text-transform: uppercase;
+    color: var(--color-muted-fg);
+    padding: var(--sp-2) var(--sp-3);
+    border: var(--line-w) solid var(--color-line);
+    border-radius: 999px;
+    background: var(--color-surface);
+  }
+  .problem__title {
+    font-family: var(--font-display);
+    font-size: clamp(2rem, 4.2vw, 3.5rem);
+    font-weight: var(--fw-semibold);
+    line-height: var(--lh-tight);
+    letter-spacing: -0.03em;
+    color: var(--color-fg);
+    max-width: 18ch;
+  }
+  .problem__title-accent {
+    color: var(--color-accent-text);
+  }
+  .problem__sub {
+    font-family: var(--font-body);
+    font-size: var(--fs-md);
+    line-height: var(--lh-body);
+    color: var(--color-soft-fg);
+    max-width: 56ch;
+  }
+
+  /* ───────────────────────  Visualization  ─────────────────────────── */
+  .problem__viz {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: var(--sp-5);
+  }
+
+  .problem__tile {
+    margin: 0;
+    display: grid;
+    gap: var(--sp-4);
+  }
+
+  .problem__stage {
+    aspect-ratio: 1 / 1;
+    width: 100%;
+    border: var(--line-w) solid var(--color-line);
+    border-radius: var(--radius-sm);
+    background-color: var(--color-bg);
+    overflow: hidden;
+    transition: border-color 0.18s ease;
+  }
+  .problem__tile:hover .problem__stage {
+    border-color: var(--color-line-strong);
+  }
+
+  .problem__grid-line {
+    fill: none;
+    stroke: color-mix(in oklab, var(--color-fg) 7%, transparent);
+    stroke-width: 1;
+    vector-effect: non-scaling-stroke;
+  }
+
+  /* the icon — sits at its CSS-centered position */
+  .problem__icon > path {
+    fill: color-mix(in oklab, var(--color-fg) 92%, transparent);
+  }
+
+  /* geometric center — muted, the "CSS truth" */
+  .problem__crosshair line {
+    stroke: color-mix(in oklab, var(--color-fg) 60%, transparent);
+    stroke-width: 1;
+    stroke-linecap: round;
+    vector-effect: non-scaling-stroke;
+  }
+
+  /* the offset itself — accent line connecting the two centers */
+  .problem__offset {
+    stroke: var(--color-accent);
+    stroke-width: 1.25;
+    stroke-linecap: round;
+    stroke-dasharray: 2 1.5;
+    vector-effect: non-scaling-stroke;
+  }
+
+  /* visual mass — accent dot with a halo to read at small sizes */
+  .problem__mass {
+    fill: var(--color-accent);
+    stroke: var(--color-bg);
+    stroke-width: 1.5;
+    vector-effect: non-scaling-stroke;
+    filter: drop-shadow(
+      0 0 4px color-mix(in oklab, var(--color-accent) 60%, transparent)
+    );
+  }
+
+  /* Caption: name left, (x, y) pair right — same vibe as the hero install line */
+  .problem__caption {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    font-family: var(--font-mono);
+    font-size: var(--fs-xs);
+    color: var(--color-muted-fg);
+    letter-spacing: 0;
+  }
+  .problem__caption-name {
+    color: var(--color-soft-fg);
+  }
+  .problem__caption-offset {
+    display: inline-flex;
+    gap: var(--sp-3);
+    color: var(--color-accent-text);
+  }
+  .problem__caption-pair {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 0.25em;
+  }
+  .problem__caption-axis {
+    color: var(--color-muted-fg);
+    text-transform: lowercase;
+  }
+
+  /* ─────────────────────────  Cards  ──────────────────────────────── */
+  .problem__cards {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: var(--sp-4);
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+
+  .problem__card {
+    display: grid;
+    gap: var(--sp-3);
+    align-content: start;
+    padding: var(--sp-6);
+    border: var(--line-w) solid var(--color-line);
+    border-radius: var(--radius-sm);
+    background: var(--color-surface);
+    transition:
+      border-color 0.18s ease,
+      background-color 0.18s ease,
+      transform 0.18s ease;
+  }
+  .problem__card:hover {
+    border-color: var(--color-line-strong);
+    background: var(--color-surface-hi);
+    transform: translateY(-1px);
+  }
+  .problem__card-num {
+    font-family: var(--font-mono);
+    font-size: var(--fs-xs);
+    letter-spacing: var(--ls-wide);
+    color: var(--color-accent-text);
+  }
+  .problem__card-title {
+    font-family: var(--font-display);
+    font-size: var(--fs-md);
+    font-weight: var(--fw-semibold);
+    letter-spacing: var(--ls-tight);
+    line-height: var(--lh-snug);
+    color: var(--color-fg);
+  }
+  .problem__card-body {
+    font-family: var(--font-body);
+    font-size: var(--fs-sm);
+    line-height: var(--lh-body);
+    color: var(--color-muted-fg);
+  }
+  .problem__card-body em {
+    font-style: italic;
+    color: var(--color-soft-fg);
+  }
+
+  /* ─────────────────────────  Responsive  ─────────────────────────── */
+  @media (max-width: 960px) {
+    .problem {
+      padding-block: var(--sp-16);
+    }
+    .problem__inner {
+      gap: var(--sp-12);
+    }
+    .problem__viz {
+      gap: var(--sp-3);
+    }
+    .problem__cards {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  /* Tablet portrait — keep three tiles but tighten captions so they don't
+     wrap to a second line at borderline widths. */
+  @media (max-width: 720px) {
+    .problem__head {
+      gap: var(--sp-4);
+    }
+    .problem__caption {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 2px;
+    }
+    .problem__card {
+      padding: var(--sp-5);
+    }
+  }
+
+  @media (max-width: 560px) {
+    .problem {
+      padding-block: var(--sp-12);
+    }
+    .problem__inner {
+      gap: var(--sp-8);
+    }
+    .problem__viz {
+      grid-template-columns: 1fr 1fr;
+      gap: var(--sp-3);
+    }
+    .problem__tile:nth-child(3) {
+      grid-column: 1 / -1;
+      max-width: 50%;
+      justify-self: center;
+    }
+    .problem__caption {
+      flex-direction: row;
+      align-items: baseline;
+    }
+    .problem__caption-offset {
+      gap: var(--sp-2);
+    }
+  }
+
+  /* Very narrow phones — single-column viz, full-width tiles. */
+  @media (max-width: 400px) {
+    .problem__viz {
+      grid-template-columns: 1fr;
+      max-width: 280px;
+      margin-inline: auto;
+    }
+    .problem__tile:nth-child(3) {
+      grid-column: auto;
+      max-width: 100%;
+    }
+    .problem__card {
+      padding: var(--sp-4);
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .problem__stage,
+    .problem__card {
+      transition: none;
+    }
+  }
+</style>

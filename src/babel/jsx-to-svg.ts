@@ -53,6 +53,11 @@ function serializeAttribute(
 
   const rawName = readAttrName(attr.name);
   if (rawName === 'opticalCenter' || rawName === 'optical-center') return null;
+  // React-only rendering metadata that has no place in the SVG markup
+  // we hand to resvg. Skip rather than fail so the container-side
+  // path can safely inject `style={{ margin: 'auto' }}` on an SVG
+  // child without tripping serialization.
+  if (rawName === 'style') return null;
 
   const svgName = t.isJSXNamespacedName(attr.name)
     ? rawName

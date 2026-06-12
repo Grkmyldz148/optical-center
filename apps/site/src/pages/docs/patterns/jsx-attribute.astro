@@ -1,0 +1,153 @@
+---
+import DocsLayout from "../../../layouts/DocsLayout.astro";
+import CodeBlock from "../../../components/docs/CodeBlock.astro";
+
+const toc = [
+  { id: "when", label: "When to use it", level: 2 as const },
+  { id: "how", label: "How to write it", level: 2 as const },
+  { id: "emitted", label: "What gets emitted", level: 2 as const },
+  { id: "shape", label: "Accepted shapes", level: 2 as const },
+  { id: "limits", label: "Limits", level: 2 as const },
+];
+---
+
+<DocsLayout
+  title="JSX attribute"
+  description="Inline directive on a wrapper. Babel handles the whole flow — no CSS file, no Tailwind plugin, no PostCSS directive."
+  toc={toc}
+>
+  <h2 id="when">When to use it</h2>
+  <p>
+    Reach for this when you have a one-off wrapper and don't want a
+    CSS file just for it. The directive arrives in JSX directly; the
+    Babel plugin owns the entire transform.
+  </p>
+
+  <h2 id="how">How to write it</h2>
+  <p>
+    Put <code>optical-center="auto"</code> on the wrapper element. The
+    icon child can be anything Babel can statically resolve to an SVG
+    — an imported icon component or a hand-written
+    <code>{`<svg>`}</code> subtree.
+  </p>
+
+  <CodeBlock
+    filename="Button.tsx"
+    lang="tsx"
+    code={`import { Play } from 'lucide-react';
+
+export function PlayButton() {
+  return (
+    <button>
+      <div optical-center="auto">
+        <Play />
+      </div>
+    </button>
+  );
+}`}
+  />
+
+  <p>
+    The boolean shorthand <code>optical-center</code> and the camelCase
+    form <code>opticalCenter="auto"</code> are both accepted —
+    identical semantics either way.
+  </p>
+
+  <h2 id="emitted">What gets emitted</h2>
+  <p>
+    The Babel plugin reads the wrapper, resolves <code>{`<Play />`}</code>
+    against the file's import to find its source SVG, runs the centering
+    pipeline once, and injects two inline styles:
+  </p>
+
+  <CodeBlock
+    filename="dist/Button-*.js"
+    lang="jsx"
+    code={`<div
+  style={{ display: 'flex' }}
+  data-optical-center=""
+>
+  <Play style={{ margin: 'auto', translate: '4.3365% 2.604%' }} />
+</div>`}
+  />
+
+  <p>
+    Same conceptual output as the
+    <a href="/docs/patterns/css-class">CSS class</a> pattern —
+    <code>display: flex</code> on the wrapper, <code>margin: auto</code>
+    + <code>translate</code> on the icon. Carried as inline React style
+    objects instead of a CSS rule.
+  </p>
+
+  <h2 id="shape">Accepted shapes</h2>
+  <p>The plugin understands three shapes:</p>
+
+  <h3>Wrapper around an imported icon component</h3>
+  <CodeBlock
+    filename="component.tsx"
+    lang="tsx"
+    code={`<div optical-center="auto">
+  <Play />
+</div>`}
+  />
+
+  <h3>Wrapper around a hand-written inline SVG</h3>
+  <p>
+    Same syntax. Babel rewrites the SVG's <code>viewBox</code> in
+    place instead of emitting a <code>translate</code> — the
+    perceptual shift goes into the asset. See
+    <a href="/docs/patterns/inline-svg">Inline SVG</a> for the
+    requirements that come with this form.
+  </p>
+  <CodeBlock
+    filename="component.tsx"
+    lang="tsx"
+    code={`<div optical-center="auto">
+  <svg viewBox="0 0 24 24">
+    <polygon points="6 3 20 12 6 21 6 3" />
+  </svg>
+</div>`}
+  />
+
+  <h3>Marker on the SVG itself (lower-level shortcut)</h3>
+  <p>
+    Skipping the wrapper works too — the SVG's <code>viewBox</code>
+    gets rewritten directly. There's no inline-style centering in this
+    form; you're on your own to position the SVG. Prefer one of the
+    wrapper forms above unless you have a reason.
+  </p>
+  <CodeBlock
+    filename="component.tsx"
+    lang="tsx"
+    code={`<svg optical-center="auto" viewBox="0 0 24 24">
+  <polygon points="6 3 20 12 6 21 6 3" />
+</svg>`}
+  />
+
+  <h2 id="limits">Limits</h2>
+  <ul>
+    <li>
+      The wrapper can't use spread attributes
+      (<code>{`<div optical-center="auto" {...rest}>`}</code>) — the
+      spread might inject a competing directive at runtime, so the
+      plugin bails out with <code>OPTICAL_SPREAD_PROPS</code>.
+    </li>
+    <li>
+      The wrapper can't already have a <code>style</code> attribute the
+      plugin would have to merge with. Leave the wrapper styleless and
+      put per-element styling on inner elements.
+    </li>
+    <li>
+      The icon child must be statically identifiable — an imported
+      icon component the plugin tracks, or a static
+      <code>{`<svg>`}</code> subtree. Dynamic children
+      (<code>{`<div optical-center="auto">{icon}</div>`}</code>) bail
+      out with <code>OPTICAL_DYNAMIC_SVG</code>.
+    </li>
+  </ul>
+
+  <p>
+    See <a href="/docs/warnings">warning codes</a> for the full list of
+    bail-out reasons and how to reach them in CI.
+  </p>
+</DocsLayout>

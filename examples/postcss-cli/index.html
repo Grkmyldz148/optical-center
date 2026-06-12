@@ -1,5 +1,5 @@
 <!doctype html>
-<html>
+<html lang="en">
   <head>
     <meta charset="UTF-8" />
     <title>optical-center · postcss-cli</title>
@@ -8,53 +8,219 @@
   <body>
     <h1>optical-center · postcss-cli</h1>
     <p class="lede">
-      Pure PostCSS — no bundler, no JavaScript on the client. Icons
-      come from the installed <code>lucide-static</code>,
-      <code>heroicons</code>, and
-      <code>@fortawesome/fontawesome-free</code> packages.
+      The no-bundler path. Pure PostCSS, no JavaScript at runtime,
+      no Vite / webpack / Next.js. Icons come from real installed
+      npm packages (<code>lucide-static</code>, <code>heroicons</code>,
+      <code>@fortawesome/fontawesome-free</code>); the plugin
+      resolves bare specifiers through Node's module resolution.
     </p>
 
-    <h2>background-image</h2>
+    <p class="lede">
+      Each row below is the same SVG mounted twice. The
+      <strong>geometric</strong> badge mounts the source SVG as-is —
+      the icon's bounding-box centre lands on the crosshair. The
+      <strong>optical</strong> badge adds one declaration —
+      <code>optical-center: auto</code> — to the rule. At build
+      time, the plugin rewrites every <code>url('…svg')</code> in
+      that rule to an inline data URI whose viewBox is shifted by
+      the icon's perceptual offset. The crosshair stays in the same
+      place; the icon moves.
+    </p>
 
-    <div class="row">
+    <pre>/* what you write */                  /* what the plugin emits */
+.icon {                              .icon {
+  background-image: url('play.svg');   background-image: url("data:image/svg+xml,…");
+  optical-center: auto;                --optical-center: auto;
+}                                    }</pre>
+
+    <!--
+      ============================================================
+      SECTION 1 — background-image (the canonical case)
+      ============================================================
+    -->
+    <h2>1 · <code>background-image</code></h2>
+    <p class="section-lede">
+      Same icon, three different installed packages. The plugin
+      resolves each bare specifier through <code>node_modules</code>
+      and rewrites the url() identically — there is no
+      package-aware logic, just Node module resolution plus
+      SVG-shaped pixel analysis.
+    </p>
+
+    <div class="col-labels">
+      <div class="col-label">geometric</div>
+      <div class="col-label">optical</div>
+      <div></div>
+    </div>
+
+    <div class="pair">
       <div class="badge icon-lucide-play"></div>
       <div class="badge icon-lucide-play optical"></div>
-      <span class="name">lucide-static / play</span>
+      <div class="caption">
+        <strong>lucide-static / play.svg</strong><br />
+        24×24 viewBox · directional shape, leans heavily right
+      </div>
     </div>
-    <div class="row">
-      <div class="badge icon-lucide-heart"></div>
-      <div class="badge icon-lucide-heart optical"></div>
-      <span class="name">lucide-static / heart</span>
+
+    <div class="pair">
+      <div class="badge icon-heroicons-play"></div>
+      <div class="badge icon-heroicons-play optical"></div>
+      <div class="caption">
+        <strong>heroicons / 24/solid/play.svg</strong><br />
+        24×24 viewBox · same shape from a different package, same
+        rewrite path
+      </div>
     </div>
-    <div class="row">
-      <div class="badge icon-heroicons-bell"></div>
-      <div class="badge icon-heroicons-bell optical"></div>
-      <span class="name">heroicons / 24/solid/bell</span>
-    </div>
-    <div class="row">
+
+    <div class="pair">
       <div class="badge icon-fa-play"></div>
       <div class="badge icon-fa-play optical"></div>
-      <span class="name">fontawesome / solid/play (384x512)</span>
-    </div>
-    <div class="row">
-      <div class="badge icon-fa-star"></div>
-      <div class="badge icon-fa-star optical"></div>
-      <span class="name">fontawesome / solid/star (576x512)</span>
-    </div>
-
-    <h2>background shorthand</h2>
-    <div class="row">
-      <div></div>
-      <div class="icon-shorthand"></div>
-      <span class="name"><code>optical-center: auto</code> inside the <code>background</code> shorthand</span>
+      <div class="caption">
+        <strong>fontawesome / solid/play.svg</strong><br />
+        384×512 viewBox · non-square source — the offset is
+        computed in viewBox units, so a wider canvas works just
+        the same
+      </div>
     </div>
 
-    <h2>mask-image (re-tintable)</h2>
+    <!--
+      ============================================================
+      SECTION 2 — background shorthand
+      ============================================================
+    -->
+    <h2>2 · <code>background</code> shorthand</h2>
+    <p class="section-lede">
+      The url() can live inside any declaration in the rule, not
+      just longhand <code>background-image</code>. The plugin
+      matches <code>url('…svg')</code> inside the shorthand and
+      rewrites it in place.
+    </p>
 
-    <div class="mask-row">
-      <div class="mask-badge"><div class="mask-icon mask-arrow-right"></div></div>
-      <div class="mask-badge"><div class="mask-icon mask-arrow-right optical"></div></div>
-      <span class="name">lucide-static / arrow-right (currentColor)</span>
+    <div class="pair">
+      <div class="badge icon-heart-shorthand"></div>
+      <div class="badge icon-heart-shorthand optical"></div>
+      <div class="caption">
+        <strong>lucide-static / heart.svg</strong><br />
+        <code>background: var(--bg) url(…) center / 44px no-repeat;</code>
+      </div>
     </div>
+
+    <!--
+      ============================================================
+      SECTION 3 — background-position independence
+      ============================================================
+    -->
+    <h2>3 · <code>background-position</code> independence</h2>
+    <p class="section-lede">
+      The perceptual shift is baked into the SVG's viewBox, not into
+      the wrapper's positioning. Both badges below use
+      <code>background-position: 28% 50%</code>; the optical badge
+      stays at that position, with the icon's optical centre — not
+      its bounding-box centre — landing there. The plugin does not
+      fight your layout.
+    </p>
+
+    <div class="pair">
+      <div class="badge icon-play-offset"></div>
+      <div class="badge icon-play-offset optical"></div>
+      <div class="caption">
+        <strong>lucide-static / play.svg @ 28% 50%</strong><br />
+        Off-centre placement, perceptual centre still sits where
+        you positioned it
+      </div>
+    </div>
+
+    <!--
+      ============================================================
+      SECTION 4 — mask-image (re-tintable)
+      ============================================================
+    -->
+    <h2>4 · <code>mask-image</code> (re-tintable)</h2>
+    <p class="section-lede">
+      Combining <code>mask-image: url('…svg')</code> with a single
+      <code>background</code> colour makes the icon re-tintable
+      through CSS. The plugin treats the mask url() the same as a
+      background url() — same rewrite, same shifted viewBox.
+    </p>
+
+    <div class="pair">
+      <div class="mask-wrap">
+        <div class="mask-icon mask-arrow-right"></div>
+      </div>
+      <div class="mask-wrap">
+        <div class="mask-icon mask-arrow-right optical"></div>
+      </div>
+      <div class="caption">
+        <strong>lucide-static / arrow-right.svg</strong><br />
+        mask + <code>background: currentColor</code> · icon shape
+        recoloured by parent <code>color</code>
+      </div>
+    </div>
+
+    <!--
+      ============================================================
+      SECTION 5 — mask shorthand
+      ============================================================
+    -->
+    <h2>5 · <code>mask</code> shorthand</h2>
+    <p class="section-lede">
+      Same rewrite as <code>mask-image</code>, just authored as the
+      <code>mask</code> shorthand. The url matcher cares only about
+      what's inside the declaration value, not which property holds
+      it.
+    </p>
+
+    <div class="pair">
+      <div class="mask-wrap">
+        <div class="mask-icon mask-chevron-right"></div>
+      </div>
+      <div class="mask-wrap">
+        <div class="mask-icon mask-chevron-right optical"></div>
+      </div>
+      <div class="caption">
+        <strong>lucide-static / chevron-right.svg</strong><br />
+        <code>mask: url(…) center / contain no-repeat;</code>
+      </div>
+    </div>
+
+    <!--
+      ============================================================
+      SECTION 6 — content: url() on a pseudo-element
+      ============================================================
+    -->
+    <h2>6 · <code>content: url()</code> on a pseudo-element</h2>
+    <p class="section-lede">
+      A <code>::before</code> with <code>content: url('…svg')</code>
+      mounts the SVG as a replaced element. The plugin walks the
+      pseudo's rule too — there is nothing CSS-property-specific
+      in the matcher.
+    </p>
+
+    <div class="pair">
+      <div class="pseudo-host">
+        <span class="pseudo-bell"></span>
+      </div>
+      <div class="pseudo-host">
+        <span class="pseudo-bell optical"></span>
+      </div>
+      <div class="caption">
+        <strong>lucide-static / bell.svg</strong><br />
+        <code>.pseudo-bell::before { content: url(…); optical-center: auto; }</code>
+      </div>
+    </div>
+
+    <!--
+      ============================================================
+      Footer
+      ============================================================
+    -->
+    <h2>Why this example exists</h2>
+    <p class="section-lede">
+      To prove that anywhere PostCSS runs, optical-center can run.
+      Tailwind, Next.js, Astro, Create React App, esbuild +
+      postcss-loader, webpack + postcss-loader, standalone
+      postcss-cli — same plugin, same one-line opt-in, same output.
+      No runtime, no JS payload, no bundler-specific syntax.
+    </p>
   </body>
 </html>

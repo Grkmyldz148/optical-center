@@ -52,9 +52,10 @@ describe('opticalCenterPostcss', () => {
     const { css: out } = await run(css);
 
     expect(out).toContain('data:image/svg+xml;utf8,');
-    // Directive itself is stripped from the rule (the `data-optical-center`
-    // breadcrumb that appears inside the inlined SVG is not the directive).
-    expect(out).not.toMatch(/optical-center\s*:\s*auto/);
+    // Bare directive is replaced by a `--optical-center: auto` tracer
+    // custom property so DevTools shows the rule was processed.
+    expect(out).not.toMatch(/(?<!-)optical-center\s*:\s*auto/);
+    expect(out).toMatch(/--optical-center\s*:\s*auto/);
 
     const svg = decodeDataUri(pickDataUri(out));
     expect(svg).toMatch(/<svg[^>]*viewBox="-?\d+(\.\d+)?\s+-?\d+(\.\d+)?\s+\d+\s+\d+"/);
@@ -70,7 +71,8 @@ describe('opticalCenterPostcss', () => {
     `;
     const { css: out } = await run(css);
     expect(out).toContain('data:image/svg+xml;utf8,');
-    expect(out).not.toMatch(/--optical-center\s*:\s*auto/);
+    // Tracer form replaces the input (same property name, value preserved).
+    expect(out).toMatch(/--optical-center\s*:\s*auto/);
   });
 
   it('leaves rules without the directive untouched', async () => {

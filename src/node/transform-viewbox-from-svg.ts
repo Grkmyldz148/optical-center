@@ -26,7 +26,11 @@ export function transformViewBoxFromSvg(
   options?: TransformViewBoxFromSvgOptions,
 ): ViewBoxTransformResult {
   const raster = rasterizeSvg(svg, options?.rasterize);
-  const offset = getOpticalCenter(raster);
+  const px = getOpticalCenter(raster);
+  const offset = {
+    dxPercent: raster.width > 0 ? (px.dx / raster.width) * 100 : 0,
+    dyPercent: raster.height > 0 ? (px.dy / raster.height) * 100 : 0,
+  };
   return transformViewBox(svg, raster, offset, {
     emitMetadata: options?.emitMetadata === true,
   });

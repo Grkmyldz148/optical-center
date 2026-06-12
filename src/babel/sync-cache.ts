@@ -10,8 +10,8 @@
  *   - L2: synchronous read from the on-disk cache directory written
  *     by the async cache. Hits become L1.
  *   - On miss: caller computes the value, then writes it back via
- *     the async cache so other consumers (CLI, ?optical asset loads)
- *     see the same entry.
+ *     the async cache so other consumers (CLI, PostCSS) see the same
+ *     entry.
  *
  * The L2 reader and writer share the on-disk format with TransformCache
  * by going through the exact same key derivation, so Babel-warmed

@@ -1,90 +1,96 @@
-# React + Vite — every build-time path in one place
+# React + Vite — `optical-center: auto`
 
-Three scenarios, all build-time. Zero runtime, zero React hook, zero
-JS at the icon mount point.
+One declaration, two surfaces. Same property name in CSS and JSX.
 
-| # | Scenario | Tooling | When to use |
-|---|----------|---------|-------------|
-| 1 | `<Play />` / `<Heart />` style icon components — CSS-only centering | PostCSS plugin | The default. Real npm icon packages, lucide-react DX. |
-| 2 | Inline JSX `<svg optical-center="auto">` | Babel plugin | You author the SVG inline (paste from a design tool). |
-| 3 | `import './x.svg?optical'` | Vite plugin (`load` hook) | You import individual SVG asset files. |
+| Surface | What you write | Plugin that handles it |
+|---------|----------------|------------------------|
+| JSX     | `<svg optical-center="auto">…</svg>` | Babel (via `optical-center/vite`) |
+| CSS     | `.icon { mask: url('…svg'); optical-center: auto; }` | PostCSS (`optical-center/postcss`) |
+
+Both run at build time. The marker is stripped from the output; the
+browser sees a flat, pre-corrected SVG (or a `data:image/svg+xml,…`
+inline mask). No runtime, no React hook, no JS at the icon mount
+point.
 
 ## Run it
 
 ```bash
-# from repo root — workspaces will link optical-center to the local source
+# from repo root
 npm install
-
-# then start the dev server
 npm --workspace optical-center-example-react-vite run dev
 ```
 
-## Scenario 1 — lucide-react DX, CSS-only centering
+## Surface 1 — JSX
+
+Real-world idiom: paste an SVG inline (designer hand-off, icon
+library source, or hand-rolled glyph) and add the attribute.
 
 ```tsx
-import { Play, Heart, ArrowRight } from './components/icons';
-
-<Play />        {/* identical call signature to lucide-react */}
-<Heart />
-<ArrowRight />
-```
-
-Each named export is a plain `<span>` wrapper around a CSS class:
-
-```tsx
-// components/icons.tsx
-const make = (cls: string) => () =>
-  <span className={`icon ${cls} optical`} />;
-
-export const Play       = make('icon-lucide-play');
-export const Heart      = make('icon-lucide-heart');
-export const ArrowRight = make('icon-lucide-arrow-right');
-```
-
-The CSS does the rest:
-
-```css
-/* src/styles/icons.css */
-.icon-lucide-play.optical {
-  -webkit-mask-image: url('lucide-static/icons/play.svg');
-          mask-image: url('lucide-static/icons/play.svg');
-  optical-center: auto;          /* ← only line that differs */
+export function PlayButton() {
+  return (
+    <button>
+      <svg optical-center="auto" viewBox="0 0 24 24"
+           fill="none" stroke="currentColor" strokeWidth="2"
+           strokeLinecap="round" strokeLinejoin="round">
+        <polygon points="6 3 20 12 6 21 6 3" />
+      </svg>
+    </button>
+  );
 }
 ```
 
-When `postcss.config.js` registers the optical-center plugin (Vite
-picks it up automatically), every rule with `optical-center: auto`
-gets each `url('…svg')` rewritten to an inline `data:image/svg+xml,…`
-URI of the corrected SVG. The directive is stripped from the
-output. The shipped CSS is plain, browser-native, framework-agnostic.
+The Babel plugin walks the static `<svg>` subtree at compile time,
+runs the optical-centering pipeline, rewrites `viewBox`, and strips
+the marker. Both `optical-center="auto"` (mirrors CSS), the camelCase
+`opticalCenter="auto"`, and the boolean shorthand `opticalCenter` are
+accepted.
 
-### Why a wrapper component?
+## Surface 2 — CSS
 
-You could write `<span className="icon icon-lucide-play optical" />`
-directly — that's what the wrappers do. But `<Play />` is shorter,
-typed, autocompletes, and matches what people expect when they reach
-for icons in React. The wrapper is one line per icon. Compared to
-`lucide-react`'s React component (which emits `<svg>` at render
-time and would need a runtime hook to center), the wrapper is
-strictly cheaper: no JSX traversal, no SVG diffing, no `viewBox`
-mutation per mount.
+Real-world idiom: a single-color utility icon mounted via
+`mask-image`, recolored by `currentColor` (Tailwind mask-utility,
+shadcn-style icon primitives, etc.).
 
-### Real packages used
+```css
+.icon-play {
+  display: inline-block;
+  width: 24px;
+  height: 24px;
+  background: currentColor;
+  mask: url('lucide-static/icons/play.svg') center / contain no-repeat;
+  optical-center: auto;
+}
+```
 
-- **`lucide-static`** — npm, raw Lucide SVGs (24x24).
-- **`heroicons`** — npm, raw Heroicons SVGs (24x24, different style).
-- **`@fortawesome/fontawesome-free`** — npm, non-square viewBoxes (e.g. 384x512, 576x512).
+The PostCSS plugin walks every rule that contains `optical-center: auto`,
+runs each `url('…svg')` through the rasterize → optical-center → viewBox
+rewrite pipeline, and inlines the corrected SVG as a `data:image/svg+xml,…`
+URI. The directive disappears from shipped CSS.
 
-Bare specifiers (`url('lucide-static/icons/play.svg')`) resolve
-through Node's module resolution. No alias config needed.
+Bare specifiers like `lucide-static/icons/play.svg` resolve through
+Node's module resolution — installed npm icon packages just work,
+no alias config needed.
 
-## Why no runtime?
+## Wiring
 
-Earlier drafts shipped `<OpticalIcon>`, `<OpticalRef>`, and a
-`useOpticalCenter()` hook for icon libraries that emit `<svg>` at
-render time. They were deleted. Every path is build-time:
+`vite.config.ts`:
 
-- the math runs once at build, not on every mount,
-- the browser sees a corrected SVG with no breadcrumb,
-- the React tree never touches the pipeline,
-- there is no runtime entry to ship.
+```ts
+import { defineConfig } from 'vite';
+import opticalCenter from 'optical-center/vite';
+import react from '@vitejs/plugin-react';
+
+export default defineConfig({
+  plugins: [opticalCenter(), react()],
+});
+```
+
+`postcss.config.js`:
+
+```js
+import opticalCenter from 'optical-center/postcss';
+export default { plugins: [opticalCenter()] };
+```
+
+Vite picks `postcss.config.js` up automatically. That's the whole
+setup — two plugins, two API surfaces, one declaration.

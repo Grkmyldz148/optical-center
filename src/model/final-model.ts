@@ -28,10 +28,6 @@ export interface OpticalCenterResult {
   dx: number;
   /** Vertical offset in raster pixels. Positive = shift down. */
   dy: number;
-  /** Horizontal offset as percentage of element width. */
-  dxPercent: number;
-  /** Vertical offset as percentage of element height. */
-  dyPercent: number;
 }
 
 /**
@@ -49,7 +45,5 @@ export function getOpticalCenter(imageData: {
   return {
     dx: raw.dx * CORRECTION_SCALE,
     dy: raw.dy * CORRECTION_SCALE,
-    dxPercent: raw.dxPercent * CORRECTION_SCALE,
-    dyPercent: raw.dyPercent * CORRECTION_SCALE,
   };
 }

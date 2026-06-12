@@ -1,77 +1,204 @@
 /*
- * Author CSS as if you were just dropping in static SVGs from your
- * installed icon packages. Add `optical-center: auto;` to a rule and
- * the plugin walks every other declaration in that rule, rewriting
- * every `url('…svg')` to an inline data URI of the corrected SVG.
- * The directive is stripped from the output. No runtime, no
- * JavaScript, no bundler-specific syntax.
+ * optical-center · postcss-cli example
  *
- * Bare specifiers — `lucide-static/icons/play.svg` — resolve through
- * Node's module resolution. No alias config.
+ * One PostCSS plugin, one directive: `optical-center: auto`.
+ *
+ * Every rule that opts in has a `url('…svg')` somewhere — in
+ * `background-image`, the `background` shorthand, `mask-image`,
+ * the `mask` shorthand, or `content`. When the plugin sees the
+ * directive in a rule, it walks every other declaration in that
+ * same rule, rewrites each url() to a `data:image/svg+xml,…` URI
+ * whose viewBox is shifted by the icon's perceptual offset, and
+ * replaces the directive with `--optical-center: auto` (a no-op
+ * tracer kept for DevTools breadcrumbs).
+ *
+ * Bare specifiers (`lucide-static/icons/play.svg`) are resolved
+ * through Node's module resolution. No alias config, no bundler.
+ *
+ * Hard contract followed below: rules carrying `optical-center: auto`
+ * never use `align-items: center` / `justify-content: center` and
+ * never put their child in `position: absolute`. The directive owns
+ * centering. Where a wrapper around a child element is unavoidable
+ * (mask-image, content: url), we use the flex auto-margin recipe —
+ * `display: flex` on the wrapper, `margin: auto` on the child —
+ * which centres without touching align/justify.
  */
 
+/* ----------------------------------------------------------------
+ * Page chrome — typography, layout, section spacing. Nothing here
+ * has anything to do with `optical-center`; it just makes the demo
+ * readable.
+ * ---------------------------------------------------------------- */
 :root {
   --badge-bg: #111;
+  --badge-size: 96px;
+  --icon-size: 44px;
   --icon-color: #fff;
+  --rule-color: rgba(255, 255, 255, 0.42);
+  --text: #111;
+  --muted: #6b7280;
+  --code-bg: #f4f4f5;
 }
 
 * { box-sizing: border-box; }
 
 body {
-  font: 16px/1.5 system-ui, sans-serif;
-  max-width: 880px;
+  font: 16px/1.55 system-ui, -apple-system, "Segoe UI", sans-serif;
+  max-width: 920px;
   margin: 40px auto;
-  padding: 0 24px;
-  color: #111;
+  padding: 0 24px 96px;
+  color: var(--text);
 }
 
-h1 { letter-spacing: -0.02em; margin: 0 0 12px; }
-h2 { letter-spacing: -0.015em; font-size: 1.15rem; margin-top: 32px; }
-.lede { color: #666; }
+h1 {
+  font-size: 2rem;
+  letter-spacing: -0.025em;
+  margin: 0 0 8px;
+}
 
-.row {
+h2 {
+  font-size: 1.25rem;
+  letter-spacing: -0.015em;
+  margin: 48px 0 4px;
+}
+
+p { margin: 0 0 12px; }
+
+.lede { color: var(--muted); margin-bottom: 28px; max-width: 64ch; }
+.section-lede { color: var(--muted); margin-bottom: 16px; max-width: 64ch; }
+
+code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.875em;
+  background: var(--code-bg);
+  padding: 1px 5px;
+  border-radius: 4px;
+}
+
+pre {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.8125rem;
+  line-height: 1.55;
+  background: var(--code-bg);
+  padding: 14px 16px;
+  border-radius: 8px;
+  margin: 12px 0 24px;
+  overflow-x: auto;
+}
+
+/* ----------------------------------------------------------------
+ * Pair layout — every scenario renders one geometric badge next to
+ * one optical badge with a caption to the right.
+ *
+ * No align-items / justify-content here on purpose. The grid only
+ * lines three columns up; nothing inside cares about cross-axis
+ * centering.
+ * ---------------------------------------------------------------- */
+.pair {
   display: grid;
-  grid-template-columns: 80px 80px 1fr;
-  gap: 16px;
-  align-items: center;
-  margin: 16px 0;
+  grid-template-columns: var(--badge-size) var(--badge-size) 1fr;
+  gap: 24px;
+  margin: 18px 0;
 }
 
-.badge {
-  width: 80px;
-  height: 80px;
-  background: var(--badge-bg);
-  border-radius: 50%;
-  background-repeat: no-repeat;
-  background-position: center;
-  background-size: 36px 36px;
+.col-labels {
+  display: grid;
+  grid-template-columns: var(--badge-size) var(--badge-size) 1fr;
+  gap: 24px;
+  margin-top: 8px;
 }
 
-.name {
+.col-label {
+  font-family: ui-monospace, monospace;
+  font-size: 11px;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  text-align: center;
+}
+
+.caption {
   font-family: ui-monospace, monospace;
   font-size: 13px;
-  color: #555;
+  color: #374151;
+  line-height: 1.5;
 }
 
-/*
- * Pairs of geometric vs. optical. Identical CSS on both sides; the
- * only thing the optical variant adds is one declaration.
- */
+.caption strong { color: var(--text); font-weight: 600; }
+
+/* ----------------------------------------------------------------
+ * Shared badge chrome — dark circle, fixed geometry, and a crosshair
+ * overlay that marks the BADGE's geometric centre. The crosshair is
+ * purely educational: a geometric icon sits with its own bounding
+ * box centred on the crosshair (feels off for asymmetric shapes);
+ * the optical version is shifted by the plugin so the icon's
+ * perceptual centre lands on the crosshair.
+ *
+ * The crosshair lives on `::before` and `::after` pseudo-elements.
+ * `position: absolute` here is decorative overlay, not icon
+ * positioning — the icon itself is mounted via `background-image`
+ * or `mask` on the badge box and stays in normal flow.
+ * ---------------------------------------------------------------- */
+.badge {
+  width: var(--badge-size);
+  height: var(--badge-size);
+  background-color: var(--badge-bg);
+  border-radius: 50%;
+  position: relative;
+}
+
+.badge::before,
+.badge::after,
+.mask-wrap::before,
+.mask-wrap::after,
+.pseudo-host::before,
+.pseudo-host::after {
+  content: "";
+  position: absolute;
+  background: var(--rule-color);
+  pointer-events: none;
+}
+
+.badge::before,
+.mask-wrap::before,
+.pseudo-host::before {
+  left: 50%;
+  top: 12%;
+  bottom: 12%;
+  width: 1px;
+  transform: translateX(-0.5px);
+}
+
+.badge::after,
+.mask-wrap::after,
+.pseudo-host::after {
+  top: 50%;
+  left: 12%;
+  right: 12%;
+  height: 1px;
+  transform: translateY(-0.5px);
+}
+
+/* ----------------------------------------------------------------
+ * SECTION 1 — background-image
+ *
+ * The canonical case. `background-image: url('…svg')` mounts the
+ * icon; adding `optical-center: auto` to the same rule rewrites
+ * the url to a data URI with a shifted viewBox.
+ *
+ * Three icons from three different installed packages share the
+ * same machinery — the plugin's bare-specifier resolution treats
+ * them identically.
+ * ---------------------------------------------------------------- */
 .icon-lucide-play         { background-image: url('lucide-static/icons/play.svg'); }
 .icon-lucide-play.optical {
   background-image: url('lucide-static/icons/play.svg');
   optical-center: auto;
 }
 
-.icon-lucide-heart         { background-image: url('lucide-static/icons/heart.svg'); }
-.icon-lucide-heart.optical {
-  background-image: url('lucide-static/icons/heart.svg');
-  optical-center: auto;
-}
-
-.icon-heroicons-bell         { background-image: url('heroicons/24/solid/bell.svg'); }
-.icon-heroicons-bell.optical {
-  background-image: url('heroicons/24/solid/bell.svg');
+.icon-heroicons-play         { background-image: url('heroicons/24/solid/play.svg'); }
+.icon-heroicons-play.optical {
+  background-image: url('heroicons/24/solid/play.svg');
   optical-center: auto;
 }
 
@@ -81,65 +208,165 @@ h2 { letter-spacing: -0.015em; font-size: 1.15rem; margin-top: 32px; }
   optical-center: auto;
 }
 
-.icon-fa-star         { background-image: url('@fortawesome/fontawesome-free/svgs/solid/star.svg'); }
-.icon-fa-star.optical {
-  background-image: url('@fortawesome/fontawesome-free/svgs/solid/star.svg');
-  optical-center: auto;
+/* Shared geometry — every Section 1 badge mounts its icon with the
+ * same size, position, and repeat. The plugin doesn't touch these
+ * declarations; it only rewrites whichever ones hold a url(). */
+.icon-lucide-play,
+.icon-heroicons-play,
+.icon-fa-play {
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: var(--icon-size);
 }
 
-/*
- * background shorthand — the directive doesn't care which property
- * holds the url().
- */
-.icon-shorthand {
+/* ----------------------------------------------------------------
+ * SECTION 2 — background shorthand
+ *
+ * The url() can live inside the `background` shorthand. The plugin
+ * matches `url('…svg')` anywhere in any declaration in the rule,
+ * so shorthand vs. longhand makes no difference.
+ * ---------------------------------------------------------------- */
+.icon-heart-shorthand {
   background:
     var(--badge-bg)
-    url('lucide-static/icons/play.svg')
-    center / 36px 36px no-repeat;
+    url('lucide-static/icons/heart.svg')
+    center / var(--icon-size) no-repeat;
+}
+
+.icon-heart-shorthand.optical {
+  background:
+    var(--badge-bg)
+    url('lucide-static/icons/heart.svg')
+    center / var(--icon-size) no-repeat;
   optical-center: auto;
-  width: 80px;
-  height: 80px;
-  border-radius: 50%;
 }
 
-/*
- * mask-image — re-tintable icon. Both -webkit-mask-image and the
- * standard property are rewritten by a single directive.
- */
-.mask-row {
-  display: grid;
-  grid-template-columns: 80px 80px 1fr;
-  gap: 16px;
-  align-items: center;
-  margin: 16px 0;
+/* ----------------------------------------------------------------
+ * SECTION 3 — background-position independence
+ *
+ * The perceptual shift is baked into the SVG's viewBox, not into
+ * the wrapper's positioning. Two icons rendered at the same
+ * off-centre `background-position` look identical in layout terms;
+ * only the optical one has had its viewBox nudged so the icon's
+ * perceptual centre sits where the geometric centre of its
+ * bounding box used to sit.
+ *
+ * Practical takeaway: you can place an optical icon anywhere
+ * (`background-position: 75% 25%`, `top left`, …) and the plugin
+ * does not fight you. The shift is internal to the SVG.
+ * ---------------------------------------------------------------- */
+.icon-play-offset {
+  background-image: url('lucide-static/icons/play.svg');
+  background-repeat: no-repeat;
+  background-size: var(--icon-size);
+  background-position: 28% 50%;
 }
 
-.mask-badge {
-  width: 80px;
-  height: 80px;
+.icon-play-offset.optical {
+  background-image: url('lucide-static/icons/play.svg');
+  background-repeat: no-repeat;
+  background-size: var(--icon-size);
+  background-position: 28% 50%;
+  optical-center: auto;
+}
+
+/* ----------------------------------------------------------------
+ * SECTION 4 — mask-image (re-tintable)
+ *
+ * `mask-image` plus a single-colour `background` makes the icon
+ * re-tintable through `color` / `background-color`. The plugin
+ * treats the url() in `mask-image` exactly like the one in
+ * `background-image`: it walks the rule, rewrites the url, strips
+ * the directive.
+ *
+ * Two elements here on purpose: the outer dark circle is a wrapper,
+ * the inner element is the icon. The wrapper centres its child via
+ * `display: flex` + child `margin: auto` — the only flex auto-margin
+ * technique allowed under the project's hard contract (no
+ * align-items / justify-content / position: absolute anywhere near
+ * an `optical-center` rule).
+ * ---------------------------------------------------------------- */
+.mask-wrap {
+  width: var(--badge-size);
+  height: var(--badge-size);
   background: var(--badge-bg);
   border-radius: 50%;
-  display: grid;
-  place-items: center;
+  position: relative;
+  display: flex;
 }
 
+.mask-wrap > .mask-icon { margin: auto; }
+
 .mask-icon {
-  width: 36px;
-  height: 36px;
+  width: var(--icon-size);
+  height: var(--icon-size);
   background: var(--icon-color);
   -webkit-mask-repeat: no-repeat;
-          mask-repeat: no-repeat;
   -webkit-mask-position: center;
-          mask-position: center;
   -webkit-mask-size: contain;
-          mask-size: contain;
+  mask-repeat: no-repeat;
+  mask-position: center;
+  mask-size: contain;
 }
-.mask-arrow-right {
-  -webkit-mask-image: url('lucide-static/icons/arrow-right.svg');
-          mask-image: url('lucide-static/icons/arrow-right.svg');
-}
+
+.mask-arrow-right         { mask-image: url('lucide-static/icons/arrow-right.svg'); }
 .mask-arrow-right.optical {
-  -webkit-mask-image: url('lucide-static/icons/arrow-right.svg');
-          mask-image: url('lucide-static/icons/arrow-right.svg');
+  mask-image: url('lucide-static/icons/arrow-right.svg');
+  optical-center: auto;
+}
+
+/* ----------------------------------------------------------------
+ * SECTION 5 — mask shorthand
+ *
+ * Same rewrite as `mask-image`, just authored as the `mask`
+ * shorthand. The plugin's url matcher doesn't care about property
+ * name — it matches `url('…svg')` inside any declaration value.
+ * ---------------------------------------------------------------- */
+.mask-chevron-right {
+  -webkit-mask: url('lucide-static/icons/chevron-right.svg') center / contain no-repeat;
+  mask: url('lucide-static/icons/chevron-right.svg') center / contain no-repeat;
+}
+
+.mask-chevron-right.optical {
+  -webkit-mask: url('lucide-static/icons/chevron-right.svg') center / contain no-repeat;
+  mask: url('lucide-static/icons/chevron-right.svg') center / contain no-repeat;
+  optical-center: auto;
+}
+
+/* ----------------------------------------------------------------
+ * SECTION 6 — content: url() on a pseudo-element
+ *
+ * `content: url()` on a `::before` or `::after` mounts the SVG as
+ * a replaced element. The plugin walks the pseudo's rule the same
+ * way it walks any other rule — it sees the url() in `content`,
+ * rewrites it to a shifted data URI, strips the directive.
+ *
+ * Structure here mirrors Section 4: a `.pseudo-host` wrapper
+ * (dark circle + crosshair) flex-centres a single `.pseudo-bell`
+ * child whose `::before` IS the icon.
+ * ---------------------------------------------------------------- */
+.pseudo-host {
+  width: var(--badge-size);
+  height: var(--badge-size);
+  background: var(--badge-bg);
+  border-radius: 50%;
+  position: relative;
+  display: flex;
+}
+
+.pseudo-host > .pseudo-bell { margin: auto; }
+
+.pseudo-bell::before {
+  content: url('lucide-static/icons/bell.svg');
+  display: inline-block;
+  width: var(--icon-size);
+  height: var(--icon-size);
+}
+
+.pseudo-bell.optical::before {
+  content: url('lucide-static/icons/bell.svg');
+  display: inline-block;
+  width: var(--icon-size);
+  height: var(--icon-size);
   optical-center: auto;
 }

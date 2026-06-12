@@ -2,6 +2,7 @@
   "name": "optical-center",
   "version": "0.2.0-alpha.0",
   "description": "Computes the perceptual optical center of an icon for visually balanced rendering.",
+  "private": true,
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -29,9 +30,17 @@
       "types": "./dist/vite/index.d.ts",
       "import": "./dist/vite/index.js"
     },
+    "./astro": {
+      "types": "./dist/astro/index.d.ts",
+      "import": "./dist/astro/index.js"
+    },
     "./postcss": {
       "types": "./dist/postcss/index.d.ts",
       "import": "./dist/postcss/index.js"
+    },
+    "./tailwind": {
+      "types": "./dist/tailwind/index.d.ts",
+      "import": "./dist/tailwind/index.js"
     },
     "./package.json": "./package.json"
   },
@@ -50,10 +59,21 @@
     "build": "tsc",
     "test": "vitest run",
     "test:watch": "vitest",
-    "prepublishOnly": "npm run build"
+    "prepublishOnly": "npm run build",
+    "cli": "node dist/cli/index.js",
+    "dev:cli": "npm run build && node dist/cli/index.js",
+    "dev:playground": "npm run dev --workspace apps/playground",
+    "dev:site": "npm run dev --workspace apps/site",
+    "build:playground": "npm run build --workspace apps/playground",
+    "build:site": "npm run build --workspace apps/site",
+    "preview:playground": "npm run preview --workspace apps/playground",
+    "preview:site": "npm run preview --workspace apps/site",
+    "check:site": "npm run check --workspace apps/site"
   },
   "workspaces": [
-    "examples/*"
+    "examples/*",
+    "apps/playground",
+    "apps/site"
   ],
   "keywords": [
     "optical-center",
@@ -67,6 +87,7 @@
   "dependencies": {
     "@babel/types": "^7.29.0",
     "@resvg/resvg-js": "^2.6.0",
+    "chalk": "^5.6.2",
     "write-file-atomic": "^7.0.1"
   },
   "devDependencies": {
@@ -76,6 +97,7 @@
     "@types/react": "^19.2.14",
     "@types/write-file-atomic": "^4.0.3",
     "@vitest/coverage-v8": "^3.2.4",
+    "astro": "^5.18.1",
     "postcss": "^8.4.0",
     "typescript": "^5.4.0",
     "vite": "^7.3.2",
@@ -83,11 +105,15 @@
   },
   "peerDependencies": {
     "@babel/core": "^7.29.0",
+    "astro": ">=4",
     "postcss": "^8.5.13",
     "vite": ">=5"
   },
   "peerDependenciesMeta": {
     "@babel/core": {
+      "optional": true
+    },
+    "astro": {
       "optional": true
     },
     "postcss": {

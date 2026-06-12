@@ -1,0 +1,176 @@
+/*
+ * App shell — full-viewport flex column with a top bar and the
+ * active view filling the rest. Each view owns its own grid
+ * (sidebar + canvas for the playground; sidebar + grid for the
+ * stress test) so the shell stays dumb.
+ */
+
+.app {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background: var(--bg);
+}
+
+/* ------------------------------------------------------------------
+ * Top bar — branding + section tabs + utility toggles.
+ * ------------------------------------------------------------------ */
+.topbar {
+  display: flex;
+  align-items: center;
+  gap: var(--s-4);
+  height: var(--topbar-h);
+  padding: 0 var(--s-5);
+  border-bottom: 1px solid var(--line);
+  background: var(--surface-1);
+  flex-shrink: 0;
+}
+
+.topbar__brand {
+  display: flex;
+  align-items: center;
+  gap: var(--s-2);
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+.topbar__brand-mark {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background:
+    radial-gradient(
+      circle at 38% 42%,
+      var(--brand-mark-dot) 0 22%,
+      transparent 23%
+    ),
+    var(--brand-mark-bg);
+  box-shadow: 0 0 0 1px var(--line-stronger);
+}
+.topbar__brand-name {
+  font-family: var(--font-mono);
+  font-size: var(--t-md);
+}
+.topbar__brand-version {
+  font-size: var(--t-xs);
+  color: var(--fg-subtle);
+  font-family: var(--font-mono);
+  margin-left: var(--s-1);
+}
+
+.topbar__tabs {
+  display: flex;
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  border-radius: var(--r-pill);
+  padding: 3px;
+  gap: 2px;
+}
+.topbar__tab {
+  padding: 4px 12px;
+  font-size: var(--t-sm);
+  font-weight: 500;
+  color: var(--fg-muted);
+  border-radius: var(--r-pill);
+  transition: color var(--dur-fast) var(--ease),
+    background var(--dur-fast) var(--ease);
+}
+.topbar__tab:hover {
+  color: var(--fg);
+}
+.topbar__tab--active {
+  background: var(--bg);
+  color: var(--fg);
+  box-shadow: 0 0 0 1px var(--line-strong);
+}
+
+.topbar__spacer {
+  flex: 1;
+}
+
+.topbar__meta {
+  display: flex;
+  align-items: center;
+  gap: var(--s-3);
+  font-size: var(--t-xs);
+  color: var(--fg-subtle);
+  font-family: var(--font-mono);
+}
+.topbar__meta a {
+  color: var(--fg-muted);
+  text-decoration: none;
+  border-bottom: 1px dotted var(--line-stronger);
+}
+.topbar__meta a:hover {
+  color: var(--fg);
+}
+
+/* ------------------------------------------------------------------
+ * View shell — two-column grid: sidebar (fixed width) + canvas.
+ *
+ * `grid-template-rows: minmax(0, 1fr)` is the load-bearing line:
+ * without an explicit row size the grid track defaults to `auto`
+ * (= content height), so any descendant with `overflow: auto` would
+ * just push the row open instead of scrolling. Forcing the row to
+ * `1fr` of the grid container's height (and the grid container has
+ * `flex: 1` of `.app`) gives the inner scroll regions a real
+ * constraint to scroll against.
+ *
+ * `min-height: 0` on `.view__main` is the matching escape hatch for
+ * the inner flex column — flex items default to `min-height: auto`
+ * which would otherwise let `.stress`/`.stage` exceed the track.
+ * ------------------------------------------------------------------ */
+.view {
+  flex: 1;
+  display: grid;
+  grid-template-columns: var(--sidebar-w) 1fr;
+  grid-template-rows: minmax(0, 1fr);
+  min-height: 0;
+}
+
+.view__sidebar {
+  border-right: 1px solid var(--line);
+  background: var(--surface-1);
+  overflow-y: auto;
+  padding: var(--s-5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-5);
+  min-height: 0;
+}
+
+.view__main {
+  position: relative;
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ------------------------------------------------------------------
+ * Sidebar groups — controls clustered under a small heading.
+ * ------------------------------------------------------------------ */
+.group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-3);
+}
+.group__title {
+  font-size: var(--t-2xs);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.10em;
+  color: var(--fg-subtle);
+  margin: 0;
+}
+.group__hint {
+  font-size: var(--t-xs);
+  color: var(--fg-subtle);
+  line-height: 1.5;
+}
+.group__hint code {
+  background: var(--surface-2);
+  padding: 1px 5px;
+  border-radius: var(--r-1);
+  font-size: 95%;
+  border: 1px solid var(--line);
+}

@@ -14,24 +14,23 @@ describe('getOpticalCenter', () => {
     const result = getOpticalCenter(emptyRaster());
     expect(result.dx).toBe(0);
     expect(result.dy).toBe(0);
-    expect(result.dxPercent).toBe(0);
-    expect(result.dyPercent).toBe(0);
   });
 
   it('returns small offset for a near-symmetric centered block', () => {
     // The pipeline (DoG, symmetry correction, vertical bias) introduces
     // small but non-zero offsets even for geometrically symmetric input.
-    // We just bound the magnitude to make sure nothing has blown up.
+    // We just bound the magnitude (in pixels, < 5% of side) to make sure
+    // nothing has blown up.
     const centered = rasterWithBlock({ x: 8, y: 8, w: 8, h: 8 });
     const result = getOpticalCenter(centered);
-    expect(Math.abs(result.dxPercent)).toBeLessThan(5);
-    expect(Math.abs(result.dyPercent)).toBeLessThan(5);
+    expect(Math.abs(result.dx) / centered.width).toBeLessThan(0.05);
+    expect(Math.abs(result.dy) / centered.height).toBeLessThan(0.05);
   });
 
   it('produces non-zero offset for an off-center block', () => {
-    const offset = rasterWithBlock({ x: 2, y: 8, w: 8, h: 8 });
-    const result = getOpticalCenter(offset);
-    expect(Math.abs(result.dxPercent)).toBeGreaterThan(0);
+    const off = rasterWithBlock({ x: 2, y: 8, w: 8, h: 8 });
+    const result = getOpticalCenter(off);
+    expect(Math.abs(result.dx)).toBeGreaterThan(0);
   });
 
   it('is deterministic — same input → same output', () => {
@@ -46,8 +45,6 @@ describe('getOpticalCenter', () => {
     const r = getOpticalCenter(raster);
     expect(Number.isFinite(r.dx)).toBe(true);
     expect(Number.isFinite(r.dy)).toBe(true);
-    expect(Number.isFinite(r.dxPercent)).toBe(true);
-    expect(Number.isFinite(r.dyPercent)).toBe(true);
   });
 
   it('scales by the documented Phase-2 PSE constant', () => {

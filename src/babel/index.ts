@@ -17,14 +17,14 @@
  * against esbuild's own JSX transform.
  */
 
-import type { PluginObj } from '@babel/core';
+import type { PluginObj, PluginPass } from '@babel/core';
 
 import { MAX_INPUT_BYTES } from '../core/constants.js';
 import type { WarningCode } from '../core/warnings.js';
 
 import { SyncTransformCache } from './sync-cache.js';
-import { visitJsxElement } from './visitor.js';
-import type { CachedTransform } from './visitor.js';
+import { visitJsxElement, scanIconImports, EMPTY_ICON_IMPORTS } from './visitor.js';
+import type { CachedTransform, IconImports, IconPackageResolver } from './visitor.js';
 
 export interface BabelPluginOptions {
   /**
@@ -65,6 +65,18 @@ export interface BabelPluginOptions {
    * outer orchestrator already deduplicates inputs. Default `false`.
    */
   readonly disableCache?: boolean;
+  /**
+   * Map of icon package names to a function that turns a PascalCase
+   * import name into a bare SVG specifier resolvable from the project
+   * root. Default covers `lucide-react` → `lucide-static/icons/<kebab>.svg`.
+   * Used by the container-side directive when the icon is a JSX
+   * component (rather than a hand-written `<svg>` subtree).
+   */
+  readonly iconPackages?: Readonly<Record<string, IconPackageResolver>>;
+}
+
+interface OpticalPluginState extends PluginPass {
+  opticalIconImports?: IconImports;
 }
 
 export type { WarningCode };
@@ -87,13 +99,27 @@ export default function opticalCenterBabelPlugin(
         options.cacheDir !== undefined ? { dir: options.cacheDir } : undefined,
       );
 
+  const iconPackages = options.iconPackages;
+
   return {
     name: 'optical-center',
     visitor: {
-      JSXElement(path) {
+      Program: {
+        enter(path, state: OpticalPluginState) {
+          // Build the per-file local-name → svg-path map once,
+          // before any JSXElement visitor runs. The map is empty if
+          // no tracked icon package is imported.
+          state.opticalIconImports = iconPackages
+            ? scanIconImports(path.node, state.filename, iconPackages)
+            : scanIconImports(path.node, state.filename);
+        },
+      },
+      JSXElement(path, state: OpticalPluginState) {
+        const iconImports = state.opticalIconImports ?? EMPTY_ICON_IMPORTS;
         const visitorOptions = {
           emitMetadata,
           maxInputBytes,
+          iconImports,
           ...(onWarning ? { onWarning } : {}),
           ...(cache ? { cache } : {}),
         };

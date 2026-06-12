@@ -12,8 +12,12 @@ import { join } from 'node:path';
 import { defaultCacheDir } from '../../cache/index.js';
 import { ALGORITHM_VERSION } from '../../core/version.js';
 
+import { error as caretError } from '../caret/components/error.js';
+import { success as caretSuccess } from '../caret/components/message.js';
+
 import { getStringFlag, getBoolFlag } from '../argv.js';
 import { readOutputOptions, writeJson, writeStderr, writeStdout } from '../output.js';
+import { pickMode } from '../render.js';
 
 export async function runClearCache(
   _positionals: ReadonlyArray<string>,
@@ -26,14 +30,22 @@ export async function runClearCache(
 
   try {
     await rm(target, { recursive: true, force: true });
-  } catch (error) {
-    writeStderr(`error: failed to remove ${target}: ${describe(error)}`, output);
+  } catch (err) {
+    const mode = pickMode(output);
+    if (mode === 'tty') {
+      caretError(`failed to remove ${target}`, { body: describe(err) });
+    } else {
+      writeStderr(`error: failed to remove ${target}: ${describe(err)}`, output);
+    }
     return 3;
   }
 
   const result = { cleared: target, scope: all ? 'all' : 'current-version' };
-  if (output.json) {
+  const mode = pickMode(output);
+  if (mode === 'json') {
     writeJson('clear-cache', result, output);
+  } else if (mode === 'tty') {
+    caretSuccess(`cleared ${target}`);
   } else {
     writeStdout(`cleared ${target}`, output);
   }

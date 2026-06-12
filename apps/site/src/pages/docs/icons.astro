@@ -1,0 +1,466 @@
+---
+/*
+ * Docs · Your icons — the flagship, case-by-case reference for the
+ * automatic icon-data layer. Where the five Patterns pages document the
+ * explicit `optical-center` directive (a marker you write), this page
+ * documents what happens with NO directive at all: the Vite plugin finds
+ * the icon SVG in your build graph by shape and bakes the perceptual
+ * shift into the asset itself. One section per real-world icon source.
+ *
+ * Mental model the page establishes:
+ *   - Reach the pixels at build time → corrected automatically, zero markup.
+ *   - Can't reach them (runtime/remote/opaque component) → fall back to the
+ *     container directive, which centers the slot. Never silent.
+ */
+import DocsLayout from "../../layouts/DocsLayout.astro";
+import CodeBlock from "../../components/docs/CodeBlock.astro";
+
+const toc = [
+  { id: "promise", label: "One plugin, every icon", level: 2 as const },
+  { id: "rule", label: "The one rule", level: 2 as const },
+  { id: "matrix", label: "Compatibility at a glance", level: 2 as const },
+  { id: "iconify", label: "Iconify", level: 2 as const },
+  { id: "iconify-set", label: "A whole collection", level: 3 as const },
+  { id: "iconify-single", label: "Single-icon modules", level: 3 as const },
+  { id: "iconify-dynamic", label: "Dynamic icon names", level: 3 as const },
+  { id: "svg-files", label: "Local SVG files", level: 2 as const },
+  { id: "own", label: "Your own icon data", level: 2 as const },
+  { id: "unplugin", label: "unplugin-icons", level: 2 as const },
+  { id: "components", label: "Icon component libraries", level: 2 as const },
+  { id: "runtime", label: "Runtime & remote icons", level: 2 as const },
+  { id: "control", label: "Opt out & control", level: 2 as const },
+  { id: "baked", label: "How the shift is baked in", level: 2 as const },
+];
+---
+
+<DocsLayout
+  title="Any icon library"
+  description="Add the Vite plugin once. The icons you already import — Iconify, your own SVG files, unplugin-icons, a hand-rolled icon map — come out optically centered, with no per-icon work and nothing shipped to the browser."
+  toc={toc}
+>
+  <h2 id="promise">One plugin, every icon</h2>
+  <p>
+    Every other page on this site documents the
+    <code>optical-center</code> directive — a marker you write on a
+    container or an <code>{`<svg>`}</code>. This page documents the
+    opposite: the icons you <em>don't</em> mark. The Vite plugin reads
+    your build graph, recognises icon SVG wherever it appears, and bakes
+    the perceptual shift straight into the asset. You write your normal
+    code.
+  </p>
+
+  <CodeBlock
+    filename="vite.config.ts"
+    lang="ts"
+    code={`import { defineConfig } from 'vite';
+import opticalCenter from 'optical-center/vite';
+import react from '@vitejs/plugin-react';
+
+export default defineConfig({
+  // This line is the entire setup. Nothing else changes.
+  plugins: [opticalCenter(), react()],
+});`}
+  />
+
+  <p>
+    No custom plugin to write, no precompute script, no committed offset
+    file, no runtime library. The detection is by <strong>shape</strong>,
+    not by package name — so a brand-new icon library, or one you built
+    yourself this afternoon, is handled the same way as Iconify.
+  </p>
+
+  <h2 id="rule">The one rule</h2>
+  <p>
+    There is exactly one thing that decides whether an icon is corrected
+    automatically:
+  </p>
+  <aside class="callout callout--tip">
+    <p class="callout-label">The rule</p>
+    <p>
+      If the plugin can reach the icon's SVG <strong>at build time</strong>
+      — as data, a string, or a file the bundler walks — it is corrected
+      automatically. If the pixels only exist at runtime, it can't be
+      (you can't optically centre what you can't measure), and you fall
+      back to the container directive, which centres the slot.
+    </p>
+  </aside>
+  <p>
+    This is the natural boundary of a zero-runtime tool. Everything below
+    is just that rule applied to the shapes icons actually ship in. When
+    an icon can't be reached, the build prints a one-line summary saying
+    so — it is never corrected silently and never skipped silently.
+  </p>
+
+  <h2 id="matrix">Compatibility at a glance</h2>
+  <table>
+    <thead>
+      <tr>
+        <th>Where your icons come from</th>
+        <th>What you write</th>
+        <th>Correction</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>Iconify offline — <code>@iconify/json</code> + <code>addCollection</code></td>
+        <td>your normal import</td>
+        <td>Automatic</td>
+      </tr>
+      <tr>
+        <td>Iconify single-icon — <code>@iconify/icons-*</code></td>
+        <td>your normal import</td>
+        <td>Automatic</td>
+      </tr>
+      <tr>
+        <td>Local <code>.svg</code> files — svgr, <code>?raw</code>, <code>?url</code></td>
+        <td>your normal import</td>
+        <td>Automatic</td>
+      </tr>
+      <tr>
+        <td>Your own icon-data module</td>
+        <td>your normal export</td>
+        <td>Automatic</td>
+      </tr>
+      <tr>
+        <td>unplugin-icons — <code>~icons/*</code></td>
+        <td>your normal import</td>
+        <td>Automatic</td>
+      </tr>
+      <tr>
+        <td>Hand-written inline <code>{`<svg>`}</code></td>
+        <td><code>optical-center="auto"</code> on the svg</td>
+        <td><a href="/docs/patterns/inline-svg">Directive</a></td>
+      </tr>
+      <tr>
+        <td>Component libraries — lucide-react, react-icons, Heroicons</td>
+        <td><code>optical-center: auto</code> on the wrapper</td>
+        <td><a href="/docs">Directive</a></td>
+      </tr>
+      <tr>
+        <td>Runtime / remote — <code>{`<img src>`}</code>, Iconify API</td>
+        <td><code>optical-center: auto</code> on the wrapper</td>
+        <td>Slot only</td>
+      </tr>
+    </tbody>
+  </table>
+  <p>
+    The first five rows are this page. The last three are the
+    <a href="/docs">directive patterns</a> — reach for them when the
+    pixels aren't reachable, or when you want to centre the slot rather
+    than the asset.
+  </p>
+
+  <h2 id="iconify">Iconify</h2>
+  <p>
+    <a href="https://iconify.design">Iconify</a> is the common case, so
+    it's first. Whether you register a whole collection or import one
+    icon at a time, the geometry arrives as data — which is exactly what
+    the plugin can read.
+  </p>
+
+  <h3 id="iconify-set">A whole collection</h3>
+  <p>
+    The idiomatic offline setup: import a set from
+    <code>@iconify/json</code> and register it. You write this exactly as
+    you would without optical-center.
+  </p>
+  <CodeBlock
+    filename="icons.ts"
+    lang="ts"
+    code={`import { addCollection } from '@iconify/react';
+import mdi from '@iconify/json/json/mdi.json';
+
+addCollection(mdi);`}
+  />
+  <CodeBlock
+    filename="HomeButton.tsx"
+    lang="tsx"
+    code={`import { Icon } from '@iconify/react';
+
+export const HomeButton = () => (
+  <button>
+    <Icon icon="mdi:home" />
+  </button>
+);`}
+  />
+  <p>
+    <strong>What happens:</strong> the plugin intercepts
+    <code>mdi.json</code> as Vite loads it, recognises the Iconify
+    collection shape, and bakes the per-icon shift into each icon body.
+    <code>{`<Icon>`}</code> then renders the corrected geometry. Nothing
+    runs in the browser — the JSON that reaches the bundle is already
+    corrected.
+  </p>
+  <aside class="callout callout--note">
+    <p class="callout-label">You chose "correct everything"</p>
+    <p>
+      Every icon in a registered collection is corrected, not just the
+      ones whose names appear in your source. That's what makes the
+      <a href="#iconify-dynamic">dynamic-name</a> case below work. The
+      first cold build of a large set does the measuring work once and
+      caches it on disk; later builds are instant.
+    </p>
+  </aside>
+
+  <h3 id="iconify-single">Single-icon modules</h3>
+  <p>
+    Importing one icon at a time — the
+    <code>@iconify/icons-*</code> packages — works the same way, and only
+    the icons you actually import get measured.
+  </p>
+  <CodeBlock
+    filename="HomeButton.tsx"
+    lang="tsx"
+    code={`import { Icon } from '@iconify/react';
+import home from '@iconify/icons-mdi/home';
+
+export const HomeButton = () => <Icon icon={home} />;`}
+  />
+
+  <h3 id="iconify-dynamic">Dynamic icon names</h3>
+  <p>
+    Because the whole registered set is corrected at build time, the icon
+    name can be fully dynamic at runtime and still render centered — the
+    case that defeats every static-analysis approach.
+  </p>
+  <CodeBlock
+    filename="IconGrid.tsx"
+    lang="tsx"
+    code={`import { Icon } from '@iconify/react';
+
+// \`name\` is unknown until runtime — still corrected, because the whole
+// collection was baked at build time.
+export const Cell = ({ name }: { name: string }) => (
+  <Icon icon={\`mdi:\${name}\`} />
+);`}
+  />
+
+  <h2 id="svg-files">Local SVG files</h2>
+  <p>
+    SVG files you import — as a
+    <a href="https://react-svgr.com">svgr</a> component, as a raw string,
+    or as a URL — are corrected at the source. The plugin runs before
+    svgr compiles, so by the time your component (or your
+    <code>?raw</code> string) exists, its <code>viewBox</code> already
+    carries the shift.
+  </p>
+  <CodeBlock
+    filename="Toolbar.tsx"
+    lang="tsx"
+    code={`import PlayIcon from './icons/play.svg';      // svgr → a React component
+import rawStop from './icons/stop.svg?raw';     // the raw SVG string
+
+export const Toolbar = () => (
+  <>
+    <PlayIcon />
+    <span dangerouslySetInnerHTML={{ __html: rawStop }} />
+  </>
+);`}
+  />
+  <p>
+    Works for a single file or a whole folder via
+    <code>import.meta.glob</code>. Decorative artwork that happens to be
+    an <code>.svg</code> — a logo, an illustration — can be
+    <a href="#control">opted out</a> so it isn't nudged.
+  </p>
+
+  <h2 id="own">Your own icon data</h2>
+  <p>
+    The detection is structural, so a home-grown icon set — a plain
+    module that maps names to SVG markup — is recognised with no
+    adapter and no registration. This is the case that proves the plugin
+    isn't tied to any one library: it has never heard of your module,
+    and it works anyway.
+  </p>
+  <CodeBlock
+    filename="my-icons.ts"
+    lang="ts"
+    code={`// Not Iconify. Not even JSON. Just your strings.
+export const icons = {
+  play: '<path d="M8 5v14l11-7z" />',
+  stop: '<rect x="6" y="6" width="12" height="12" />',
+  next: '<path d="M5 4l10 8-10 8V4zM17 4h2v16h-2z" />',
+};`}
+  />
+  <p>
+    <strong>What happens:</strong> the plugin parses the module's static
+    export, sees string values that are SVG markup, and bakes the shift
+    into each one. Because you own the source, this is the lowest-friction
+    case of all — there's nothing to wire up.
+  </p>
+
+  <h2 id="unplugin">unplugin-icons</h2>
+  <p>
+    <a href="https://github.com/unplugin/unplugin-icons">unplugin-icons</a>
+    serves icons through virtual <code>~icons/*</code> modules. The
+    optical-center plugin sees the SVG those modules produce and corrects
+    the <code>viewBox</code> before it reaches your component.
+  </p>
+  <CodeBlock
+    filename="vite.config.ts"
+    lang="ts"
+    code={`import Icons from 'unplugin-icons/vite';
+import opticalCenter from 'optical-center/vite';
+
+export default defineConfig({
+  // Order doesn't matter — optical-center corrects what unplugin emits.
+  plugins: [opticalCenter(), Icons({ compiler: 'jsx' })],
+});`}
+  />
+  <CodeBlock
+    filename="Home.tsx"
+    lang="tsx"
+    code={`import IconHome from '~icons/mdi/home';
+
+export const Home = () => <IconHome />;`}
+  />
+
+  <h2 id="components">Icon component libraries</h2>
+  <p>
+    Libraries like
+    <a href="https://lucide.dev">lucide-react</a>, react-icons, and
+    Heroicons don't ship icon <em>data</em> you import — they ship React
+    components that draw the SVG when they render. There's no asset in
+    the build graph to rewrite, so these use the
+    <a href="/docs/patterns/jsx-attribute">directive</a>: mark the
+    wrapper and the build centres the slot.
+  </p>
+  <CodeBlock
+    filename="PlayButton.tsx"
+    lang="tsx"
+    code={`import { Play } from 'lucide-react';
+
+export const PlayButton = () => (
+  <button>
+    <div optical-center="auto">
+      <Play />
+    </div>
+  </button>
+);`}
+  />
+  <p>
+    Same end result, reached a different way — the icon lands on its
+    optical centre instead of its bounding-box centre. See the
+    <a href="/docs/patterns/css-class">CSS class</a> and
+    <a href="/docs/patterns/tailwind">Tailwind</a> patterns for the
+    CSS-side equivalents.
+  </p>
+  <aside class="callout callout--note">
+    <p class="callout-label">Why not automatic?</p>
+    <p>
+      The geometry lives inside the component's render code, not in a
+      file the bundler can rewrite. Rather than execute and re-serialise
+      third-party components, optical-center leaves the markup to you and
+      centres at the container — and the build summary lists any
+      component-library icon it saw, so the gap is visible, not silent.
+    </p>
+  </aside>
+
+  <h2 id="runtime">Runtime & remote icons</h2>
+  <p>
+    When the SVG only exists at runtime — fetched from the
+    <a href="https://iconify.design/docs/api/">Iconify API</a>, loaded
+    from a remote URL, or set as an
+    <code>{`<img src>`}</code> — the build genuinely cannot see the
+    pixels. There is nothing to measure, so the icon's own mass can't be
+    corrected. The honest fallback is to centre the <em>slot</em> it sits
+    in:
+  </p>
+  <CodeBlock
+    filename="RemoteIcon.tsx"
+    lang="tsx"
+    code={`// styles.css
+//   .icon-slot { optical-center: auto; }
+
+export const RemoteIcon = ({ url }: { url: string }) => (
+  <span className="icon-slot">
+    <img src={url} alt="" />
+  </span>
+);`}
+  />
+  <p>
+    This centres the box the icon occupies, which is the best a
+    build-time tool can do without the pixels. The build summary flags
+    these so you know which icons fell back to slot-centering.
+  </p>
+
+  <h2 id="control">Opt out & control</h2>
+  <p>
+    Automatic means automatic, but you stay in charge of the edges. To
+    skip a specific asset — a logo, an illustration, an icon you've
+    already hand-tuned — add the <code>?optical=off</code> query to its
+    import:
+  </p>
+  <CodeBlock
+    filename="Brand.tsx"
+    lang="tsx"
+    code={`import logo from './brand/logo.svg?optical=off&raw';`}
+  />
+  <p>
+    To scope the whole pass — exclude a dependency, or narrow it to your
+    own folders — pass <code>include</code> / <code>exclude</code> to the
+    plugin:
+  </p>
+  <CodeBlock
+    filename="vite.config.ts"
+    lang="ts"
+    code={`opticalCenter({
+  // Default is "everything reachable". Narrow it if you need to.
+  iconData: {
+    exclude: ['**/brand/**', /node_modules\\/some-illustration-set/],
+  },
+});`}
+  />
+
+  <h2 id="baked">How the shift is baked in</h2>
+  <p>
+    Same model as everywhere else in optical-center — rasterise once,
+    find the optical centre, ship a flat result — applied per icon at
+    build time. Three details make it safe to do automatically:
+  </p>
+  <ul>
+    <li>
+      <strong>Detected by shape, not name.</strong> A value is treated as
+      an icon only if it carries SVG markup <em>and</em> corroborating
+      geometry; payloads that merely happen to have a <code>body</code>
+      field (HTTP responses, CMS records) are rejected. Anything
+      ambiguous is left untouched.
+    </li>
+    <li>
+      <strong>Wrapped, not reshaped.</strong> The shift is applied as an
+      inner <code>{`<g transform="translate(…)">`}</code> around the icon
+      body rather than by editing its
+      <code>left</code>/<code>top</code> fields. That's what lets a
+      corrected Iconify icon still respond correctly to a runtime
+      <code>hFlip</code> or <code>rotate</code> prop — the translate rides
+      inside the renderer's own transform instead of being overwritten by
+      it.
+    </li>
+    <li>
+      <strong>Measured once, cached on disk.</strong> Each unique icon
+      body is rasterised a single time across your whole project and
+      stored under <code>node_modules/.cache</code>. Repeat builds reuse
+      it; identical icons shared across collections collapse to one
+      measurement.
+    </li>
+  </ul>
+  <p>
+    In <code>vite build</code> the pass completes before anything is
+    emitted, so production output is fully corrected and flat. In
+    <code>vite dev</code> a large set is served immediately and corrected
+    in the background, then hot-reloaded into place — the dev server
+    never blocks while a collection is measured.
+  </p>
+
+  <aside class="callout callout--tip">
+    <p class="callout-label">Roadmap</p>
+    <p>
+      The automatic icon-data layer is the build-time successor to the
+      hand-written plugins people used to wire up for Iconify. It is
+      additive to the stable <a href="/docs">directive patterns</a> — if
+      you're already marking containers, nothing changes. See
+      <a href="/docs/warnings">warning codes</a> for how the build
+      reports anything it couldn't reach.
+    </p>
+  </aside>
+</DocsLayout>

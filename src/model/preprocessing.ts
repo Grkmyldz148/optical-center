@@ -42,12 +42,12 @@ export function makeGaussianKernel(
   for (let i = 0; i < size; i++) {
     const x = i - r;
     kernel[i] = Math.exp(-(x * x) / twoSigmaSq);
-    sum += kernel[i]!;
+    sum += kernel[i];
   }
 
   // Normalize
   for (let i = 0; i < size; i++) {
-    kernel[i]! /= sum;
+    kernel[i] /= sum;
   }
 
   return kernel;
@@ -82,7 +82,7 @@ export function gaussianBlur(
       let sum = 0;
       for (let k = -r; k <= r; k++) {
         const sx = Math.max(0, Math.min(width - 1, x + k));
-        sum += data[y * width + sx]! * kernel[k + r]!;
+        sum += data[y * width + sx] * kernel[k + r];
       }
       temp[y * width + x] = sum;
     }
@@ -95,7 +95,7 @@ export function gaussianBlur(
       let sum = 0;
       for (let k = -r; k <= r; k++) {
         const sy = Math.max(0, Math.min(height - 1, y + k));
-        sum += temp[sy * width + x]! * kernel[k + r]!;
+        sum += temp[sy * width + x] * kernel[k + r];
       }
       result[y * width + x] = sum;
     }
@@ -143,7 +143,7 @@ export function applyDoG(
   for (let i = 0; i < result.length; i++) {
     // DoG = narrow - wide (ON-center minus OFF-surround)
     // Half-wave rectification: clamp negatives to 0
-    result[i] = Math.max(0, narrow[i]! - wide[i]!);
+    result[i] = Math.max(0, narrow[i] - wide[i]);
   }
 
   return result;
@@ -167,48 +167,21 @@ export function applyDoG(
  * This is the key correction that Proffitt et al. (1983) predicted:
  * perceived center is dominated by contour, not interior luminance.
  *
- * Phase 2.5: a 1024-entry LUT replaces Math.pow when the exponent matches
- * the calibrated default (0.7). Weights are clamped into [0, 1] before the
- * lookup; non-default exponents fall back to the original Math.pow path.
- *
  * @param weights  - Row-major weight map (length = width * height).
  * @param exponent - Power law exponent. Default: 0.7 (moderate compression).
  *                   Range: 0.5 (strong compression) to 1.0 (linear/no compression).
  * @returns A new Float32Array with compressed weights.
  */
-const POWER_LUT_DEFAULT_EXPONENT = 0.7;
-const POWER_LUT_SIZE = 1024;
-const POWER_LUT_LAST = POWER_LUT_SIZE - 1;
-const POWER_LUT_DEFAULT: Float32Array = (() => {
-  const lut = new Float32Array(POWER_LUT_SIZE);
-  for (let i = 0; i < POWER_LUT_SIZE; i++) {
-    lut[i] = Math.pow(i / POWER_LUT_LAST, POWER_LUT_DEFAULT_EXPONENT);
-  }
-  return lut;
-})();
-
 export function applyPowerCompression(
   weights: Float32Array,
-  exponent: number = POWER_LUT_DEFAULT_EXPONENT
+  exponent: number = 0.7
 ): Float32Array {
   const result = new Float32Array(weights.length);
-
-  if (exponent === POWER_LUT_DEFAULT_EXPONENT) {
-    for (let i = 0; i < weights.length; i++) {
-      const w = weights[i]!;
-      if (w > 0) {
-        const clamped = w >= 1 ? POWER_LUT_LAST : Math.round(w * POWER_LUT_LAST);
-        result[i] = POWER_LUT_DEFAULT[clamped]!;
-      }
-    }
-    return result;
-  }
-
   for (let i = 0; i < weights.length; i++) {
-    const w = weights[i]!;
-    if (w > 0) {
-      result[i] = Math.pow(w, exponent);
+    if (weights[i] > 0) {
+      result[i] = Math.pow(weights[i], exponent);
     }
+    // weights <= 0 stay 0
   }
   return result;
 }

@@ -1,0 +1,109 @@
+/*
+ * Page chrome — typography, layout, the recipe code block. Nothing
+ * here is specific to `optical-center`; it's just the wrapping
+ * UI that hosts the scenario rows. Optical-center directives live in
+ * `icons.css`; the badge shell + crosshair + icon sizing live in
+ * `badge.css`.
+ */
+
+:root {
+  color-scheme: light;
+  --bg: #fafafa;
+  --fg: #111;
+  --muted: #666;
+  --line: #e5e5e5;
+  --brand: #111;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  font: 16px/1.5 system-ui, -apple-system, sans-serif;
+  max-width: 880px;
+  margin: 40px auto;
+  padding: 0 24px;
+  color: var(--fg);
+  background: var(--bg);
+}
+
+h1 { letter-spacing: -0.02em; margin: 0 0 12px; }
+h2 { letter-spacing: -0.015em; margin: 0; font-size: 1.25rem; }
+
+.lede {
+  color: var(--muted);
+  margin-bottom: 32px;
+}
+
+/*
+ * Scenario sections. Each `<section>` is a self-contained demo of
+ * one optical-center mechanism — heading, description, recipe code
+ * block, and a `.row` of geometric-vs-optical badges.
+ */
+section {
+  border-top: 1px solid var(--line);
+  padding-top: 28px;
+  margin-top: 28px;
+}
+section header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 4px;
+}
+section > p {
+  color: var(--muted);
+  margin: 0 0 20px;
+}
+
+/*
+ * Three-column grid: geometric badge | optical badge | markup label.
+ * `.col-head` mirrors the same template so column headers line up
+ * with the cells below them.
+ */
+.scenario-grid { display: grid; gap: 16px; }
+
+.badge-row {
+  display: grid;
+  grid-template-columns: 160px 160px 1fr;
+  gap: 28px;
+  align-items: center;
+}
+
+.badge-row__label {
+  font: 13px ui-monospace, monospace;
+  color: var(--muted);
+}
+
+.col-head {
+  display: grid;
+  grid-template-columns: 160px 160px 1fr;
+  gap: 28px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+  margin-bottom: 8px;
+}
+.col-head span { text-align: center; }
+.col-head span:last-child { text-align: left; }
+
+/* Recipe code block — the verbatim snippet a consumer would write. */
+pre.recipe {
+  background: #0f172a;
+  color: #e2e8f0;
+  padding: 16px 20px;
+  border-radius: 8px;
+  font: 12.5px/1.55 ui-monospace, monospace;
+  overflow-x: auto;
+  margin: 0 0 24px;
+  white-space: pre;
+}
+
+code {
+  background: #fff;
+  border: 1px solid var(--line);
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-size: 90%;
+}

@@ -1,35 +1,44 @@
 /**
- * `optical-center/vite` — the orchestrator that gets every flavor of
- * SVG (JSX, asset import, raw HTML) through the build-time pipeline
- * with one plugin entry.
+ * `optical-center/vite` — orchestrator that runs `optical-center: auto`
+ * through every build-time surface Vite owns, with one plugin entry.
  *
- * Hook map (per ADR-3 + ADR-4):
+ * The directive surface has one user-facing API: the `optical-center`
+ * declaration. It appears in two places:
  *
- *   - enforce: 'pre'         Wins the race against esbuild's JSX
- *                            transform; without this, our visitor would
- *                            see CallExpression where it expects
- *                            JSXElement.
- *   - config(_, env)         Detect dev vs build → emitMetadata default.
- *   - load(id)               `*.svg?optical` query → read file, run
- *                            pipeline, return the rewritten SVG as the
- *                            default export of a JS module.
- *   - transform(code, id)    `.jsx` / `.tsx` → run the Babel plugin.
+ *   - CSS:        `.foo { optical-center: auto; }`     (PostCSS plugin)
+ *   - HTML/JSX:   `<svg optical-center="auto">…</svg>` (this plugin)
+ *
+ * On top of that, this plugin adds the **automatic icon-data layer**: it
+ * recognises icon SVG that arrives as *data* (Iconify collections,
+ * single-icon modules) by shape — no directive, no package allowlist — and
+ * bakes the optical shift into the asset so the renderer paints it with
+ * zero browser code. See `../detect/icon-shape` and `../corrector/iconify`.
+ *
+ * Hook map:
+ *
+ *   - enforce: 'pre'         Wins the race against esbuild's JSX transform
+ *                            (so our visitor sees JSXElement, not a
+ *                            CallExpression), AND against Vite's `vite:json`
+ *                            transform (so we see raw JSON, not `export
+ *                            default …`).
+ *   - configResolved         Detect dev vs build → emitMetadata default.
+ *   - transform(code, id)    `.jsx`/`.tsx` → Babel plugin;
+ *                            `.json` icon data → geometry rewrite.
  *   - transformIndexHtml     Vanilla HTML `<svg optical-center>` blocks.
- *   - handleHotUpdate        Invalidate ?optical assets on file change.
+ *   - buildEnd               One-line summary of icons corrected.
  */
 
-import { readFile } from 'node:fs/promises';
 import * as babel from '@babel/core';
-import type { HmrContext, Plugin, ResolvedConfig } from 'vite';
+import type { Plugin } from 'vite';
 
-import { applyTransformToSvg } from '../core/apply-to-svg.js';
 import opticalCenterBabel from '../babel/index.js';
 import type { BabelPluginOptions } from '../babel/index.js';
 import { MAX_INPUT_BYTES } from '../core/constants.js';
-import { transformViewBoxFromSvg } from '../node/transform-viewbox-from-svg.js';
 import { sanitizeSvg } from '../node/sanitize.js';
 import type { SanitizeOptions } from '../node/sanitize.js';
 import type { WarningCode } from '../core/warnings.js';
+import { classifyIconData, jsonHeadMentionsIcon } from '../detect/icon-shape.js';
+import { correctCollection, correctSingleIcon } from '../corrector/iconify.js';
 
 import { transformHtmlSvgs } from './transform-html-svg.js';
 
@@ -63,21 +72,39 @@ export interface VitePluginOptions {
   readonly exclude?: ReadonlyArray<RegExp | string>;
   /**
    * Hard upper bound on the size (bytes) of an SVG payload before the
-   * plugin gives up. Applies to both ?optical asset imports and the
-   * forwarded Babel pass. Default `MAX_INPUT_BYTES` from constants.
+   * Babel pass gives up. Default `MAX_INPUT_BYTES` from constants.
    */
   readonly maxInputBytes?: number;
+  /**
+   * Control the automatic icon-data layer (Iconify collections + single-icon
+   * modules detected by shape, corrected with no directive). Enabled by
+   * default. Pass `false` to turn it off entirely, or an object to scope
+   * which module ids are eligible. Per-import opt-out is also available via
+   * the `?optical=off` query suffix.
+   */
+  readonly iconData?:
+    | false
+    | {
+        readonly include?: ReadonlyArray<RegExp | string>;
+        readonly exclude?: ReadonlyArray<RegExp | string>;
+      };
 }
 
 const JSX_FILE = /\.[jt]sx(\?.*)?$/;
-const SVG_OPTICAL_FILE = /\.svg\?optical(?:&|$)/;
-const SVG_OPTICAL_FILE_WITH_PATH = /^([^?]+)\.svg\?optical(?:&|$)/;
+const JSON_FILE = /\.json(\?.*)?$/;
+const OPTICAL_OFF = /[?&]optical=off\b/;
+
+/**
+ * Hard ceiling on a `.json` module the icon-data pass will parse. Beyond
+ * this we skip without parsing — guards against the multi-megabyte
+ * emoji/illustration sets (noto, fluent-emoji) that would stall a build.
+ */
+const MAX_SET_BYTES = 8_000_000;
 
 export default function opticalCenterVite(
   options: VitePluginOptions = {},
 ): Plugin {
   let emitMetadata = options.emitMetadata;
-  let resolvedConfig: ResolvedConfig | undefined;
 
   const onWarning = options.onWarning;
   const optionalOnWarning = onWarning ? { onWarning } : {};
@@ -96,77 +123,108 @@ export default function opticalCenterVite(
     return includes.some((p) => matchesPattern(p, id));
   };
 
+  // Automatic icon-data layer config.
+  const iconDataOption = options.iconData;
+  const iconDataEnabled = iconDataOption !== false;
+  const iconDataConfig =
+    typeof iconDataOption === 'object' && iconDataOption !== null
+      ? iconDataOption
+      : null;
+  const iconDataIncludes = iconDataConfig?.include ?? null;
+  const iconDataExcludes = iconDataConfig?.exclude ?? null;
+  const isIconDataIncluded = (id: string): boolean => {
+    if (OPTICAL_OFF.test(id)) return false;
+    if (iconDataExcludes && iconDataExcludes.some((p) => matchesPattern(p, id))) return false;
+    if (!iconDataIncludes) return true;
+    return iconDataIncludes.some((p) => matchesPattern(p, id));
+  };
+  const iconStats = { collections: 0, singles: 0, icons: 0 };
+
+  const transformIconData = async (
+    code: string,
+  ): Promise<{ code: string; map: null } | null> => {
+    if (Buffer.byteLength(code, 'utf8') > MAX_SET_BYTES) return null;
+    if (!jsonHeadMentionsIcon(code)) return null;
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(code);
+    } catch {
+      return null;
+    }
+    const kind = classifyIconData(parsed);
+    if (kind === 'collection') {
+      const stats = await correctCollection(parsed as Record<string, unknown>);
+      iconStats.collections++;
+      iconStats.icons += stats.corrected;
+      return { code: JSON.stringify(parsed), map: null };
+    }
+    if (kind === 'single') {
+      const changed = await correctSingleIcon(parsed as Record<string, unknown>);
+      iconStats.singles++;
+      if (changed) iconStats.icons++;
+      return { code: JSON.stringify(parsed), map: null };
+    }
+    return null;
+  };
+
   return {
     name: 'optical-center',
     enforce: 'pre',
 
     configResolved(config) {
-      resolvedConfig = config;
       if (emitMetadata === undefined) {
         emitMetadata = config.command === 'serve';
       }
     },
 
-    async load(id) {
-      const match = id.match(SVG_OPTICAL_FILE_WITH_PATH);
-      if (!match) return null;
-      const filePath = `${match[1]}.svg`;
-      let svg: string;
-      try {
-        svg = await readFile(filePath, 'utf8');
-      } catch {
-        return null;
-      }
-      if (svg.length > maxInputBytes) {
-        onWarning?.({ code: 'OPTICAL_RASTERIZE_FAILED', location: filePath });
-        return `export default ${JSON.stringify(svg)};`;
-      }
-      // ?optical is an explicit opt-in by the importer — transform
-      // unconditionally, no marker required.
-      const sanitized = sanitize(svg);
-      try {
-        const result = transformViewBoxFromSvg(sanitized, {
-          emitMetadata: emitMetadata === true,
+    async transform(code, id) {
+      // JSX/TSX → the Babel directive pass (inline <svg optical-center>,
+      // container directives).
+      if (JSX_FILE.test(id)) {
+        if (!isIncluded(id)) return null;
+        const babelOptions = options.babel;
+        const onWarningForBabel = babelOptions?.onWarning ?? onWarning;
+        const merged: BabelPluginOptions = {
+          emitMetadata: babelOptions?.emitMetadata ?? emitMetadata === true,
+          onWarning: onWarningForBabel ?? null,
+          maxInputBytes: babelOptions?.maxInputBytes ?? maxInputBytes,
+        };
+        const result = await babel.transformAsync(code, {
+          filename: id,
+          plugins: [[opticalCenterBabel, merged]],
+          parserOpts: {
+            plugins: id.endsWith('.tsx') || id.endsWith('.tsx?')
+              ? ['jsx', 'typescript']
+              : ['jsx'],
+            sourceType: 'module',
+          },
+          babelrc: false,
+          configFile: false,
+          sourceMaps: true,
         });
-        const next = applyTransformToSvg(sanitized, {
-          viewBox: result.viewBox,
-          breadcrumb: result.breadcrumb,
-        });
-        if (result.clipDetected) {
-          onWarning?.({ code: 'OPTICAL_CLIP_DETECTED', location: filePath });
-        }
-        return `export default ${JSON.stringify(next)};`;
-      } catch {
-        onWarning?.({ code: 'OPTICAL_RASTERIZE_FAILED', location: filePath });
-        return `export default ${JSON.stringify(sanitized)};`;
+        if (!result?.code) return null;
+        return { code: result.code, map: result.map ?? null };
       }
+
+      // `.json` icon data → geometry rewrite, before vite:json turns it
+      // into a JS module. Runs at enforce:'pre' so we see raw JSON.
+      if (iconDataEnabled && JSON_FILE.test(id) && isIconDataIncluded(id)) {
+        return transformIconData(code);
+      }
+
+      return null;
     },
 
-    async transform(code, id) {
-      if (!JSX_FILE.test(id)) return null;
-      if (!isIncluded(id)) return null;
-      const babelOptions = options.babel;
-      const onWarningForBabel = babelOptions?.onWarning ?? onWarning;
-      const merged: BabelPluginOptions = {
-        emitMetadata: babelOptions?.emitMetadata ?? emitMetadata === true,
-        onWarning: onWarningForBabel ?? null,
-        maxInputBytes: babelOptions?.maxInputBytes ?? maxInputBytes,
-      };
-      const result = await babel.transformAsync(code, {
-        filename: id,
-        plugins: [[opticalCenterBabel, merged]],
-        parserOpts: {
-          plugins: id.endsWith('.tsx') || id.endsWith('.tsx?')
-            ? ['jsx', 'typescript']
-            : ['jsx'],
-          sourceType: 'module',
-        },
-        babelrc: false,
-        configFile: false,
-        sourceMaps: true,
-      });
-      if (!result?.code) return null;
-      return { code: result.code, map: result.map ?? null };
+    buildEnd() {
+      if (iconStats.collections === 0 && iconStats.singles === 0) return;
+      const parts: string[] = [`corrected ${iconStats.icons} icon(s)`];
+      if (iconStats.collections > 0) {
+        parts.push(`${iconStats.collections} collection(s)`);
+      }
+      if (iconStats.singles > 0) {
+        parts.push(`${iconStats.singles} single module(s)`);
+      }
+      this.info?.(`optical-center: ${parts.join(', ')}`);
     },
 
     // transformIndexHtml uses `order: 'post'` so we see the HTML *after*
@@ -184,24 +242,8 @@ export default function opticalCenterVite(
         });
       },
     },
-
-    handleHotUpdate(ctx: HmrContext) {
-      // Invalidate `?optical` SVG modules when the source file changes.
-      if (!ctx.file.toLowerCase().endsWith('.svg')) return;
-      const matchingModules = Array.from(ctx.server.moduleGraph.urlToModuleMap.keys())
-        .filter((url) => url.startsWith(ctx.file) && SVG_OPTICAL_FILE.test(url));
-      if (matchingModules.length === 0) return;
-      return ctx.modules.concat(
-        matchingModules.flatMap((url) => {
-          const mod = ctx.server.moduleGraph.urlToModuleMap.get(url);
-          return mod ? [mod] : [];
-        }),
-      );
-    },
   };
 }
-
-export type { ResolvedConfig };
 
 function matchesPattern(pattern: RegExp | string, id: string): boolean {
   return typeof pattern === 'string' ? id.includes(pattern) : pattern.test(id);

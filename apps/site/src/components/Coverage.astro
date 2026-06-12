@@ -1,0 +1,381 @@
+---
+/*
+ * Coverage section — the case-by-case answer to "will it work with MY
+ * icons?". Two bands carry the whole mental model at a glance:
+ *
+ *   1. "No directive needed" — the icons you import as data or files are
+ *      corrected automatically. Five real-world sources, each shown with
+ *      the exact code a developer already writes. Accent badge.
+ *   2. "You write the directive" — hand-authored SVG, component-render
+ *      libraries, and runtime/remote icons, where you mark a container.
+ *      Muted badge.
+ *
+ * The split is the message: the common cases cost zero markup; the
+ * directive is there for explicit control, not as the default tax.
+ *
+ * Card snippets are plain mono — idiomatic usage, not full examples. The
+ * docs page (/docs/icons) carries the depth; this section is the index.
+ */
+type Case = {
+  source: string;
+  code: string;
+  note: string;
+  badge: "Automatic" | "Directive" | "Slot only";
+};
+
+const AUTOMATIC: readonly Case[] = [
+  {
+    source: "Iconify · whole collection",
+    code: `import mdi from '@iconify/json/json/mdi.json';
+addCollection(mdi);`,
+    note: "Every icon in the set is baked at build time — even names chosen at runtime.",
+    badge: "Automatic",
+  },
+  {
+    source: "Iconify · single icon",
+    code: `import home from '@iconify/icons-mdi/home';`,
+    note: "Only the icons you import get measured.",
+    badge: "Automatic",
+  },
+  {
+    source: "Local SVG files",
+    code: `import Play from './play.svg';
+import raw from './stop.svg?raw';`,
+    note: "Corrected at the source, before svgr ever compiles it.",
+    badge: "Automatic",
+  },
+  {
+    source: "Your own icon data",
+    code: `export const icons = {
+  play: '<path d="M8 5v14l11-7z" />',
+};`,
+    note: "Not Iconify, not even JSON — recognised by shape, no adapter.",
+    badge: "Automatic",
+  },
+  {
+    source: "unplugin-icons",
+    code: `import IconHome from '~icons/mdi/home';`,
+    note: "The SVG those virtual modules emit is corrected in flight.",
+    badge: "Automatic",
+  },
+];
+
+const DIRECTIVE: readonly Case[] = [
+  {
+    source: "Hand-written inline SVG",
+    code: `<svg optical-center="auto" viewBox="0 0 24 24">`,
+    note: "You decide which hand-rolled glyphs are icons — your logo stays untouched.",
+    badge: "Directive",
+  },
+  {
+    source: "Component libraries",
+    code: `<div optical-center="auto">
+  <Play />
+</div>`,
+    note: "lucide-react, react-icons, Heroicons — the geometry lives in render, so mark the wrapper.",
+    badge: "Directive",
+  },
+  {
+    source: "Runtime & remote",
+    code: `.icon-slot { optical-center: auto; }`,
+    note: "Iconify API, remote <img> — the build can't see the pixels, so it centres the slot.",
+    badge: "Slot only",
+  },
+];
+---
+
+<section class="coverage" id="coverage" aria-labelledby="coverage-title">
+  <div class="coverage__inner">
+    <header class="coverage__head">
+      <p class="coverage__eyebrow">Works with your icons</p>
+      <h2 class="coverage__title" id="coverage-title">
+        Whatever you reach for,
+        <span class="coverage__title-accent">it just centers</span>.
+      </h2>
+      <p class="coverage__sub">
+        One plugin in your Vite config. The icon libraries you already use
+        come out optically centered &mdash; detected by shape, baked at
+        build time, with nothing shipped to the browser. Detection isn't
+        tied to any package, so a library you wrote yourself is handled the
+        same as the popular ones.
+      </p>
+    </header>
+
+    <div class="coverage__band">
+      <div class="coverage__band-label">
+        <span class="coverage__band-dot coverage__band-dot--auto" aria-hidden="true"></span>
+        <span class="coverage__band-name">No directive needed</span>
+        <span class="coverage__band-hint">add the plugin, write your normal code</span>
+      </div>
+      <ul class="coverage__grid" role="list">
+        {AUTOMATIC.map((c) => (
+          <li class="coverage__card">
+            <div class="coverage__card-head">
+              <span class="coverage__card-source">{c.source}</span>
+              <span class="coverage__badge coverage__badge--auto">{c.badge}</span>
+            </div>
+            <pre class="coverage__code"><code>{c.code}</code></pre>
+            <p class="coverage__note">{c.note}</p>
+          </li>
+        ))}
+      </ul>
+    </div>
+
+    <div class="coverage__band">
+      <div class="coverage__band-label">
+        <span class="coverage__band-dot" aria-hidden="true"></span>
+        <span class="coverage__band-name">You write the directive</span>
+        <span class="coverage__band-hint">for explicit control, or pixels the build can't reach</span>
+      </div>
+      <ul class="coverage__grid" role="list">
+        {DIRECTIVE.map((c) => (
+          <li class="coverage__card">
+            <div class="coverage__card-head">
+              <span class="coverage__card-source">{c.source}</span>
+              <span class="coverage__badge">{c.badge}</span>
+            </div>
+            <pre class="coverage__code"><code>{c.code}</code></pre>
+            <p class="coverage__note">{c.note}</p>
+          </li>
+        ))}
+      </ul>
+    </div>
+
+    <a class="coverage__more" href="/docs/icons">
+      <span>Every case, in depth</span>
+      <svg viewBox="0 0 14 14" width="14" height="14" aria-hidden="true">
+        <path
+          d="M 3 11 L 11 3 M 11 3 L 11 8 M 11 3 L 6 3"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.6"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        ></path>
+      </svg>
+    </a>
+  </div>
+</section>
+
+<style>
+  .coverage {
+    position: relative;
+    padding-block: var(--sp-24);
+  }
+
+  .coverage__inner {
+    width: 100%;
+    max-width: var(--page-max-w);
+    margin-inline: auto;
+    padding-inline: var(--page-px);
+    display: grid;
+    gap: var(--sp-12);
+  }
+
+  /* ─────────────────────────  Header  ──────────────────────────────── */
+  .coverage__head {
+    display: grid;
+    gap: var(--sp-5);
+    justify-items: start;
+    max-width: 720px;
+  }
+  .coverage__eyebrow {
+    font-family: var(--font-mono);
+    font-size: var(--fs-xs);
+    letter-spacing: var(--ls-wide);
+    text-transform: uppercase;
+    color: var(--color-muted-fg);
+    padding: var(--sp-2) var(--sp-3);
+    border: var(--line-w) solid var(--color-line);
+    border-radius: 999px;
+    background: var(--color-surface);
+  }
+  .coverage__title {
+    font-family: var(--font-display);
+    font-size: clamp(2rem, 4.2vw, 3.5rem);
+    font-weight: var(--fw-semibold);
+    line-height: var(--lh-tight);
+    letter-spacing: -0.03em;
+    color: var(--color-fg);
+    max-width: 18ch;
+  }
+  .coverage__title-accent {
+    color: var(--color-accent-text);
+  }
+  .coverage__sub {
+    font-family: var(--font-body);
+    font-size: var(--fs-md);
+    line-height: var(--lh-body);
+    color: var(--color-soft-fg);
+    max-width: 60ch;
+  }
+
+  /* ─────────────────────────  Bands  ──────────────────────────────── */
+  .coverage__band {
+    display: grid;
+    gap: var(--sp-5);
+  }
+  .coverage__band-label {
+    display: flex;
+    align-items: baseline;
+    flex-wrap: wrap;
+    gap: var(--sp-2) var(--sp-3);
+    padding-bottom: var(--sp-3);
+    border-bottom: var(--line-w) solid var(--color-line);
+  }
+  .coverage__band-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 999px;
+    background: var(--color-line-strong);
+    align-self: center;
+    flex-shrink: 0;
+  }
+  .coverage__band-dot--auto {
+    background: var(--color-accent);
+  }
+  .coverage__band-name {
+    font-family: var(--font-display);
+    font-size: var(--fs-md);
+    font-weight: var(--fw-semibold);
+    letter-spacing: var(--ls-tight);
+    color: var(--color-fg);
+  }
+  .coverage__band-hint {
+    font-family: var(--font-mono);
+    font-size: var(--fs-xs);
+    color: var(--color-muted-fg);
+  }
+
+  /* ─────────────────────────  Cards  ──────────────────────────────── */
+  .coverage__grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: var(--sp-4);
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+
+  .coverage__card {
+    display: grid;
+    gap: var(--sp-3);
+    align-content: start;
+    padding: var(--sp-5);
+    border: var(--line-w) solid var(--color-line);
+    border-radius: var(--radius-sm);
+    background: var(--color-surface);
+    transition:
+      border-color 0.18s ease,
+      background-color 0.18s ease,
+      transform 0.18s ease;
+  }
+  .coverage__card:hover {
+    border-color: var(--color-line-strong);
+    background: var(--color-surface-hi);
+    transform: translateY(-1px);
+  }
+
+  .coverage__card-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: var(--sp-3);
+  }
+  .coverage__card-source {
+    font-family: var(--font-display);
+    font-size: var(--fs-sm);
+    font-weight: var(--fw-semibold);
+    letter-spacing: var(--ls-tight);
+    line-height: var(--lh-snug);
+    color: var(--color-fg);
+  }
+
+  .coverage__badge {
+    flex-shrink: 0;
+    font-family: var(--font-mono);
+    font-size: var(--fs-xs);
+    letter-spacing: 0;
+    color: var(--color-muted-fg);
+    padding: 0.1em 0.5em;
+    border: var(--line-w) solid var(--color-line);
+    border-radius: 999px;
+    background: var(--color-bg);
+    white-space: nowrap;
+  }
+  .coverage__badge--auto {
+    color: var(--color-accent-text);
+    border-color: color-mix(in oklab, var(--color-accent) 40%, transparent);
+    background: color-mix(in oklab, var(--color-accent) 8%, transparent);
+  }
+
+  .coverage__code {
+    margin: 0;
+    padding: var(--sp-3) var(--sp-4);
+    border-radius: var(--radius-sm);
+    background: var(--color-bg);
+    border: var(--line-w) solid var(--color-line);
+    overflow-x: auto;
+  }
+  .coverage__code code {
+    font-family: var(--font-mono);
+    font-size: 0.78rem;
+    line-height: 1.6;
+    color: var(--color-soft-fg);
+    white-space: pre;
+    tab-size: 2;
+  }
+
+  .coverage__note {
+    font-family: var(--font-body);
+    font-size: var(--fs-sm);
+    line-height: var(--lh-body);
+    color: var(--color-muted-fg);
+  }
+
+  /* ─────────────────────────  More link  ──────────────────────────── */
+  .coverage__more {
+    justify-self: start;
+    display: inline-flex;
+    align-items: center;
+    gap: var(--sp-2);
+    font-family: var(--font-mono);
+    font-size: var(--fs-sm);
+    color: var(--color-accent-text);
+    text-decoration: none;
+    padding: var(--sp-2) var(--sp-1);
+    transition: gap 0.18s ease;
+  }
+  .coverage__more:hover,
+  .coverage__more:focus-visible {
+    gap: var(--sp-3);
+  }
+
+  /* ─────────────────────────  Responsive  ─────────────────────────── */
+  @media (max-width: 960px) {
+    .coverage {
+      padding-block: var(--sp-16);
+    }
+    .coverage__inner {
+      gap: var(--sp-8);
+    }
+    .coverage__grid {
+      grid-template-columns: repeat(2, 1fr);
+    }
+  }
+  @media (max-width: 600px) {
+    .coverage {
+      padding-block: var(--sp-12);
+    }
+    .coverage__grid {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .coverage__card,
+    .coverage__more {
+      transition: none;
+    }
+  }
+</style>

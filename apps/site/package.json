@@ -1,0 +1,27 @@
+{
+  "name": "opticalcenter-site",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "tokens:build": "node scripts/build-tokens.mjs",
+    "predev": "npm run tokens:build",
+    "prebuild": "npm run tokens:build",
+    "dev": "astro dev",
+    "start": "astro dev",
+    "build": "astro build",
+    "preview": "astro preview",
+    "astro": "astro",
+    "check": "astro check"
+  },
+  "dependencies": {
+    "acs-audio": "^0.9.5",
+    "astro": "^5.18.1",
+    "optical-center": "file:../.."
+  },
+  "devDependencies": {
+    "@astrojs/check": "^0.9.9",
+    "helmlab": "^0.13.0",
+    "typescript": "^5.4.0"
+  }
+}

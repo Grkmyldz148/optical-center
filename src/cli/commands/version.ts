@@ -4,6 +4,8 @@
  * they're talking to the right binary.
  */
 
+import { banner } from '../caret/components/banner.js';
+import { keyValue } from '../caret/components/key-value.js';
 import { ALGORITHM_VERSION } from '../../core/version.js';
 
 import {
@@ -13,6 +15,7 @@ import {
   writeJson,
   writeStdout,
 } from '../output.js';
+import { pickMode } from '../render.js';
 
 export async function runVersion(
   _positionals: ReadonlyArray<string>,
@@ -25,13 +28,29 @@ export async function runVersion(
     schema: SCHEMA_VERSION,
   };
 
-  if (output.json) {
+  const mode = pickMode(output);
+  if (mode === 'json') {
     writeJson('version', result, output);
-  } else {
-    writeStdout(
-      `optical-center ${PACKAGE_VERSION} (algorithm ${ALGORITHM_VERSION}, schema ${SCHEMA_VERSION})`,
-      output,
-    );
+    return 0;
   }
+  if (mode === 'tty') {
+    banner({
+      title: 'Optical Center',
+      subtitle: `v${PACKAGE_VERSION}`,
+    });
+    keyValue({
+      rows: [
+        { key: 'package', value: PACKAGE_VERSION },
+        { key: 'algorithm', value: ALGORITHM_VERSION },
+        { key: 'schema', value: SCHEMA_VERSION },
+      ],
+      highlightKeys: true,
+    });
+    return 0;
+  }
+  writeStdout(
+    `optical-center ${PACKAGE_VERSION} (algorithm ${ALGORITHM_VERSION}, schema ${SCHEMA_VERSION})`,
+    output,
+  );
   return 0;
 }

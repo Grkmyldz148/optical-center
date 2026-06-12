@@ -1,0 +1,47 @@
+{
+  "prefix": "pg",
+  "width": 24,
+  "height": 24,
+  "icons": {
+    "play": {
+      "name": "Play",
+      "paintMode": "fill",
+      "body": "<polygon points=\"6 3 20 12 6 21 6 3\" fill=\"currentColor\" />"
+    },
+    "triangle-up": {
+      "name": "Triangle",
+      "paintMode": "fill",
+      "body": "<polygon points=\"12 4 22 20 2 20 12 4\" fill=\"currentColor\" />"
+    },
+    "heart": {
+      "name": "Heart",
+      "paintMode": "fill",
+      "body": "<path d=\"M12 21s-7-4.534-7-10a4 4 0 0 1 7-2.646A4 4 0 0 1 19 11c0 5.466-7 10-7 10z\" fill=\"currentColor\" />"
+    },
+    "star": {
+      "name": "Star",
+      "paintMode": "fill",
+      "body": "<polygon points=\"12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2\" fill=\"currentColor\" />"
+    },
+    "search": {
+      "name": "Search",
+      "paintMode": "stroke",
+      "body": "<circle cx=\"11\" cy=\"11\" r=\"7\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"></circle><line x1=\"21\" y1=\"21\" x2=\"16.65\" y2=\"16.65\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"></line>"
+    },
+    "arrow-right": {
+      "name": "Arrow",
+      "paintMode": "stroke",
+      "body": "<line x1=\"5\" y1=\"12\" x2=\"19\" y2=\"12\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"></line><polyline points=\"12 5 19 12 12 19\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"></polyline>"
+    },
+    "bell": {
+      "name": "Bell",
+      "paintMode": "fill",
+      "body": "<path d=\"M12 2a6 6 0 0 0-6 6c0 4.5-2 6-2 6h16s-2-1.5-2-6a6 6 0 0 0-6-6zm0 20a2 2 0 0 0 2-2h-4a2 2 0 0 0 2 2z\" fill=\"currentColor\" />"
+    },
+    "bolt": {
+      "name": "Bolt",
+      "paintMode": "fill",
+      "body": "<polygon points=\"13 2 3 14 12 14 11 22 21 10 12 10 13 2\" fill=\"currentColor\" />"
+    }
+  }
+}

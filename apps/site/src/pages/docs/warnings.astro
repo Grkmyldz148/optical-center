@@ -1,0 +1,122 @@
+---
+import DocsLayout from "../../layouts/DocsLayout.astro";
+
+const toc = [
+  { id: "codes", label: "Codes", level: 2 as const },
+  { id: "handling", label: "Handling warnings", level: 2 as const },
+];
+
+type Warning = {
+  code: string;
+  meaning: string;
+};
+
+const WARNINGS: readonly Warning[] = [
+  {
+    code: "OPTICAL_DYNAMIC_SVG",
+    meaning:
+      "A child or attribute of the SVG is dynamic (variable, expression). The plugin bailed out because it could not prove the markup at build time.",
+  },
+  {
+    code: "OPTICAL_SPREAD_PROPS",
+    meaning:
+      "The wrapper or SVG used a spread attribute. A spread might inject the optical-center marker at runtime, so the plugin cannot statically decide whether to transform.",
+  },
+  {
+    code: "OPTICAL_MISSING_VIEWBOX",
+    meaning:
+      "The SVG has neither a viewBox nor a width/height pair. There is no coordinate system to shift.",
+  },
+  {
+    code: "OPTICAL_VIEWBOX_DERIVED",
+    meaning:
+      "The viewBox was derived from width/height attributes. The transform still works, but the result is less accurate than for an explicit viewBox.",
+  },
+  {
+    code: "OPTICAL_CLIP_DETECTED",
+    meaning:
+      "The shifted viewBox may clip painted pixels. Common on icons with paint at the very edge of the viewBox. Inspect the output; consider padding the source SVG.",
+  },
+  {
+    code: "OPTICAL_RASTERIZE_FAILED",
+    meaning:
+      "resvg could not parse the SVG. The file may be malformed or use features resvg does not support.",
+  },
+  {
+    code: "OPTICAL_CACHE_WRITE_FAIL",
+    meaning:
+      "The cache directory is not writable. The compute still succeeded; only the disk write was skipped.",
+  },
+  {
+    code: "OPTICAL_VERSION_MISMATCH",
+    meaning:
+      "A cached entry came from a different algorithm version. The entry was discarded and recomputed.",
+  },
+  {
+    code: "OPTICAL_INPUT_TOO_LARGE",
+    meaning:
+      "The SVG exceeded the per-file size cap (MAX_INPUT_BYTES). The file was skipped.",
+  },
+  {
+    code: "OPTICAL_TIMEOUT",
+    meaning:
+      "The per-file timeout was exceeded. The file was skipped.",
+  },
+];
+---
+
+<DocsLayout
+  title="Warning codes"
+  description="Every adapter emits stable codes so you can grep them in logs, filter them in your CI, or promote them to errors with --strict."
+  toc={toc}
+>
+  <h2 id="codes">Codes</h2>
+  <table>
+    <thead>
+      <tr>
+        <th>Code</th>
+        <th>Meaning</th>
+      </tr>
+    </thead>
+    <tbody>
+      {WARNINGS.map((w) => (
+        <tr>
+          <td><code>{w.code}</code></td>
+          <td>{w.meaning}</td>
+        </tr>
+      ))}
+    </tbody>
+  </table>
+
+  <h2 id="handling">Handling warnings</h2>
+  <p>Three ways to react to a warning, in increasing order of strictness:</p>
+
+  <ol>
+    <li>
+      <strong>Read the log.</strong> Every adapter prints warnings to
+      stderr by default. The code is a stable string so it survives log
+      aggregation and grep.
+    </li>
+    <li>
+      <strong>Hook it.</strong> The Vite plugin, PostCSS plugin and
+      programmatic API accept an <code>onWarning</code> callback. Pass
+      <code>null</code> to silence, or route the warning into your
+      logger of choice.
+    </li>
+    <li>
+      <strong>Promote with <code>--strict</code>.</strong> The CLI's
+      <code>--strict</code> flag turns warnings into a non-zero exit.
+      CI then fails on, for example, <code>OPTICAL_CLIP_DETECTED</code>
+      before the bad asset ships.
+    </li>
+  </ol>
+
+  <aside class="callout">
+    <p class="callout-label">Stable across versions</p>
+    <p>
+      Warning codes are part of the public contract. Renaming or removing
+      a code requires a major version bump — your CI assertions on
+      specific codes won't silently break.
+    </p>
+  </aside>
+</DocsLayout>

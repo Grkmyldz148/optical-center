@@ -17,6 +17,7 @@
  */
 
 import { createHash } from 'node:crypto';
+import { existsSync } from 'node:fs';
 import { mkdir, readFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import writeFileAtomic from 'write-file-atomic';
@@ -167,13 +168,24 @@ export function defaultCacheDir(): string {
   // Resolved lazily via env so tests can override without monkey-patching.
   const override = process.env['OPTICAL_CACHE_DIR'];
   if (override) return override;
-  return join(process.cwd(), 'node_modules', '.cache', 'optical-center');
+  let dir = process.cwd();
+  for (;;) {
+    if (existsSync(join(dir, 'node_modules'))) {
+      return join(dir, 'node_modules', '.cache', 'optical-center');
+    }
+    const parent = dirname(dir);
+    if (parent === dir) break;
+    dir = parent;
+  }
+  return join(process.cwd(), '.optical-center-cache');
 }
 
 async function writeAtomic(target: string, content: string): Promise<void> {
   await mkdir(dirname(target), { recursive: true });
-  // write-file-atomic handles fsync, the tmp-file rename dance, and the
-  // Windows file-lock retry loop that the previous hand-rolled version
-  // would silently fail on. Cross-platform safety with one dependency.
-  await writeFileAtomic(target, content);
+  // write-file-atomic handles the tmp-file rename dance and the Windows
+  // file-lock retry loop that the previous hand-rolled version would
+  // silently fail on. fsync is off: the rename still guarantees a reader
+  // never sees a partial entry, and a power-loss hole is just a cache
+  // miss — not worth ~4ms of fsync per icon on a 30k-icon warmup.
+  await writeFileAtomic(target, content, { fsync: false });
 }

@@ -1,0 +1,68 @@
+---
+import "../styles/tokens.css";
+import "../styles/base.css";
+import Header from "../components/Header.astro";
+import Footer from "../components/Footer.astro";
+
+interface Props {
+  title?: string;
+}
+
+const { title = "Optical Center" } = Astro.props;
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, viewport-fit=cover"
+    />
+    <meta name="color-scheme" content="light dark" />
+    <meta name="theme-color" content="#f8f7f4" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#0e0c0a" media="(prefers-color-scheme: dark)" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+
+    {/* Audio Cascading Style Sheets — declarative UI sound */}
+    <link rel="audiostyle" href="/sounds/site.acs" />
+
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Geist:wght@300..900&family=Geist+Mono:wght@300..700&display=swap"
+    />
+
+    <title>{title}</title>
+
+    {/* No-flash theme + sound bootstrap — runs before <body> paints, so the
+        theme colors and the audio-toggle icon never flip after first paint. */}
+    <script is:inline>
+      (() => {
+        try {
+          const theme = localStorage.getItem("theme");
+          if (theme === "dark" || theme === "light") {
+            document.documentElement.dataset.theme = theme;
+          }
+          // Sound defaults to on; only the explicit opt-out is persisted.
+          if (localStorage.getItem("sound") === "off") {
+            document.documentElement.dataset.sound = "off";
+          }
+        } catch {}
+      })();
+    </script>
+
+    {/* ACS runtime — auto-binds <link rel="audiostyle"> on load */}
+    <script>
+      import "acs-audio";
+    </script>
+  </head>
+  <body>
+    <Header />
+    <main>
+      <slot />
+    </main>
+    <Footer />
+  </body>
+</html>

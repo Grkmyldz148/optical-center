@@ -1,6 +1,6 @@
 # optical-center
 
-A drop-in toolkit that **bakes perceptual centering into your SVG icons at build time**. You write `<svg opticalCenter>` (JSX), `<svg optical-center>` (HTML), or `import play from './play.svg?optical'` (Vite asset). Every adapter resolves the marker, runs a biologically-inspired centering pipeline once, and rewrites the icon's `viewBox` so the browser sees a flat, pre-computed SVG. Zero runtime cost.
+A drop-in toolkit that **bakes perceptual centering into your SVG icons at build time**. One declaration, two surfaces — `optical-center: auto` in CSS, `optical-center="auto"` on a JSX/HTML `<svg>`. Every adapter resolves the marker, runs a biologically-inspired centering pipeline once, and rewrites the icon's `viewBox` (or inlines a corrected `data:image/svg+xml,…` mask) so the browser sees a flat, pre-computed result. Zero runtime cost.
 
 > Geometric center ≠ visual center. A play triangle (▶) placed at the geometric midpoint looks pulled to the left — its visual mass sits on the right. This package finds where the eye actually wants the icon, and shifts the SVG window to put it there.
 
@@ -10,13 +10,24 @@ A drop-in toolkit that **bakes perceptual centering into your SVG icons at build
 |---|---|
 | `optical-center` | Browser-safe core. `getOpticalCenter()`, `transformViewBox()`, `applyTransformToSvg()`, types. |
 | `optical-center/node` | Node-only convenience: `rasterizeSvg()`, `transformViewBoxFromSvg()` (SVG string → result). |
-| `optical-center/cli` | The `optical-center` binary: `transform`, `info`, `analyze`, `clear-cache`, `version`. |
+| `optical-center/cli` | The `optical-center` binary: `init`, `transform`, `info`, `analyze`, `clear-cache`, `version` — plus an interactive wizard when run bare. |
 | `optical-center/babel` | Babel plugin. Transforms `<svg opticalCenter>` JSX. |
-| `optical-center/vite` | Vite plugin. Orchestrates Babel + `?optical` asset transform + HTML scan. |
+| `optical-center/vite` | Vite plugin. Runs the Babel pass on `.jsx`/`.tsx`, rewrites `<svg optical-center>` in `index.html`, **and auto-corrects imported icon data (Iconify sets, single-icon modules) detected by shape**. |
+| `optical-center/postcss` | PostCSS plugin. Rewrites `url('…svg')` inside any rule that declares `optical-center: auto`. |
 
 The model itself is `V2 × 0.745` — a DoG + convex hull + symmetry pipeline (Phase 1, N=36, method of adjustment) globally scaled by the Phase 2 pooled PSE (N=30, 2AFC).
 
 ## Quick start — Vite + React
+
+The fastest path is `init` — it detects your framework and package
+manager, installs the dependency, and patches the right config file:
+
+```bash
+npx optical-center init          # interactive; or:
+npx optical-center init --integration vite --yes
+```
+
+Or wire it by hand:
 
 ```bash
 npm install optical-center
@@ -56,6 +67,30 @@ After build the JSX above ships as:
 
 No `opticalCenter` prop, no runtime computation, no CSS to maintain.
 
+## Automatic — the icons you import
+
+The Vite plugin also corrects icons you never marked at all. It recognises
+icon SVG that arrives as **data** — by shape, not by package name — and bakes
+the optical shift into the asset at build time. Import an Iconify set the
+normal way and every icon renders optically centered, with zero browser code:
+
+```ts
+import { Icon, addCollection } from '@iconify/react';
+import mdi from '@iconify/json/json/mdi.json';
+
+addCollection(mdi);            // the plugin already body-wrapped every icon
+// ...
+<Icon icon="mdi:home" />       // ships pre-corrected; dynamic names work too
+```
+
+Detection is structural, so a single-icon module (`@iconify/icons-*`) or even
+a home-grown `{ play: '<path …/>' }` map is handled the same way — no adapter,
+no allowlist, no custom plugin. Opt a module out with the `?optical=off`
+import query, or scope the pass with `opticalCenter({ iconData: { exclude } })`.
+Icons whose pixels only exist at runtime (the Iconify API, remote `<img>`)
+can't be measured at build time — center their slot with the CSS directive
+instead. Full case-by-case guide on the docs site.
+
 ## Quick start — vanilla HTML
 
 ```html
@@ -70,17 +105,29 @@ The same Vite plugin transforms this when it runs `transformIndexHtml`. Outside 
 npx optical-center transform ./icons/raw ./icons/centered
 ```
 
-## Quick start — asset import
+## Quick start — CSS / PostCSS
 
-```ts
-// SVG file on disk, opted in at the import site:
-import play from './play.svg?optical';
-// `play` is a string — the rewritten SVG, ready to inject as innerHTML.
+```css
+.icon-play {
+  width: 24px;
+  height: 24px;
+  background: currentColor;
+  mask: url('lucide-static/icons/play.svg') center / contain no-repeat;
+  optical-center: auto;
+}
 ```
+
+The PostCSS plugin (`optical-center/postcss`) walks every rule that
+declares `optical-center: auto`, runs the SVG through the centering
+pipeline once, and inlines a corrected `data:image/svg+xml,…` mask in
+the shipped CSS. Bare specifiers like `lucide-static/icons/play.svg`
+resolve through Node's module resolution — no alias config needed.
 
 ## CLI (everything is `--json`-able)
 
 ```bash
+npx optical-center                              # bare, in a terminal → interactive wizard
+npx optical-center init [dir]                   # auto-detect framework, install, patch config
 npx optical-center transform <input> [output]   # folder → folder
 npx optical-center info <svg>                   # one file, full breakdown
 npx optical-center analyze <folder>             # aggregate report, top-N
@@ -88,7 +135,31 @@ npx optical-center clear-cache [--all]
 npx optical-center version
 ```
 
+**Interactive wizard.** Run the binary with no arguments in a real
+terminal and you get a menu instead of a help dump: pick a command with
+the arrow keys, fill in the paths (validated against the filesystem
+before anything runs), and the wizard echoes the equivalent one-shot
+invocation so it doubles as a flag tutorial. After each command the
+menu returns — run several in one session, `exit`/esc to leave. Pipes,
+CI, `--json`, and `--silent` never see the wizard; they get the stable
+plain-text contract below.
+
+**`init`.** Wires optical-center into a project: detects the framework
+(Vite / Astro / Tailwind / PostCSS / Babel) from package.json + config
+files, detects the package manager from the lockfile, installs the
+dependency, and patches the config — `opticalCenter()` first in Vite's
+`plugins`, after Tailwind in PostCSS's, and so on. Flags:
+`--integration=<name>`, `--yes`, `--no-install`, `--pm=<name>`,
+`--dry-run`. When a config file's shape can't be edited confidently,
+init prints a paste-ready snippet and exits `1` instead of guessing.
+
 Output streams stay clean: stdout = data only, stderr = progress + warnings, exit codes follow the contract (0 success / 1 success+warnings / 2 recoverable error / 3 fatal). `--strict` promotes warnings to a non-zero exit so CI fails on clip detection.
+
+> Heads-up for script runners: exit code `1` means *success with
+> warnings* (e.g. clip detection), but yarn/npm print a "command
+> failed" banner for any non-zero exit. That banner is the runner
+> talking, not a crash — check stderr for the actual warning. The
+> interactive wizard always exits `0` on a clean quit for this reason.
 
 ```bash
 $ optical-center info ./icons/play.svg --json
@@ -165,7 +236,6 @@ The cache is content-addressable (`sha256(rawSvgBytes + algoVersion)`); a warm s
 
 - Phase 1 (N=36, method of adjustment): RMSE = 2.99 px, r = 0.585.
 - Phase 2 (N=30, 2AFC): pooled PSE = 0.745 — humans prefer 74.5% of the V2 raw correction.
-- Phase 3 (N=46, adjustment fine-tune): per-icon validation; quantified central-tendency bias in adjustment tasks (Jewell & McCourt 2000).
 
 The shipped model is `V2 × 0.745`.
 

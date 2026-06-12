@@ -10,7 +10,12 @@ import { resolve } from 'node:path';
 import { transformViewBoxFromSvg } from '../../node/transform-viewbox-from-svg.js';
 import { parseViewBoxFromSvg } from '../../core/parse-viewbox.js';
 
+import { banner } from '../caret/components/banner.js';
+import { error as caretError } from '../caret/components/error.js';
+import { keyValue } from '../caret/components/key-value.js';
 import { readOutputOptions, writeJson, writeStderr, writeStdout } from '../output.js';
+import type { OutputOptions } from '../output.js';
+import { pickMode } from '../render.js';
 
 export async function runInfo(
   positionals: ReadonlyArray<string>,
@@ -18,8 +23,10 @@ export async function runInfo(
 ): Promise<number> {
   const output = readOutputOptions(flags);
   const target = positionals[0];
-  if (!target) {
-    writeStderr('error: info requires a <svg> path', output);
+  if (target === undefined) {
+    emitError('info requires a <svg> path', output, {
+      hint: 'optical-center info path/to/icon.svg',
+    });
     return 3;
   }
 
@@ -27,11 +34,11 @@ export async function runInfo(
   try {
     const stats = await stat(path);
     if (!stats.isFile()) {
-      writeStderr(`error: ${path} is not a file`, output);
+      emitError(`${path} is not a file`, output);
       return 3;
     }
-  } catch (error) {
-    writeStderr(`error: cannot stat ${path}: ${describe(error)}`, output);
+  } catch (err) {
+    emitError(`cannot stat ${path}: ${describe(err)}`, output);
     return 3;
   }
 
@@ -41,8 +48,8 @@ export async function runInfo(
   let result: ReturnType<typeof transformViewBoxFromSvg>;
   try {
     result = transformViewBoxFromSvg(svg, { emitMetadata: true });
-  } catch (error) {
-    writeStderr(`error: pipeline failed: ${describe(error)}`, output);
+  } catch (err) {
+    emitError(`pipeline failed: ${describe(err)}`, output);
     return 2;
   }
 
@@ -55,13 +62,42 @@ export async function runInfo(
     breadcrumb: result.breadcrumb,
   };
 
-  if (output.json) {
+  const mode = pickMode(output);
+  if (mode === 'json') {
     writeJson('info', payload, output);
+  } else if (mode === 'tty') {
+    renderTty(payload);
   } else {
     writeStdout(formatInfo(payload), output);
   }
 
   return result.clipDetected ? 1 : 0;
+}
+
+function renderTty(payload: {
+  file: string;
+  originalViewBox: { x: number; y: number; w: number; h: number; source: string };
+  newViewBox: string;
+  offset: { dxPercent: number; dyPercent: number };
+  clipDetected: boolean;
+}): void {
+  banner({ title: 'optical-center info', subtitle: payload.file });
+  process.stdout.write('\n');
+  const o = payload.originalViewBox;
+  keyValue({
+    rows: [
+      { key: 'viewBox source', value: o.source },
+      { key: 'original', value: `${o.x} ${o.y} ${o.w} ${o.h}` },
+      { key: 'new', value: payload.newViewBox },
+      {
+        key: 'offset',
+        value: `dx=${payload.offset.dxPercent.toFixed(4)}%, dy=${payload.offset.dyPercent.toFixed(4)}%`,
+      },
+      { key: 'clip detected', value: payload.clipDetected ? 'yes' : 'no' },
+    ],
+    highlightKeys: true,
+    width: 88,
+  });
 }
 
 function formatInfo(payload: {
@@ -80,6 +116,20 @@ function formatInfo(payload: {
     `offset:         dx=${payload.offset.dxPercent.toFixed(4)}%, dy=${payload.offset.dyPercent.toFixed(4)}%`,
     `clip detected:  ${payload.clipDetected ? 'yes' : 'no'}`,
   ].join('\n');
+}
+
+function emitError(
+  message: string,
+  output: OutputOptions,
+  options: { hint?: string } = {},
+): void {
+  if (pickMode(output) === 'tty') {
+    const opts: Parameters<typeof caretError>[1] = {};
+    if (options.hint !== undefined) opts.hint = options.hint;
+    caretError(message, opts);
+    return;
+  }
+  writeStderr(`error: ${message}`, output);
 }
 
 function describe(error: unknown): string {

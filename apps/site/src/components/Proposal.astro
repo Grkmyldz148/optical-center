@@ -1,0 +1,870 @@
+---
+/*
+ * Proposal — the natural pay-off to Problem's third card ("Type has ascender,
+ * descender, baseline. Icons have nothing"). We propose the missing primitive.
+ *
+ *   1.  Header — same rhythm as Problem / Science / Research.
+ *   2.  Analogy panel — one bordered card, two halves:
+ *         LEFT:  font glyph "Ag" with ascender / baseline / descender guides.
+ *         RIGHT: an icon (the same play triangle used elsewhere) with the
+ *                geometric center muted-crosshair and the optical-center
+ *                accent crosshair, offset by the library's real value for
+ *                that glyph (−1.04 / −0.63 in viewBox-24 units).
+ *       Visually: "fonts already carry metrics in the asset. Icons should too."
+ *   3.  Spec sheet — a CSSWG-style draft table. The property the section is
+ *       arguing for, expressed in the same shorthand a real spec would use.
+ *   4.  Two code panels (side-by-side) — author.css with `auto`, output.css
+ *       with the real CSS the build step emits today: a flex container plus a
+ *       `margin: auto` child carrying the precomputed `translate` offset (the
+ *       `--optical-center: auto` tracer is kept as a DevTools breadcrumb). The
+ *       offset shown is the same −1.04 / −0.63 viewBox-24 value the analogy
+ *       uses, expressed as a percentage of the icon box.
+ *
+ * No new pipeline diagram: Science already owns that. The header anchors
+ * the section, the analogy panel carries the rhetorical weight, the spec
+ * + codes carry the technical substance.
+ */
+type SpecRow = {
+  label: string;
+  value: string;
+  mono?: boolean;
+};
+
+const SPEC: readonly SpecRow[] = [
+  { label: "Name", value: "optical-center", mono: true },
+  { label: "Syntax", value: "auto | <length>{1,2}", mono: true },
+  { label: "Initial", value: "auto", mono: true },
+  { label: "Applies to", value: "block containers of a replaced child" },
+  { label: "Inherited", value: "no" },
+  { label: "Computed value", value: "two <length> values" },
+  { label: "Animatable", value: "by computed value" },
+];
+
+/* The icon we draw on the right side of the analogy — same play triangle
+   the hero uses, same real offset (−1.04 / −0.63) the Problem section
+   uses. Keeps the values legible across sections. */
+const ICON = {
+  path: "M 6 3 L 20 12 L 6 21 Z",
+  ox: -1.04,
+  oy: -0.63,
+};
+
+/* Stage geometry for the icon-metric SVG. The viewBox matches the font-half
+   SVG (320×220) so the two halves render at the same intrinsic height. The
+   stage is centered horizontally inside the viewBox with a large icon glyph
+   so it visually balances against the "Ag" on the other half. The dx / dy
+   numbers live in the meta caption below the SVG, not as side callouts, so
+   the SVG can dedicate every pixel to the centering demonstration. */
+const ICON_STAGE = 200;
+const ICON_GLYPH = 168;
+const ICON_SCALE = ICON_GLYPH / 24;
+const ICON_INSET = (ICON_STAGE - ICON_GLYPH) / 2;
+const ICON_OX_PX = (320 - ICON_STAGE) / 2;
+const ICON_OY_PX = 10;
+const ICON_CX = ICON_OX_PX + ICON_STAGE / 2;
+const ICON_CY = ICON_OY_PX + ICON_STAGE / 2;
+const ICON_MX = ICON_CX + ICON.ox * ICON_SCALE;
+const ICON_MY = ICON_CY + ICON.oy * ICON_SCALE;
+
+/* Format a number with a unicode minus and two decimals, matching
+   Problem.astro's fmt() so the same offset reads the same across sections. */
+const fmt = (n: number): string => {
+  if (Math.abs(n) < 0.005) return "0.00";
+  return (n < 0 ? "−" : "+") + Math.abs(n).toFixed(2);
+};
+---
+
+<section class="proposal" id="proposal" aria-labelledby="proposal-title">
+  <div class="proposal__inner">
+    <header class="proposal__head">
+      <p class="proposal__eyebrow">Proposal</p>
+      <h2 class="proposal__title" id="proposal-title">
+        <span class="proposal__title-line proposal__title-line--em">
+          Fonts carry their own metrics.
+        </span>
+        <span class="proposal__title-line">
+          Icons should carry an
+          <span class="proposal__title-accent">optical center</span>.
+        </span>
+      </h2>
+      <p class="proposal__sub">
+        Treat <code class="proposal__sub-code">optical-center</code> like
+        any other intrinsic asset metric &mdash; computed once at build
+        time, shipped with the file, and queried at runtime through a CSS
+        property the same tier as <code class="proposal__sub-code">letter-spacing</code>
+        or <code class="proposal__sub-code">text-underline-offset</code>.
+      </p>
+    </header>
+
+    {/* ───────────────────────  Analogy panel  ────────────────────────── */}
+    <div class="proposal__analogy" role="img" aria-label="A font glyph carries ascender, baseline and descender metrics. An icon should carry an optical-center offset the same way.">
+      <div class="proposal__analogy-half">
+        <header class="proposal__analogy-head">
+          <p class="proposal__analogy-kicker">Today</p>
+          <h3 class="proposal__analogy-title">Font metric</h3>
+          <p class="proposal__analogy-desc">
+            Every font file ships the lines the renderer needs to position
+            a glyph: ascender, baseline, descender.
+          </p>
+        </header>
+
+        <svg
+          class="proposal__analogy-svg proposal__analogy-svg--font"
+          viewBox="0 0 320 220"
+          aria-hidden="true"
+        >
+          {/* Guide lines — full width, mono labels on the right.
+             Y positions tuned to where Geist Variable 600 at font-size 144
+             actually lands: ascender ~y=35, baseline y=170, descender y=205.
+             The dashed guides are pedagogical (they show the *concept*),
+             so a tiny font-metrics mismatch is fine — what matters is the
+             visual claim "the asset carries these lines with it." */}
+          <g class="proposal__analogy-rule">
+            <line x1="20" y1="35" x2="230" y2="35" />
+            <text x="238" y="35" class="proposal__analogy-rule-label">ascender</text>
+          </g>
+          <g class="proposal__analogy-rule">
+            <line x1="20" y1="170" x2="230" y2="170" />
+            <text x="238" y="170" class="proposal__analogy-rule-label">baseline</text>
+          </g>
+          <g class="proposal__analogy-rule">
+            <line x1="20" y1="205" x2="230" y2="205" />
+            <text x="238" y="205" class="proposal__analogy-rule-label">descender</text>
+          </g>
+
+          {/* The glyph — "Ag" in the brand display face so the actual
+             ascender (A) and descender (g) features sit near the guides.
+             dominant-baseline="alphabetic" + a y at the baseline keeps
+             baseline placement predictable across browsers. */}
+          <text
+            x="60"
+            y="170"
+            class="proposal__analogy-glyph"
+            text-anchor="start"
+            dominant-baseline="alphabetic"
+          >Ag</text>
+        </svg>
+
+        <p class="proposal__analogy-meta">
+          <span class="proposal__analogy-meta-key">font-metric</span>
+          <span class="proposal__analogy-meta-val">
+            ascender 750 · baseline 0 · descender −250
+          </span>
+        </p>
+      </div>
+
+      <div class="proposal__analogy-divider" aria-hidden="true"></div>
+
+      <div class="proposal__analogy-half">
+        <header class="proposal__analogy-head">
+          <p class="proposal__analogy-kicker proposal__analogy-kicker--accent">Proposed</p>
+          <h3 class="proposal__analogy-title">Icon metric</h3>
+          <p class="proposal__analogy-desc">
+            Icons should ship the same way: one offset that says where the
+            shape <em>looks</em> centered, not where its box does.
+          </p>
+        </header>
+
+        <svg
+          class="proposal__analogy-svg proposal__analogy-svg--icon"
+          viewBox="0 0 320 220"
+          aria-hidden="true"
+        >
+          <defs>
+            <pattern
+              id="proposal-icon-grid"
+              width="15"
+              height="15"
+              patternUnits="userSpaceOnUse"
+            >
+              <path
+                d="M 15 0 L 0 0 L 0 15"
+                class="proposal__analogy-grid-line"
+              />
+            </pattern>
+          </defs>
+
+          {/* Stage frame */}
+          <rect
+            x={ICON_OX_PX}
+            y={ICON_OY_PX}
+            width={ICON_STAGE}
+            height={ICON_STAGE}
+            fill="url(#proposal-icon-grid)"
+            class="proposal__analogy-stage"
+          />
+          <rect
+            x={ICON_OX_PX}
+            y={ICON_OY_PX}
+            width={ICON_STAGE}
+            height={ICON_STAGE}
+            class="proposal__analogy-stage-frame"
+          />
+
+          {/* The icon — bounding-box centered (CSS default). */}
+          <g
+            transform={`translate(${ICON_OX_PX + ICON_INSET} ${ICON_OY_PX + ICON_INSET}) scale(${ICON_SCALE})`}
+            class="proposal__analogy-icon"
+          >
+            <path d={ICON.path} />
+          </g>
+
+          {/* Geometric center — muted crosshair, the "CSS truth". */}
+          <g class="proposal__analogy-crosshair">
+            <line x1={ICON_CX - 7} y1={ICON_CY} x2={ICON_CX + 7} y2={ICON_CY} />
+            <line x1={ICON_CX} y1={ICON_CY - 7} x2={ICON_CX} y2={ICON_CY + 7} />
+          </g>
+
+          {/* Offset connector and visual-mass marker — the accent pair shows
+             exactly where the eye thinks the shape is centered. */}
+          <line
+            x1={ICON_CX}
+            y1={ICON_CY}
+            x2={ICON_MX}
+            y2={ICON_MY}
+            class="proposal__analogy-offset"
+          />
+          <circle
+            cx={ICON_MX}
+            cy={ICON_MY}
+            r="3.6"
+            class="proposal__analogy-mass"
+          />
+
+        </svg>
+
+        <p class="proposal__analogy-meta proposal__analogy-meta--accent">
+          <span class="proposal__analogy-meta-key">optical-center</span>
+          <span class="proposal__analogy-meta-val">{fmt(ICON.ox)}px {fmt(ICON.oy)}px</span>
+        </p>
+      </div>
+    </div>
+
+    {/* ─────────────────────────  Spec card  ──────────────────────────── */}
+    <article class="proposal__spec" aria-labelledby="proposal-spec-title">
+      <header class="proposal__spec-head">
+        <p class="proposal__spec-kicker">Draft spec</p>
+        <h3 class="proposal__spec-title" id="proposal-spec-title">
+          <code>optical-center</code> property
+        </h3>
+        <p class="proposal__spec-desc">
+          One length pair or the <code>auto</code> keyword, on replaced
+          elements. Phrased the way a CSSWG draft would phrase it.
+        </p>
+      </header>
+
+      <dl class="proposal__spec-list">
+        {SPEC.map((row) => (
+          <div class="proposal__spec-row">
+            <dt class="proposal__spec-key">{row.label}</dt>
+            <dd
+              class={`proposal__spec-val${row.mono ? " proposal__spec-val--mono" : ""}`}
+            >
+              {row.value}
+            </dd>
+          </div>
+        ))}
+      </dl>
+    </article>
+
+    {/* ────────────────────────  Code panels  ─────────────────────────── */}
+    <div class="proposal__codes">
+      <figure class="proposal__code-wrap">
+        <figcaption class="proposal__code-tab">
+          <span class="proposal__code-tab-name">author.css</span>
+          <span class="proposal__code-tab-meta">what you write</span>
+        </figcaption>
+        <pre class="proposal__code"><code><!--
+          --><span class="proposal__code-line"><span class="proposal__code-selector">.button</span> &#123;</span><!--
+          --><span class="proposal__code-line">  <span class="proposal__code-prop">optical-center</span>: <span class="proposal__code-keyword">auto</span>;</span><!--
+          --><span class="proposal__code-line">&#125;</span><!--
+        --></code></pre>
+      </figure>
+
+      <span class="proposal__codes-arrow" aria-hidden="true">
+        <svg viewBox="0 0 24 24" width="20" height="20">
+          <path
+            d="M 4 12 L 20 12 M 14 6 L 20 12 L 14 18"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.5"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          />
+        </svg>
+        <span class="proposal__codes-arrow-label">compiled</span>
+      </span>
+
+      <figure class="proposal__code-wrap">
+        <figcaption class="proposal__code-tab">
+          <span class="proposal__code-tab-name">output.css</span>
+          <span class="proposal__code-tab-meta">what actually ships</span>
+        </figcaption>
+        <pre class="proposal__code"><code><!--
+          --><span class="proposal__code-line"><span class="proposal__code-selector">.button</span> &#123;</span><!--
+          --><span class="proposal__code-line">  <span class="proposal__code-prop">display</span>: <span class="proposal__code-keyword">flex</span>;</span><!--
+          --><span class="proposal__code-line">  <span class="proposal__code-prop">--optical-center</span>: <span class="proposal__code-keyword">auto</span>;</span><!--
+          --><span class="proposal__code-line">&#125;</span><!--
+          --><span class="proposal__code-line"><span class="proposal__code-selector">.button &gt; *</span> &#123;</span><!--
+          --><span class="proposal__code-line">  <span class="proposal__code-prop">margin</span>: <span class="proposal__code-keyword">auto</span>;</span><!--
+          --><span class="proposal__code-line">  <span class="proposal__code-prop">translate</span>: <span class="proposal__code-value">-4.33% -2.63%</span>;</span><!--
+          --><span class="proposal__code-line">&#125;</span><!--
+        --></code></pre>
+      </figure>
+    </div>
+
+    <p class="proposal__closing">
+      The data already exists &mdash; every icon in this page ships with a
+      precomputed offset today. The only thing missing is a syntax the
+      browser can read natively.
+    </p>
+  </div>
+</section>
+
+<style>
+  .proposal {
+    position: relative;
+    padding-block: var(--sp-24);
+    border-top: var(--line-w) solid var(--color-line);
+  }
+
+  .proposal__inner {
+    width: 100%;
+    max-width: var(--page-max-w);
+    margin-inline: auto;
+    padding-inline: var(--page-px);
+    display: grid;
+    gap: var(--sp-12);
+  }
+
+  /* ─────────────────────────  Header  ──────────────────────────────── */
+  .proposal__head {
+    display: grid;
+    gap: var(--sp-5);
+    justify-items: start;
+    max-width: 760px;
+  }
+  .proposal__eyebrow {
+    font-family: var(--font-mono);
+    font-size: var(--fs-xs);
+    letter-spacing: var(--ls-wide);
+    text-transform: uppercase;
+    color: var(--color-muted-fg);
+    padding: var(--sp-2) var(--sp-3);
+    border: var(--line-w) solid var(--color-line);
+    border-radius: 999px;
+    background: var(--color-surface);
+  }
+  .proposal__title {
+    font-family: var(--font-display);
+    font-size: clamp(2rem, 4.2vw, 3.5rem);
+    font-weight: var(--fw-semibold);
+    line-height: var(--lh-tight);
+    letter-spacing: -0.03em;
+    color: var(--color-fg);
+    max-width: 20ch;
+    margin: 0;
+  }
+  .proposal__title-line {
+    display: block;
+  }
+  /* First line: the setup, in muted weight so the eye reads it as
+     premise → conclusion, exactly like the Hero. */
+  .proposal__title-line--em {
+    font-weight: var(--fw-medium);
+    color: var(--color-muted-fg);
+  }
+  .proposal__title-accent {
+    color: var(--color-accent-text);
+  }
+  .proposal__sub {
+    font-family: var(--font-body);
+    font-size: var(--fs-md);
+    line-height: var(--lh-body);
+    color: var(--color-soft-fg);
+    max-width: 64ch;
+  }
+  .proposal__sub-code {
+    font-family: var(--font-mono);
+    font-size: 0.9em;
+    color: var(--color-accent-text);
+    white-space: nowrap;
+  }
+
+  /* ─────────────────────────  Analogy panel  ──────────────────────── */
+  /* One bordered card with two equal halves divided by a vertical hairline.
+     Each half stacks: small header → big visual → mono caption. The two
+     captions sit at the bottom on a shared baseline regardless of visual
+     height because the visuals are sized to the same vertical space. */
+  .proposal__analogy {
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    align-items: stretch;
+    border: var(--line-w) solid var(--color-line);
+    border-radius: var(--radius-sm);
+    background: var(--color-surface);
+    overflow: hidden;
+  }
+  .proposal__analogy-half {
+    display: grid;
+    gap: var(--sp-5);
+    align-content: start;
+    padding: var(--sp-8);
+  }
+  .proposal__analogy-divider {
+    width: var(--line-w);
+    background: var(--color-line);
+    align-self: stretch;
+  }
+
+  .proposal__analogy-head {
+    display: grid;
+    gap: var(--sp-2);
+  }
+  .proposal__analogy-kicker {
+    font-family: var(--font-mono);
+    font-size: var(--fs-xs);
+    letter-spacing: var(--ls-wide);
+    text-transform: uppercase;
+    color: var(--color-muted-fg);
+  }
+  .proposal__analogy-kicker--accent {
+    color: var(--color-accent-text);
+  }
+  .proposal__analogy-title {
+    font-family: var(--font-display);
+    font-size: var(--fs-md);
+    font-weight: var(--fw-semibold);
+    letter-spacing: var(--ls-tight);
+    line-height: var(--lh-snug);
+    color: var(--color-fg);
+  }
+  .proposal__analogy-desc {
+    font-family: var(--font-body);
+    font-size: var(--fs-sm);
+    line-height: var(--lh-body);
+    color: var(--color-muted-fg);
+    max-width: 38ch;
+  }
+  .proposal__analogy-desc em {
+    font-style: italic;
+    color: var(--color-soft-fg);
+  }
+
+  /* Visuals — both SVGs share viewBox 320×220 so they render at identical
+     aspect ratios. width: 100% + height: auto lets the SVG own the half's
+     full width; the content scales proportionally and the two sides stay
+     visually balanced across the divider. */
+  .proposal__analogy-svg {
+    display: block;
+    width: 100%;
+    height: auto;
+    color: var(--color-fg);
+  }
+
+  /* Font half — quiet structural lines + the "Ag" glyph. */
+  .proposal__analogy-rule line {
+    stroke: var(--color-line-strong);
+    stroke-width: 1;
+    stroke-dasharray: 2 2;
+    vector-effect: non-scaling-stroke;
+  }
+  .proposal__analogy-rule-label {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    fill: var(--color-muted-fg);
+    dominant-baseline: middle;
+  }
+  .proposal__analogy-glyph {
+    /* Render the glyph in the same display face the title uses so the
+       metrics it visualizes are the metrics the page itself depends on. */
+    font-family: var(--font-display);
+    font-weight: 600;
+    font-size: 144px;
+    fill: var(--color-fg);
+    letter-spacing: -0.04em;
+  }
+
+  /* Icon half — stage frame, geometric crosshair, accent offset.
+     Pattern reuses Problem's visual language so the two sections feel
+     like one continuous argument: "here's the gap (Problem) → here's the
+     metric that fills it (Proposal)". */
+  .proposal__analogy-stage {
+    /* The rect's `fill` attribute references the grid pattern inline; this
+       class lives so future styling has a hook. */
+  }
+  .proposal__analogy-stage-frame {
+    fill: none;
+    stroke: var(--color-line);
+    stroke-width: 1;
+    vector-effect: non-scaling-stroke;
+  }
+  .proposal__analogy-grid-line {
+    fill: none;
+    stroke: color-mix(in oklab, var(--color-fg) 7%, transparent);
+    stroke-width: 1;
+    vector-effect: non-scaling-stroke;
+  }
+  .proposal__analogy-icon > path {
+    fill: color-mix(in oklab, var(--color-fg) 92%, transparent);
+  }
+  .proposal__analogy-crosshair line {
+    stroke: color-mix(in oklab, var(--color-fg) 60%, transparent);
+    stroke-width: 1;
+    stroke-linecap: round;
+    vector-effect: non-scaling-stroke;
+  }
+  .proposal__analogy-offset {
+    stroke: var(--color-accent);
+    stroke-width: 1.25;
+    stroke-linecap: round;
+    stroke-dasharray: 2 1.5;
+    vector-effect: non-scaling-stroke;
+  }
+  .proposal__analogy-mass {
+    fill: var(--color-accent);
+    stroke: var(--color-bg);
+    stroke-width: 1.6;
+    vector-effect: non-scaling-stroke;
+    filter: drop-shadow(
+      0 0 4px color-mix(in oklab, var(--color-accent) 60%, transparent)
+    );
+  }
+  /* Footer caption — each half ends with one mono line so the eye can
+     compare "font-metric: …" against "optical-center: …" without scanning. */
+  .proposal__analogy-meta {
+    display: flex;
+    align-items: baseline;
+    gap: var(--sp-3);
+    padding: var(--sp-3) var(--sp-4);
+    border: var(--line-w) solid var(--color-line);
+    border-radius: var(--radius-sm);
+    background: var(--color-bg);
+    font-family: var(--font-mono);
+    font-size: var(--fs-xs);
+    line-height: var(--lh-snug);
+    flex-wrap: wrap;
+  }
+  .proposal__analogy-meta-key {
+    color: var(--color-muted-fg);
+  }
+  .proposal__analogy-meta-val {
+    color: var(--color-fg);
+    font-feature-settings: "tnum";
+  }
+  .proposal__analogy-meta--accent {
+    border-color: color-mix(in oklab, var(--color-accent) 40%, var(--color-line));
+  }
+  .proposal__analogy-meta--accent .proposal__analogy-meta-key {
+    color: var(--color-accent-text);
+  }
+  .proposal__analogy-meta--accent .proposal__analogy-meta-val {
+    color: var(--color-fg);
+  }
+
+  /* ─────────────────────────  Spec card  ──────────────────────────── */
+  /* A compact data sheet. dl > div > (dt + dd) — semantics are correct
+     for a key/value list, the grid handles alignment. */
+  .proposal__spec {
+    display: grid;
+    grid-template-columns: minmax(220px, 280px) 1fr;
+    gap: var(--sp-8);
+    padding: var(--sp-8);
+    border: var(--line-w) solid var(--color-line);
+    border-radius: var(--radius-sm);
+    background: var(--color-surface);
+  }
+  .proposal__spec-head {
+    display: grid;
+    gap: var(--sp-2);
+    align-content: start;
+  }
+  .proposal__spec-kicker {
+    font-family: var(--font-mono);
+    font-size: var(--fs-xs);
+    letter-spacing: var(--ls-wide);
+    text-transform: uppercase;
+    color: var(--color-accent-text);
+  }
+  .proposal__spec-title {
+    font-family: var(--font-display);
+    font-size: var(--fs-md);
+    font-weight: var(--fw-semibold);
+    letter-spacing: var(--ls-tight);
+    line-height: var(--lh-snug);
+    color: var(--color-fg);
+  }
+  .proposal__spec-title code {
+    font-family: var(--font-mono);
+    color: var(--color-accent-text);
+    font-weight: var(--fw-medium);
+  }
+  .proposal__spec-desc {
+    font-family: var(--font-body);
+    font-size: var(--fs-sm);
+    line-height: var(--lh-body);
+    color: var(--color-muted-fg);
+  }
+  .proposal__spec-desc code {
+    font-family: var(--font-mono);
+    font-size: 0.92em;
+    color: var(--color-fg);
+  }
+  .proposal__spec-list {
+    display: grid;
+    gap: 0;
+    margin: 0;
+    padding: 0;
+    border: var(--line-w) solid var(--color-line);
+    border-radius: var(--radius-sm);
+    background: var(--color-bg);
+    overflow: hidden;
+  }
+  .proposal__spec-row {
+    display: grid;
+    grid-template-columns: minmax(140px, 1fr) 2fr;
+    gap: var(--sp-6);
+    padding: var(--sp-3) var(--sp-5);
+    border-top: var(--line-w) solid var(--color-line);
+  }
+  .proposal__spec-row:first-child {
+    border-top: 0;
+  }
+  .proposal__spec-key {
+    font-family: var(--font-mono);
+    font-size: var(--fs-xs);
+    letter-spacing: var(--ls-wide);
+    color: var(--color-muted-fg);
+    text-transform: uppercase;
+    align-self: center;
+    margin: 0;
+  }
+  .proposal__spec-val {
+    font-family: var(--font-body);
+    font-size: var(--fs-sm);
+    line-height: var(--lh-snug);
+    color: var(--color-fg);
+    align-self: center;
+    margin: 0;
+  }
+  .proposal__spec-val--mono {
+    font-family: var(--font-mono);
+    color: var(--color-accent-text);
+    font-feature-settings: "tnum";
+  }
+
+  /* ─────────────────────────  Code panels  ────────────────────────── */
+  /* Author vs used-value, side-by-side, arrow in between. Mirrors the
+     Hero's code-block visual language (tab with leading dot, surface bg)
+     so the page reads as one design system, not three. */
+  .proposal__codes {
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    align-items: stretch;
+    gap: var(--sp-4);
+  }
+  .proposal__code-wrap {
+    margin: 0;
+    display: grid;
+    border: var(--line-w) solid var(--color-line);
+    border-radius: var(--radius-sm);
+    background: var(--color-surface);
+    overflow: hidden;
+  }
+  .proposal__code-tab {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--sp-3);
+    padding: var(--sp-2) var(--sp-4);
+    border-bottom: var(--line-w) solid var(--color-line);
+    background: var(--color-surface-hi);
+    font-family: var(--font-mono);
+    font-size: var(--fs-xs);
+    color: var(--color-muted-fg);
+  }
+  .proposal__code-tab-name {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--sp-2);
+    color: var(--color-fg);
+  }
+  /* Leading colored dot — matches Hero's .hero__code-tab::before. */
+  .proposal__code-tab-name::before {
+    content: "";
+    width: 6px;
+    height: 6px;
+    border-radius: 999px;
+    background: var(--color-accent);
+    flex-shrink: 0;
+  }
+  .proposal__code-tab-meta {
+    color: var(--color-muted-fg);
+  }
+  .proposal__code {
+    margin: 0;
+    padding: var(--sp-4) var(--sp-5);
+    background: transparent;
+    font-family: var(--font-mono);
+    font-size: 0.8125rem;
+    line-height: 1.65;
+    color: var(--color-fg);
+    overflow-x: auto;
+  }
+  .proposal__code code {
+    font-family: inherit;
+  }
+  .proposal__code-line {
+    display: block;
+    white-space: pre;
+  }
+  .proposal__code-selector,
+  .proposal__code-prop {
+    color: var(--color-accent-text);
+  }
+  .proposal__code-keyword {
+    color: var(--color-fg);
+    font-weight: var(--fw-medium);
+  }
+  .proposal__code-value {
+    color: var(--color-fg);
+    font-feature-settings: "tnum";
+  }
+  .proposal__code-comment {
+    color: var(--color-muted-fg);
+  }
+
+  /* "computed →" pill between the two code panels. Sits on its own column
+     so the two figures line up at exactly the same height. */
+  .proposal__codes-arrow {
+    display: inline-flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: var(--sp-2);
+    color: var(--color-muted-fg);
+    padding-inline: var(--sp-2);
+  }
+  .proposal__codes-arrow svg {
+    color: var(--color-accent);
+  }
+  .proposal__codes-arrow-label {
+    font-family: var(--font-mono);
+    font-size: var(--fs-xs);
+    letter-spacing: var(--ls-wide);
+    text-transform: uppercase;
+    color: var(--color-muted-fg);
+  }
+
+  /* ─────────────────────────  Closing  ────────────────────────────── */
+  .proposal__closing {
+    font-family: var(--font-body);
+    font-size: var(--fs-sm);
+    line-height: var(--lh-body);
+    color: var(--color-muted-fg);
+    max-width: 68ch;
+  }
+
+  /* ─────────────────────────  Responsive  ─────────────────────────── */
+  @media (max-width: 960px) {
+    .proposal {
+      padding-block: var(--sp-16);
+    }
+    .proposal__inner {
+      gap: var(--sp-8);
+    }
+
+    /* Stack the analogy: font half on top, divider becomes a horizontal
+       rule, icon half on the bottom. */
+    .proposal__analogy {
+      grid-template-columns: 1fr;
+    }
+    .proposal__analogy-divider {
+      width: 100%;
+      height: var(--line-w);
+    }
+    .proposal__analogy-half {
+      padding: var(--sp-6);
+    }
+
+    /* Spec collapses to a single column — header on top, list below. */
+    .proposal__spec {
+      grid-template-columns: 1fr;
+      gap: var(--sp-5);
+      padding: var(--sp-6);
+    }
+
+    /* Codes stack with the arrow pivoted to point down. */
+    .proposal__codes {
+      grid-template-columns: 1fr;
+      gap: var(--sp-3);
+    }
+    .proposal__codes-arrow {
+      flex-direction: row;
+      gap: var(--sp-3);
+      padding-block: var(--sp-2);
+    }
+    .proposal__codes-arrow svg {
+      transform: rotate(90deg);
+    }
+  }
+
+  @media (max-width: 720px) {
+    .proposal__head {
+      gap: var(--sp-4);
+    }
+    .proposal__title {
+      font-size: clamp(1.8rem, 6.5vw, 2.75rem);
+    }
+  }
+
+  @media (max-width: 560px) {
+    .proposal {
+      padding-block: var(--sp-12);
+    }
+    .proposal__analogy-half {
+      padding: var(--sp-5);
+      gap: var(--sp-4);
+    }
+    .proposal__analogy-glyph {
+      font-size: 132px;
+    }
+    .proposal__analogy-meta {
+      padding: var(--sp-2) var(--sp-3);
+      font-size: 0.7rem;
+    }
+    .proposal__spec {
+      padding: var(--sp-5);
+    }
+    .proposal__spec-row {
+      grid-template-columns: 1fr;
+      gap: var(--sp-1);
+      padding: var(--sp-3) var(--sp-4);
+    }
+    .proposal__code {
+      padding: var(--sp-3) var(--sp-4);
+      font-size: 0.75rem;
+    }
+  }
+
+  @media (max-width: 400px) {
+    .proposal__analogy-half {
+      padding: var(--sp-4);
+    }
+    .proposal__analogy-glyph {
+      font-size: 108px;
+    }
+    .proposal__spec {
+      padding: var(--sp-4);
+    }
+    .proposal__spec-row {
+      padding: var(--sp-3);
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    /* No motion in this section — but if it ever picks up transitions,
+       this is where they get muted. Keeping the hook in place so future
+       additions don't need to remember to add it. */
+  }
+</style>

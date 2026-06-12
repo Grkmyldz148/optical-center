@@ -1,6 +1,3 @@
-import { mkdtemp, writeFile } from 'node:fs/promises';
-import { tmpdir } from 'node:os';
-import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
 import opticalCenterVite from '../../src/vite/index.js';
@@ -10,7 +7,6 @@ interface VitePluginShape {
   name: string;
   enforce?: 'pre' | 'post';
   configResolved?: (cfg: { command: 'serve' | 'build' }) => void;
-  load?: (id: string) => Promise<string | null>;
   transform?: (
     code: string,
     id: string,
@@ -45,7 +41,6 @@ describe('opticalCenterVite plugin shape', () => {
     const plugin = asVitePlugin(opticalCenterVite());
     expect(plugin.name).toBe('optical-center');
     expect(plugin.enforce).toBe('pre');
-    expect(typeof plugin.load).toBe('function');
     expect(typeof plugin.transform).toBe('function');
     // transformIndexHtml is wrapped in {order: 'post', handler} so it
     // runs after every other plugin's HTML pass.
@@ -107,30 +102,6 @@ describe('transformIndexHtml', () => {
     expect(out).not.toContain('<script');
     expect(out).not.toContain('steal()');
     expect(out).toContain('data-optical-center=""');
-  });
-});
-
-describe('load() — ?optical SVG asset', () => {
-  it('returns a JS module exporting the transformed SVG string', async () => {
-    const dir = await mkdtemp(join(tmpdir(), 'oc-vite-'));
-    const file = join(dir, 'play.svg');
-    await writeFile(file, PLAY_SVG);
-
-    const plugin = asVitePlugin(opticalCenterVite());
-    plugin.configResolved?.({ command: 'build' });
-
-    const result = await plugin.load?.(`${file}?optical`);
-    expect(result).not.toBeNull();
-    expect(result).toContain('export default ');
-    expect(result).toContain('data-optical-center');
-    expect(result).toContain('viewBox=\\"-');
-  });
-
-  it('returns null for non-?optical SVG ids', async () => {
-    const plugin = asVitePlugin(opticalCenterVite());
-    plugin.configResolved?.({ command: 'build' });
-    expect(await plugin.load?.('/some/file.svg')).toBeNull();
-    expect(await plugin.load?.('/other.tsx')).toBeNull();
   });
 });
 

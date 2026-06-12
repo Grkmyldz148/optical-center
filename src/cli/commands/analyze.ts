@@ -10,7 +10,15 @@ import { extname, join, relative, resolve } from 'node:path';
 
 import { transformViewBoxFromSvg } from '../../node/transform-viewbox-from-svg.js';
 
+import { banner } from '../caret/components/banner.js';
+import { divider } from '../caret/components/divider.js';
+import { error as caretError } from '../caret/components/error.js';
+import { keyValue } from '../caret/components/key-value.js';
+import { table } from '../caret/components/table.js';
+import { warning as caretWarning } from '../caret/components/message.js';
 import { readOutputOptions, writeJson, writeStderr, writeStdout } from '../output.js';
+import type { OutputOptions } from '../output.js';
+import { pickMode } from '../render.js';
 
 interface FileSample {
   readonly file: string;
@@ -26,8 +34,10 @@ export async function runAnalyze(
 ): Promise<number> {
   const output = readOutputOptions(flags);
   const target = positionals[0];
-  if (!target) {
-    writeStderr('error: analyze requires a <folder> path', output);
+  if (target === undefined) {
+    emitError('analyze requires a <folder> path', output, {
+      hint: 'optical-center analyze path/to/icons',
+    });
     return 3;
   }
 
@@ -35,8 +45,8 @@ export async function runAnalyze(
   let files: string[];
   try {
     files = await collectSvgFiles(root);
-  } catch (error) {
-    writeStderr(`error: cannot read ${root}: ${describe(error)}`, output);
+  } catch (err) {
+    emitError(`cannot read ${root}: ${describe(err)}`, output);
     return 3;
   }
 
@@ -56,9 +66,9 @@ export async function runAnalyze(
         magnitude: Math.hypot(dx, dy),
         clipDetected: result.clipDetected,
       });
-    } catch (error) {
+    } catch (err) {
       failed++;
-      writeStderr(`warn: ${relative(root, file)}: ${describe(error)}`, output);
+      emitWarning(`${relative(root, file)}: ${describe(err)}`, output);
     }
   }
 
@@ -74,13 +84,60 @@ export async function runAnalyze(
     topByMagnitude: samples.slice(0, 10),
   };
 
-  if (output.json) {
+  const mode = pickMode(output);
+  if (mode === 'json') {
     writeJson('analyze', summary, output);
+  } else if (mode === 'tty') {
+    renderTty(summary);
   } else {
     writeStdout(formatSummary(summary), output);
   }
 
   return failed > 0 ? 2 : summary.clipDetectedCount > 0 ? 1 : 0;
+}
+
+function renderTty(summary: {
+  folder: string;
+  count: number;
+  failed: number;
+  avgMagnitude: number;
+  maxMagnitude: number;
+  clipDetectedCount: number;
+  topByMagnitude: ReadonlyArray<FileSample>;
+}): void {
+  banner({ title: 'optical-center analyze', subtitle: summary.folder });
+  process.stdout.write('\n');
+
+  keyValue({
+    rows: [
+      { key: 'count', value: summary.count },
+      { key: 'failed', value: summary.failed },
+      { key: 'avg offset', value: `${summary.avgMagnitude.toFixed(3)}%` },
+      { key: 'max offset', value: `${summary.maxMagnitude.toFixed(3)}%` },
+      { key: 'clip count', value: summary.clipDetectedCount },
+    ],
+    highlightKeys: true,
+  });
+
+  if (summary.topByMagnitude.length === 0) return;
+  process.stdout.write('\n');
+  divider({ label: 'Top by magnitude', align: 'left' });
+  table({
+    columns: [
+      {
+        header: 'OFFSET',
+        accessor: (r: FileSample) => `${r.magnitude.toFixed(3)}%`,
+        align: 'right',
+      },
+      {
+        header: 'CLIP',
+        accessor: (r: FileSample) => (r.clipDetected ? 'yes' : ''),
+      },
+      { header: 'FILE', accessor: (r: FileSample) => r.file },
+    ],
+    rows: summary.topByMagnitude,
+    borders: true,
+  });
 }
 
 async function collectSvgFiles(root: string): Promise<string[]> {
@@ -134,6 +191,28 @@ function formatSummary(summary: {
     );
   }
   return lines.join('\n');
+}
+
+function emitError(
+  message: string,
+  output: OutputOptions,
+  options: { hint?: string } = {},
+): void {
+  if (pickMode(output) === 'tty') {
+    const opts: Parameters<typeof caretError>[1] = {};
+    if (options.hint !== undefined) opts.hint = options.hint;
+    caretError(message, opts);
+    return;
+  }
+  writeStderr(`error: ${message}`, output);
+}
+
+function emitWarning(message: string, output: OutputOptions): void {
+  if (pickMode(output) === 'tty') {
+    caretWarning(message);
+    return;
+  }
+  writeStderr(`warn: ${message}`, output);
 }
 
 function describe(error: unknown): string {

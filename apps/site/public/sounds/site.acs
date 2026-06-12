@@ -1,0 +1,221 @@
+/*
+ * Optical Center — site sound design.
+ * Built on ACS (Audio Cascading Style Sheets) — audiocss.dev
+ *
+ * Sonic hierarchy (all under the 0.55 master budget; restraint > novelty):
+ *   • Navigation taps  → tap-tactile, quiet — every in-site link shares one
+ *                        voice (header, mobile drawer, footer + credits, docs
+ *                        rails AND docs prose links).
+ *   • Identity         → tick — the brand marks (→ home).
+ *   • State toggles    → toggle-on / toggle-off — the hero demo; theme via pitch.
+ *   • Open / close     → drawer-open/close (mobile nav, docs sidebar),
+ *                        modal-open/close (the ⌘K search palette).
+ *   • Stepper          → tap-tactile + directional pitch — the docs prev/next pager.
+ *   • Copy             → pop — install line + code-block copy.
+ *   • Inputs           → tick on focus.
+ *
+ * IMPORTANT — ACS binds its click listener in the CAPTURE phase, so it reads
+ * the DOM state BEFORE our (bubble-phase) click handlers flip an attribute.
+ * Every directional rule below therefore keys off the state the element is
+ * LEAVING: a closed drawer ([data-open="false"]) about to open → drawer-open;
+ * a "dark" theme about to become light → the light-landing pitch. Cues stay
+ * silent until the first user interaction (browser autoplay policy), then the
+ * AudioContext resumes automatically.
+ *
+ * NOTE: scroll-reveal (sound-on-appear) is intentionally omitted — the ACS
+ * runtime silences the first intersection of elements present at load, so
+ * section cues would only chime on scroll-back, which reads as a glitch.
+ */
+
+:root {
+  master-volume: 0.55;
+  room: small-room;
+}
+
+/* ───────────────────────────  Navigation  ─────────────────────────── */
+
+/* One quiet tactile tap for every navigation link list — keeps wayfinding
+   consistent top to bottom, desktop and mobile, landing and docs. Docs prose
+   links (.docs__body a, incl. the hub cards + heading permalinks) and the
+   footer credit links ride the same voice. We deliberately do NOT split the
+   in-prose "#" jumps down to the quieter anchor tap below: ACS's selector
+   matcher is exact-match only ([attr] / [attr="v"]), so an [href^="#"] rule
+   never matches — one tap for every in-content link is the honest result. */
+.site-header .nav a,
+.mobile-nav__nav a,
+.site-footer__link,
+.site-footer__powered-em,
+.site-footer__made-em,
+.docs-sidebar__link,
+.docs__body a {
+  sound-on-click: tap-tactile;
+  volume: 0.3;
+}
+
+/* In-page anchor jumps (same page, just scrolling) — the quietest tap. */
+.docs-toc__link,
+.docs__breadcrumb a,
+.science__refs-link,
+.research__progress-link {
+  sound-on-click: tap-tactile;
+  volume: 0.25;
+}
+
+/* Brand marks — a quiet identity tick on the home links. */
+.site-header .brand,
+.site-footer__brand {
+  sound-on-click: tick;
+  volume: 0.5;
+}
+
+/* ───────────────────────────  Theme toggle  ───────────────────────── */
+/* Capture-phase read = the mode you're LEAVING. So "currently dark" means
+   you're about to land in light → higher pitch; "currently light" → lower.
+   Pitch must ride in the SAME rule as the sound (ACS doesn't merge a pitch-
+   only rule into the click decls), so each explicit mode restates the sound.
+   The base rule covers "auto" mode (no data-theme set) with no pitch. */
+.theme-toggle {
+  sound-on-click: tap-tactile;
+  volume: 0.75;
+}
+html[data-theme="dark"] .theme-toggle {
+  sound-on-click: tap-tactile;
+  volume: 0.75;
+  pitch: +2st;
+}
+html[data-theme="light"] .theme-toggle {
+  sound-on-click: tap-tactile;
+  volume: 0.75;
+  pitch: -2st;
+}
+
+/* ───────────────────────────  Sound toggle  ───────────────────────── */
+/* The header's mute control, keyed (like the theme toggle) off the LEAVING
+   state read in the capture phase. Sound currently ON (no data-sound, or
+   "on") → you're about to mute → one parting toggle-off. Sound currently OFF
+   → about to unmute → toggle-on, but the runtime is still disabled at that
+   instant so it's silent by design; sound simply returns for the next gesture. */
+.audio-toggle {
+  sound-on-click: toggle-off;
+  volume: 0.5;
+}
+html[data-sound="off"] .audio-toggle {
+  sound-on-click: toggle-on;
+  volume: 0.5;
+}
+
+/* ───────────────────────  Open / close surfaces  ──────────────────── */
+
+/* ⌘K search palette — the trigger reveals a modal; the close button dismisses
+   it. (Keyboard ⌘K / "/" opens get the input-focus tick below instead.) */
+.search-trigger {
+  sound-on-click: modal-open;
+  volume: 0.4;
+}
+.search-field__esc {
+  sound-on-click: modal-close;
+  volume: 0.4;
+}
+/* Palette input gains focus on open (and on tab-in) — a small landing tick. */
+.search-field__input {
+  sound-on-focus: tick;
+  volume: 0.25;
+}
+/* Committing a result. */
+.search-result {
+  sound-on-click: tap-tactile;
+  volume: 0.45;
+}
+
+/* Mobile nav drawer — directional via the header's data-menu-open. Keyed to
+   the LEAVING state (capture phase): closed → about to open → drawer-open. */
+.site-header[data-menu-open="false"] .menu-toggle {
+  sound-on-click: drawer-open;
+  volume: 0.45;
+}
+.site-header[data-menu-open="true"] .menu-toggle {
+  sound-on-click: drawer-close;
+  volume: 0.45;
+}
+
+/* Docs sidebar drawer (mobile) — directional via data-open on the rail. */
+.docs-sidebar[data-open="false"] .docs-sidebar__toggle {
+  sound-on-click: drawer-open;
+  volume: 0.4;
+}
+.docs-sidebar[data-open="true"] .docs-sidebar__toggle {
+  sound-on-click: drawer-close;
+  volume: 0.4;
+}
+
+/* ─────────────────────────  Docs pager (stepper)  ─────────────────── */
+/* Prev/next is a directional stepper — pitch carries the direction, same
+   preset so the pair reads as one control. */
+.docs__pager-link--prev {
+  sound-on-click: tap-tactile;
+  volume: 0.4;
+  pitch: -1st;
+}
+.docs__pager-link--next {
+  sound-on-click: tap-tactile;
+  volume: 0.4;
+  pitch: +1st;
+}
+
+/* ────────────────────────────  Copy  ──────────────────────────────── */
+/* `pop` confirms the clipboard write, tight to the click gesture (before the
+   async clipboard promise resolves). */
+.hero__terminal {
+  sound-on-click: pop;
+  volume: 0.7;
+}
+.docs-code__copy {
+  sound-on-click: pop;
+  volume: 0.5;
+}
+
+/* ───────────────────────  Hero demo (state toggle)  ───────────────── */
+/* Two controls drive the same optical-state. They need different keying:
+   the segment radios carry a STATIC data-value (their identity), so clicking
+   "auto" always means "turn on" → toggle-on. The canvas instead flips its
+   data-optical-state on click, and ACS reads it pre-flip (capture phase), so
+   it's keyed to the LEAVING state: currently "off" → about to turn on →
+   toggle-on. Both land on the same sound for the same gesture. */
+.hero__seg [data-value="auto"],
+.hero__canvas[data-optical-state="off"] {
+  sound-on-click: toggle-on;
+  volume: 0.5;
+}
+.hero__seg [data-value="off"],
+.hero__canvas[data-optical-state="auto"] {
+  sound-on-click: toggle-off;
+  volume: 0.5;
+}
+
+/* ────────────────────────  Interactive cards  ─────────────────────── */
+/* Science pipeline cards are keyboard-focusable; focusing one lights its
+   matching pipeline chip — a quiet tick reinforces that mapping. Focus (not
+   hover) so it fires once per card, not continuously. */
+.science__stage {
+  sound-on-focus: tick;
+  volume: 0.25;
+}
+
+/* ────────────────────────────  A11y  ──────────────────────────────── */
+/*
+ * Silence only on an explicit reduced-SOUND signal. We deliberately do NOT
+ * mute on prefers-reduced-motion: motion sensitivity is not sound sensitivity,
+ * and ACS resolves an unknown prefers-reduced-sound query by FALLING BACK to
+ * prefers-reduced-motion — so a motion rule here double-muted the whole site
+ * for anyone with "Reduce Motion" enabled. That was the silence bug.
+ *
+ * prefers-reduced-sound is still a proposal (always false today), so this is a
+ * no-op until browsers ship it. The explicit user mute is wired separately:
+ * the header's .audio-toggle calls window.ACS.setEnabled(false) and persists
+ * the choice (see Header.astro / the Base.astro bootstrap).
+ */
+@media (prefers-reduced-sound: reduce) {
+  :root {
+    master-volume: 0;
+  }
+}

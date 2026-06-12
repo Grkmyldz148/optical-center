@@ -82,7 +82,7 @@ export function analyzeAsymmetry(
 
   for (let y = 0; y < height; y++) {
     for (let x = 0; x < width; x++) {
-      const w = weights[y * width + x]!;
+      const w = weights[y * width + x];
       if (w <= 0) continue;
 
       if (x < midX) leftWeight += w;

@@ -65,15 +65,7 @@ const all = listIcons({ family: 'edge-cases' });
 
 ## Use from Vite examples
 
-```ts
-// import a single icon
-import play from '../../../fixtures/icons/lucide/play.svg?raw';
-import playOpt from '../../../fixtures/icons/lucide/play.svg?optical';
-
-// or bulk-glob the whole pool
-const all = import.meta.glob('../../../fixtures/icons/**/*.svg', {
-  eager: true,
-  query: '?optical',
-  import: 'default',
-});
-```
+The fixtures pool is consumed by the test suite, not by the runnable
+examples. Examples reference real npm icon packages
+(`lucide-static`, etc.) so they stay representative of how someone
+would wire the library in their own app.

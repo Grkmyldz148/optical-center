@@ -7,3 +7,18 @@ coverage/
 .vscode/
 .idea/
 examples/cli-pipeline/icons-centered/
+
+# Astro generated output (types, content cache, data store, settings)
+.astro/
+
+# Generated design tokens — rebuilt by predev/prebuild (build-tokens.mjs)
+apps/site/src/styles/tokens.color.css
+
+# TypeScript incremental build info
+*.tsbuildinfo
+
+# Vite on-disk cache (when cacheDir is set outside node_modules)
+.vite/
+
+# Claude Code scheduled-tasks runtime lock
+.claude/scheduled_tasks.lock
