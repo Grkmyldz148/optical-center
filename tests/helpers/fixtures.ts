@@ -54,7 +54,11 @@ export function loadIcon(id: string): string {
 
 export function iconPath(id: string): string {
   const file = id.endsWith('.svg') ? id : `${id}.svg`;
-  return join(ICONS_ROOT, file);
+  // Forward slashes so the path embeds cleanly into CSS `url(...)` strings
+  // (real CSS never uses backslashes) and regex assertions stay
+  // platform-agnostic. Node's fs accepts `/` on Windows, so the plugin
+  // still resolves and reads the file.
+  return join(ICONS_ROOT, file).replaceAll('\\', '/');
 }
 
 export interface ListFilter {
