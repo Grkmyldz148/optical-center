@@ -3,6 +3,9 @@ dist/
 coverage/
 *.log
 .DS_Store
+
+# This project uses npm (package-lock.json) — keep stray yarn lockfiles out
+yarn.lock
 .env
 .vscode/
 .idea/
