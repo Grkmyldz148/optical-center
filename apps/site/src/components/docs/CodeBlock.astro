@@ -1,0 +1,288 @@
+---
+/*
+ * Reusable docs code block — filename tab, Shiki syntax highlighting,
+ * and a click-to-copy button. Wraps Astro's built-in <Code /> component
+ * (which uses Shiki internally) so highlighting matches industry-standard
+ * docs sites without us shipping a custom tokenizer.
+ *
+ * Dual-theme: `github-light` for light mode, `github-dark` for dark mode.
+ * The two themes are emitted side-by-side via CSS variables; a small bit
+ * of CSS in this file picks the right one based on [data-theme] or
+ * prefers-color-scheme. No JavaScript required for theme switching.
+ *
+ * Usage:
+ *   <CodeBlock filename="vite.config.ts" lang="ts" code={`...`} />
+ *   <CodeBlock lang="bash" code={`npm install …`} />
+ *   <CodeBlock filename="terminal" lang="bash" code={`…`} />
+ */
+import { Code } from "astro:components";
+
+type Props = {
+  /** The source string to highlight. */
+  code: string;
+  /** Shiki language id. Falls back to `text` when omitted. */
+  lang?:
+    | "ts"
+    | "tsx"
+    | "jsx"
+    | "js"
+    | "css"
+    | "html"
+    | "bash"
+    | "json"
+    | "astro"
+    | "text";
+  /** Filename rendered in the tab. When omitted the tab is hidden. */
+  filename?: string;
+  /** Optional one-word context shown on the right side of the tab. */
+  meta?: string;
+  /** Render without the tab/border chrome. Useful inline. */
+  bare?: boolean;
+};
+
+const { code, lang = "text", filename, meta, bare = false } = Astro.props as Props;
+const trimmed = code.replace(/^\n+|\n+$/g, "");
+---
+
+<figure class={`docs-code${bare ? " docs-code--bare" : ""}`} data-lang={lang}>
+  {!bare && filename && (
+    <figcaption class="docs-code__tab">
+      <span class="docs-code__tab-name">{filename}</span>
+      <span class="docs-code__tab-meta">{meta ?? lang}</span>
+    </figcaption>
+  )}
+  <button
+    type="button"
+    class="docs-code__copy"
+    aria-label="Copy code to clipboard"
+    data-copy-button
+    data-copy={trimmed}
+  >
+    <svg
+      class="docs-code__copy-icon docs-code__copy-icon--copy"
+      viewBox="0 0 16 16"
+      width="14"
+      height="14"
+      fill="none"
+      stroke="currentColor"
+      stroke-width="1.25"
+      stroke-linejoin="round"
+      aria-hidden="true"
+    >
+      <rect x="5.5" y="5.5" width="7.5" height="7.5" rx="1.5"></rect>
+      <path d="M3 10.5V4.25A1.25 1.25 0 0 1 4.25 3h6.25"></path>
+    </svg>
+    <svg
+      class="docs-code__copy-icon docs-code__copy-icon--check"
+      viewBox="0 0 16 16"
+      width="14"
+      height="14"
+      fill="none"
+      stroke="currentColor"
+      stroke-width="1.6"
+      stroke-linecap="round"
+      stroke-linejoin="round"
+      aria-hidden="true"
+    >
+      <polyline points="3 8.5 6.5 12 13 4.5"></polyline>
+    </svg>
+  </button>
+  <div class="docs-code__highlight">
+    <Code
+      code={trimmed}
+      lang={lang}
+      themes={{ light: "github-light", dark: "github-dark" }}
+      defaultColor={false}
+    />
+  </div>
+</figure>
+
+<script>
+  /*
+   * Click-to-copy. One listener per button (idempotent) so re-rendering
+   * after navigation doesn't double-bind.
+   */
+  document
+    .querySelectorAll<HTMLButtonElement>("[data-copy-button]")
+    .forEach((btn) => {
+      if (btn.dataset.copyBound === "true") return;
+      btn.dataset.copyBound = "true";
+      let resetTimer: ReturnType<typeof setTimeout> | null = null;
+      btn.addEventListener("click", async () => {
+        const text = (btn.dataset.copy ?? "").trim();
+        if (text.length === 0) return;
+        try {
+          await navigator.clipboard.writeText(text);
+        } catch {
+          const ta = document.createElement("textarea");
+          ta.value = text;
+          ta.style.position = "fixed";
+          ta.style.opacity = "0";
+          document.body.appendChild(ta);
+          ta.select();
+          try {
+            document.execCommand("copy");
+          } catch {
+            document.body.removeChild(ta);
+            return;
+          }
+          document.body.removeChild(ta);
+        }
+        btn.setAttribute("data-copied", "true");
+        if (resetTimer !== null) clearTimeout(resetTimer);
+        resetTimer = setTimeout(() => {
+          btn.removeAttribute("data-copied");
+          resetTimer = null;
+        }, 1400);
+      });
+    });
+</script>
+
+<style is:global>
+  /* ─────────────────────────  Frame  ──────────────────────────── */
+  .docs-code {
+    position: relative;
+    margin: 0;
+    border: var(--line-w) solid var(--color-line);
+    border-radius: var(--radius-sm);
+    background: var(--color-surface);
+    overflow: hidden;
+  }
+  .docs-code--bare {
+    border-radius: var(--radius-sm);
+  }
+
+  .docs-code__tab {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--sp-3);
+    padding: var(--sp-2) var(--sp-4);
+    padding-right: calc(var(--sp-4) + 32px); /* clear the copy button */
+    border-bottom: var(--line-w) solid var(--color-line);
+    background: var(--color-surface-hi);
+    font-family: var(--font-mono);
+    font-size: var(--fs-xs);
+    color: var(--color-muted-fg);
+  }
+  .docs-code__tab-name {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--sp-2);
+    color: var(--color-fg);
+  }
+  .docs-code__tab-name::before {
+    content: "";
+    width: 6px;
+    height: 6px;
+    border-radius: 999px;
+    background: var(--color-accent);
+    flex-shrink: 0;
+  }
+  .docs-code__tab-meta {
+    color: var(--color-muted-fg);
+  }
+
+  /* ─────────────────────────  Highlight  ──────────────────────── */
+  /* Astro's <Code /> emits a <pre class="astro-code"> wrapper. We
+     reset its default background (it ships its own theme bg) and let
+     our surface tokens own the chrome. The token spans keep Shiki's
+     inline color styles. */
+  .docs-code__highlight {
+    overflow-x: auto;
+  }
+  .docs-code__highlight pre.astro-code {
+    margin: 0;
+    padding: var(--sp-4) var(--sp-5);
+    background: transparent !important;
+    font-family: var(--font-mono);
+    font-size: 0.8125rem;
+    line-height: 1.65;
+    color: var(--color-fg);
+  }
+  .docs-code__highlight pre.astro-code code {
+    font-family: inherit;
+    white-space: pre;
+    tab-size: 2;
+  }
+
+  /* Dual-theme handling. Astro/Shiki emits BOTH theme colors as inline
+     styles when defaultColor={false}. We take only the FOREGROUND from
+     Shiki — every background is forced to transparent so the docs-code
+     surface owns the chrome and we don't fight Shiki's hardcoded bg.
+     The spans get the same treatment via the universal selector below. */
+  .docs-code__highlight pre.astro-code,
+  .docs-code__highlight pre.astro-code span {
+    background-color: transparent !important;
+  }
+  .docs-code__highlight pre.astro-code,
+  .docs-code__highlight pre.astro-code span {
+    color: var(--shiki-light);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) .docs-code__highlight pre.astro-code,
+    :root:not([data-theme="light"]) .docs-code__highlight pre.astro-code span {
+      color: var(--shiki-dark);
+    }
+  }
+  :root[data-theme="dark"] .docs-code__highlight pre.astro-code,
+  :root[data-theme="dark"] .docs-code__highlight pre.astro-code span {
+    color: var(--shiki-dark);
+  }
+
+  /* ─────────────────────────  Copy button  ────────────────────── */
+  .docs-code__copy {
+    position: absolute;
+    top: 6px;
+    right: 6px;
+    z-index: 2;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    border-radius: var(--radius-sm);
+    background: var(--color-surface);
+    border: var(--line-w) solid var(--color-line);
+    color: var(--color-muted-fg);
+    opacity: 0;
+    transition:
+      opacity 0.16s ease,
+      color 0.16s ease,
+      background-color 0.16s ease,
+      border-color 0.16s ease;
+  }
+  .docs-code:hover .docs-code__copy,
+  .docs-code__copy:focus-visible,
+  .docs-code__copy[data-copied] {
+    opacity: 1;
+  }
+  .docs-code__copy:hover {
+    color: var(--color-fg);
+    background: var(--color-surface-hi);
+    border-color: var(--color-line-strong);
+  }
+  .docs-code__copy-icon {
+    display: none;
+  }
+  .docs-code__copy-icon--copy {
+    display: block;
+  }
+  .docs-code__copy[data-copied] {
+    color: var(--color-accent-text);
+    border-color: var(--color-accent);
+    background: color-mix(in oklab, var(--color-accent) 10%, transparent);
+  }
+  .docs-code__copy[data-copied] .docs-code__copy-icon--copy {
+    display: none;
+  }
+  .docs-code__copy[data-copied] .docs-code__copy-icon--check {
+    display: block;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .docs-code__copy {
+      transition: none;
+    }
+  }
+</style>

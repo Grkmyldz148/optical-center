@@ -1,7 +1,8 @@
 {
   "name": "optical-center",
-  "version": "0.1.0",
+  "version": "0.2.0-alpha.0",
   "description": "Computes the perceptual optical center of an icon for visually balanced rendering.",
+  "private": true,
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -9,17 +10,71 @@
     ".": {
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
-    }
+    },
+    "./node": {
+      "types": "./dist/node/index.d.ts",
+      "import": "./dist/node/index.js"
+    },
+    "./cli": {
+      "types": "./dist/cli/index.d.ts",
+      "import": "./dist/cli/index.js"
+    },
+    "./babel": {
+      "types": "./dist/babel/index.d.ts",
+      "import": "./dist/babel/index.js"
+    },
+    "./babel/jsx-runtime-augment": {
+      "types": "./dist/babel/jsx-runtime-augment.d.ts"
+    },
+    "./vite": {
+      "types": "./dist/vite/index.d.ts",
+      "import": "./dist/vite/index.js"
+    },
+    "./astro": {
+      "types": "./dist/astro/index.d.ts",
+      "import": "./dist/astro/index.js"
+    },
+    "./postcss": {
+      "types": "./dist/postcss/index.d.ts",
+      "import": "./dist/postcss/index.js"
+    },
+    "./tailwind": {
+      "types": "./dist/tailwind/index.d.ts",
+      "import": "./dist/tailwind/index.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "bin": {
+    "optical-center": "./dist/cli/index.js"
   },
   "files": [
     "dist",
     "src",
     "README.md"
   ],
+  "engines": {
+    "node": ">=20"
+  },
   "scripts": {
     "build": "tsc",
-    "prepublishOnly": "npm run build"
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "prepublishOnly": "npm run build",
+    "cli": "node dist/cli/index.js",
+    "dev:cli": "npm run build && node dist/cli/index.js",
+    "dev:playground": "npm run dev --workspace apps/playground",
+    "dev:site": "npm run dev --workspace apps/site",
+    "build:playground": "npm run build --workspace apps/playground",
+    "build:site": "npm run build --workspace apps/site",
+    "preview:playground": "npm run preview --workspace apps/playground",
+    "preview:site": "npm run preview --workspace apps/site",
+    "check:site": "npm run check --workspace apps/site"
   },
+  "workspaces": [
+    "examples/*",
+    "apps/playground",
+    "apps/site"
+  ],
   "keywords": [
     "optical-center",
     "icon",
@@ -29,7 +84,43 @@
     "ui"
   ],
   "license": "MIT",
+  "dependencies": {
+    "@babel/types": "^7.29.0",
+    "@resvg/resvg-js": "^2.6.0",
+    "chalk": "^5.6.2",
+    "write-file-atomic": "^7.0.1"
+  },
   "devDependencies": {
-    "typescript": "^5.4.0"
+    "@babel/core": "^7.29.0",
+    "@types/babel__core": "^7.20.5",
+    "@types/node": "^25.6.0",
+    "@types/react": "^19.2.14",
+    "@types/write-file-atomic": "^4.0.3",
+    "@vitest/coverage-v8": "^3.2.4",
+    "astro": "^5.18.1",
+    "postcss": "^8.4.0",
+    "typescript": "^5.4.0",
+    "vite": "^7.3.2",
+    "vitest": "^3.0.0"
+  },
+  "peerDependencies": {
+    "@babel/core": "^7.29.0",
+    "astro": ">=4",
+    "postcss": "^8.5.13",
+    "vite": ">=5"
+  },
+  "peerDependenciesMeta": {
+    "@babel/core": {
+      "optional": true
+    },
+    "astro": {
+      "optional": true
+    },
+    "postcss": {
+      "optional": true
+    },
+    "vite": {
+      "optional": true
+    }
   }
 }

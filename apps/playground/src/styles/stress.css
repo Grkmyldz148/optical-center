@@ -1,0 +1,603 @@
+/*
+ * Stress-test view styles.
+ *
+ * The page lists every Iconify collection as a clickable family
+ * row. Headers stack tight by default so the initial paint is
+ * cheap; expanding a family streams its icons into an auto-fill
+ * CSS grid where cell-size is the single dimensional knob (the
+ * column count auto-derives from the container width).
+ *
+ * Layout chain:
+ *
+ *   .stress                       flex column
+ *     .stress__bar                fixed, stats strip
+ *     .stress__scroll             flex:1, overflow:auto — the scroll root
+ *       .ifam (× many)            family section; sticky header
+ *         .ifam__header           clickable header with chevron
+ *         .ifam__body             grid container (only when expanded)
+ *           .ifam__grid           the actual auto-fill CSS grid
+ *             .iconifycell (× N)  one icon
+ *     .hud                        floating perf overlay
+ */
+
+.stress {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  flex: 1;
+  position: relative;
+  /* Comfortable reading-width cap for the family list content. The
+   * canvas background still extends full-bleed; only the inner
+   * content (stats bar, family rows, icon grid) is constrained to
+   * --content-w. On a 1440px viewport this no-ops; on 2400px+ it
+   * stops the header from feeling unmoored — Dashicons on the far
+   * left, "342 GPL" on the far right with a kilometre of empty
+   * space between. */
+  --content-w: 1320px;
+  --content-pad: max(var(--s-5), calc(50% - var(--content-w) / 2));
+}
+
+.stress__bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s-4);
+  padding: var(--s-3) var(--content-pad);
+  border-bottom: 1px solid var(--line);
+  background: var(--surface-1);
+  font-family: var(--font-mono);
+  font-size: var(--t-xs);
+  color: var(--fg-muted);
+  flex-shrink: 0;
+}
+.stress__bar strong {
+  color: var(--fg);
+}
+
+.stress__scroll {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  background-color: var(--canvas-dark);
+  background-image:
+    linear-gradient(to right, var(--canvas-dark-grid) 1px, transparent 1px),
+    linear-gradient(to bottom, var(--canvas-dark-grid) 1px, transparent 1px);
+  background-size: 32px 32px;
+  min-height: 0;
+  color: var(--canvas-dark-fg);
+}
+.stress__scroll[data-theme='light'] {
+  background-color: var(--canvas-light);
+  background-image:
+    linear-gradient(to right, var(--canvas-light-grid) 1px, transparent 1px),
+    linear-gradient(to bottom, var(--canvas-light-grid) 1px, transparent 1px);
+  color: var(--canvas-light-fg);
+}
+
+.stress__loading {
+  padding: var(--s-8) var(--s-5);
+  text-align: center;
+  font-family: var(--font-mono);
+  font-size: var(--t-xs);
+  color: var(--fg-subtle);
+}
+
+/* ------------------------------------------------------------------
+ * Family section.
+ * ------------------------------------------------------------------ */
+.ifam {
+  border-bottom: 1px solid var(--line);
+}
+.stress__scroll[data-theme='dark'] .ifam {
+  border-color: rgb(from var(--canvas-dark-fg) r g b / 0.10);
+}
+.stress__scroll[data-theme='light'] .ifam {
+  border-color: rgb(from var(--canvas-light-fg) r g b / 0.10);
+}
+
+/* Header is a full-width button so the whole strip is clickable. */
+.ifam__header {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: var(--s-3);
+  width: 100%;
+  padding: var(--s-3) var(--content-pad);
+  background: var(--surface-1);
+  border: 0;
+  border-bottom: 1px solid var(--line);
+  text-align: left;
+  cursor: pointer;
+  font: inherit;
+  color: var(--fg);
+  transition: background var(--dur-fast) var(--ease);
+}
+.stress__scroll[data-theme='dark'] .ifam__header {
+  background: rgb(from var(--canvas-dark) r g b / 0.88);
+  color: var(--canvas-dark-fg);
+  border-bottom-color: rgb(from var(--canvas-dark-fg) r g b / 0.10);
+  backdrop-filter: blur(8px);
+}
+.stress__scroll[data-theme='light'] .ifam__header {
+  background: rgb(from var(--canvas-light) r g b / 0.92);
+  color: var(--canvas-light-fg);
+  border-bottom-color: rgb(from var(--canvas-light-fg) r g b / 0.10);
+  backdrop-filter: blur(8px);
+}
+.ifam__header:hover {
+  background: var(--surface-2);
+}
+.stress__scroll[data-theme='dark'] .ifam__header:hover {
+  background: rgb(from var(--canvas-dark) r g b / 0.96);
+}
+.stress__scroll[data-theme='light'] .ifam__header:hover {
+  background: rgb(from var(--canvas-light) r g b / 0.98);
+}
+
+.ifam__chevron {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  color: var(--fg-muted);
+  transition:
+    transform var(--dur-fast) var(--ease),
+    color var(--dur-fast) var(--ease);
+  flex-shrink: 0;
+}
+.ifam__header:hover .ifam__chevron {
+  color: var(--accent-text);
+}
+.ifam--expanded > .ifam__header .ifam__chevron {
+  transform: rotate(90deg);
+  color: var(--accent-text);
+}
+
+.ifam__head-main {
+  display: flex;
+  align-items: baseline;
+  gap: var(--s-2);
+  min-width: 0;
+  overflow: hidden;
+}
+.ifam__title {
+  font-size: var(--t-sm);
+  font-weight: 600;
+  letter-spacing: -0.005em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.ifam__prefix {
+  font-family: var(--font-mono);
+  font-size: var(--t-xs);
+  color: var(--fg-subtle);
+}
+.stress__scroll[data-theme='dark'] .ifam__prefix {
+  color: rgb(from var(--canvas-dark-fg) r g b / 0.55);
+}
+.stress__scroll[data-theme='light'] .ifam__prefix {
+  color: rgb(from var(--canvas-light-fg) r g b / 0.55);
+}
+
+.ifam__head-meta {
+  display: flex;
+  align-items: center;
+  gap: var(--s-3);
+  font-family: var(--font-mono);
+  font-size: var(--t-2xs);
+  color: var(--fg-muted);
+  flex-shrink: 0;
+}
+.ifam__status {
+  padding: 1px 6px;
+  border-radius: var(--r-pill);
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  color: var(--fg-subtle);
+  font-size: var(--t-2xs);
+  font-variant-numeric: tabular-nums;
+}
+
+/* "optical" badge on the family header — green tick when a build-time
+ * manifest ships for this collection, neutral outline when none. */
+.ifam__optical {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 1px 6px;
+  border-radius: var(--r-pill);
+  background: var(--ok-soft);
+  color: var(--ok-text);
+  border: 1px solid var(--ok);
+  font-size: var(--t-2xs);
+}
+.ifam__optical--missing {
+  background: var(--surface-2);
+  color: var(--fg-subtle);
+  border-color: var(--line-stronger);
+}
+.ifam__count {
+  font-variant-numeric: tabular-nums;
+  color: var(--fg-muted);
+}
+.ifam__license {
+  padding: 1px 6px;
+  border-radius: var(--r-pill);
+  background: var(--accent-soft);
+  color: var(--accent-text);
+  border: 1px solid var(--accent-line);
+  font-size: var(--t-2xs);
+}
+
+/* Body — only mounted when family is expanded. */
+.ifam__body {
+  /* min-height set inline from the component to reserve the
+     placeholder height while the first batch is in flight. */
+}
+
+.ifam__error {
+  padding: var(--s-4) var(--s-5);
+  font-family: var(--font-mono);
+  font-size: var(--t-xs);
+  color: var(--danger-text);
+  display: flex;
+  gap: var(--s-3);
+  align-items: center;
+}
+.ifam__retry {
+  padding: 3px 10px;
+  border-radius: var(--r-1);
+  background: var(--surface-2);
+  border: 1px solid var(--line-strong);
+  font: inherit;
+  color: var(--fg);
+  cursor: pointer;
+}
+.ifam__retry:hover {
+  background: var(--surface-3);
+}
+
+/* ------------------------------------------------------------------
+ * The actual icon grid.
+ *
+ * `auto-fill` with a fixed `var(--cell-size)` track means the column
+ * count adapts to the container width while every cell is exactly
+ * `cellSize` wide. There's no cols slider — the cell-size slider is
+ * the sole sizing knob.
+ * ------------------------------------------------------------------ */
+.ifam__grid {
+  /* `minmax(cellSize, 1fr)` makes the cell size a *minimum* — tracks
+   * stretch to fill leftover space so the grid never leaves a ragged
+   * empty gutter on the right. The cell-size slider sets the minimum;
+   * actual rendered cell width = min(track) on narrow canvases,
+   * (container − gaps) / nCols on wide ones. */
+  display: grid;
+  grid-template-columns: repeat(
+    auto-fill,
+    minmax(var(--cell-size, 72px), 1fr)
+  );
+  gap: var(--cell-gap, 6px);
+  padding: var(--s-4) var(--content-pad);
+}
+
+/* ------------------------------------------------------------------
+ * Cell — one Iconify icon.
+ * ------------------------------------------------------------------ */
+.iconifycell {
+  /* Grid track is `minmax(cellSize, 1fr)` so the column width takes
+   * care of the inline dimension. Height stays a fixed square via
+   * `aspect-ratio` — cells remain square no matter how the row
+   * stretches. */
+  aspect-ratio: 1;
+  display: flex;
+  position: relative;
+  border-radius: var(--r-2);
+  background: rgb(from var(--canvas-dark-fg) r g b / 0.04);
+  border: 1px solid rgb(from var(--canvas-dark-fg) r g b / 0.07);
+  overflow: hidden;
+}
+.iconifycell[data-optical] {
+  /* Accent ring tells the eye "this cell is showing the corrected
+   * SVG" — useful when the actual shift is sub-pixel at low cell
+   * sizes (the ghost layer below covers larger sizes). */
+  border-color: var(--accent-line);
+  background: var(--accent-soft);
+}
+.stress__scroll[data-theme='light'] .iconifycell {
+  background: rgb(from var(--canvas-light-fg) r g b / 0.04);
+  border-color: rgb(from var(--canvas-light-fg) r g b / 0.10);
+}
+.iconifycell:hover {
+  background: rgb(from var(--canvas-dark-fg) r g b / 0.08);
+}
+.stress__scroll[data-theme='light'] .iconifycell:hover {
+  background: rgb(from var(--canvas-light-fg) r g b / 0.08);
+}
+
+.iconifycell__svg {
+  /* 64% of the cell — visual sweet spot between "cell as button" and
+   * "tightly hugged". The optical correction lives entirely inside
+   * the inner `<svg>`'s viewBox attribute (pre-computed by
+   * `optical-center/node` at build time); nothing here translates,
+   * scales, or computes. */
+  margin: auto;
+  display: block;
+  width: 64%;
+  height: 64%;
+  color: currentColor;
+  position: relative;
+  z-index: 1;
+}
+.iconifycell__svg svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+  fill: currentColor;
+}
+
+/* Ghost layer — only mounted when `optical` is on. Same SVG body
+ * with the *source* viewBox, painted underneath the corrected one
+ * at low opacity. The gap between the two reveals the optical
+ * shift that's otherwise sub-pixel at small cell sizes. */
+.iconifycell__ghost {
+  position: absolute;
+  inset: 0;
+  margin: auto;
+  display: flex;
+  pointer-events: none;
+  z-index: 0;
+}
+.iconifycell__ghost svg {
+  margin: auto;
+  width: 64%;
+  height: 64%;
+  display: block;
+  fill: var(--danger);
+  color: var(--danger);
+  opacity: 0.30;
+}
+
+/* ------------------------------------------------------------------
+ * Text inputs in the sidebar — search + select.
+ * ------------------------------------------------------------------ */
+.textfield {
+  width: 100%;
+  padding: 6px 10px;
+  border-radius: var(--r-2);
+  border: 1px solid var(--line);
+  background: var(--bg);
+  color: var(--fg);
+  font: inherit;
+  font-size: var(--t-xs);
+  outline: none;
+  transition: border-color var(--dur-fast) var(--ease);
+}
+.textfield:focus {
+  border-color: var(--accent-line);
+}
+select.textfield {
+  appearance: none;
+  background-image: linear-gradient(
+      45deg,
+      transparent 50%,
+      var(--fg-muted) 50%
+    ),
+    linear-gradient(135deg, var(--fg-muted) 50%, transparent 50%);
+  background-position:
+    calc(100% - 14px) 50%,
+    calc(100% - 9px) 50%;
+  background-size:
+    5px 5px,
+    5px 5px;
+  background-repeat: no-repeat;
+  padding-right: 24px;
+}
+
+/* ------------------------------------------------------------------
+ * Action buttons (sidebar).
+ * ------------------------------------------------------------------ */
+.action {
+  display: block;
+  width: 100%;
+  padding: 8px 12px;
+  border-radius: var(--r-2);
+  border: 1px solid var(--accent-line);
+  background: var(--accent-soft);
+  color: var(--accent-text);
+  font: inherit;
+  font-size: var(--t-xs);
+  font-weight: 500;
+  cursor: pointer;
+  text-align: left;
+  transition:
+    background var(--dur-fast) var(--ease),
+    border-color var(--dur-fast) var(--ease),
+    transform var(--dur-fast) var(--ease);
+}
+.action:hover:not(:disabled) {
+  background: var(--bg);
+  border-color: var(--accent);
+}
+.action:active:not(:disabled) {
+  transform: translateY(1px);
+}
+.action:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.action--ghost {
+  background: transparent;
+  border-color: var(--line-strong);
+  color: var(--fg-muted);
+}
+.action--ghost:hover:not(:disabled) {
+  background: var(--surface-2);
+  border-color: var(--line-stronger);
+  color: var(--fg);
+}
+
+/* ------------------------------------------------------------------
+ * Perf HUD — floating bottom-right.
+ * ------------------------------------------------------------------ */
+.hud {
+  position: absolute;
+  right: var(--s-5);
+  bottom: var(--s-5);
+  /* The sticky family headers have `z-index: 2` (they need to paint
+   * over the icon grid as the user scrolls). The HUD is a separate
+   * overlay outside the scroll container — give it a higher index so
+   * it floats above the headers as well, never gets hidden by a
+   * sticky strip drifting into its corner. */
+  z-index: 10;
+  background: var(--hud-bg);
+  border: 1px solid var(--hud-border);
+  box-shadow: 0 12px 32px rgb(from var(--canvas-dark) r g b / 0.20);
+  border-radius: var(--r-3);
+  padding: var(--s-3) var(--s-4);
+  display: grid;
+  grid-template-columns: auto auto;
+  column-gap: var(--s-5);
+  row-gap: 4px;
+  font-family: var(--font-mono);
+  font-size: var(--t-xs);
+  /* Tooltips need pointer events; the HUD itself is informational
+   * so it doesn't capture clicks meant for the grid underneath. */
+  pointer-events: auto;
+  min-width: 220px;
+}
+
+/* Title row — explains what this overlay is. Spans both columns
+ * and sits above the metric grid. */
+.hud__title {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  gap: var(--s-2);
+  padding-bottom: 6px;
+  margin-bottom: 4px;
+  border-bottom: 1px solid var(--line);
+  font-size: var(--t-2xs);
+  text-transform: uppercase;
+  letter-spacing: 0.10em;
+  color: var(--fg);
+  font-weight: 600;
+}
+.hud__title-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+.hud__title-sub {
+  margin-left: auto;
+  color: var(--fg-subtle);
+  font-weight: 400;
+}
+.hud__label {
+  color: var(--fg-subtle);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-size: var(--t-2xs);
+}
+.hud__value {
+  color: var(--fg);
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  display: inline-flex;
+  align-items: baseline;
+  justify-content: flex-end;
+  gap: 6px;
+}
+.hud__value--accent {
+  color: var(--accent-text);
+}
+.hud__value--warn {
+  color: var(--warn-text);
+}
+.hud__value--danger {
+  color: var(--danger-text);
+}
+.hud__sub {
+  color: var(--fg-subtle);
+  font-size: var(--t-2xs);
+}
+
+/* ------------------------------------------------------------------
+ * Optical state — the primary control, pinned to the top of the
+ * sidebar so the on/off state is unmistakable at a glance, even while
+ * the family list scrolls. Full-bleed (cancels the sidebar padding)
+ * and opaque so scrolled content passes behind it.
+ * ------------------------------------------------------------------ */
+.opticalstate {
+  position: sticky;
+  top: 0;
+  z-index: 3;
+  margin: calc(var(--s-5) * -1) calc(var(--s-5) * -1) 0;
+  padding: var(--s-4) var(--s-5);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s-3);
+  background: var(--surface-1);
+  border: 0;
+  border-bottom: 1px solid var(--line);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition:
+    background var(--dur-fast) var(--ease),
+    border-color var(--dur-fast) var(--ease);
+}
+.opticalstate:hover {
+  background: var(--surface-2);
+}
+.opticalstate[data-on] {
+  background: var(--accent-soft);
+  border-bottom-color: var(--accent-line);
+}
+.opticalstate[data-on]:hover {
+  background: var(--accent-soft);
+}
+.opticalstate:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+.opticalstate__text {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+.opticalstate__title {
+  font-size: var(--t-sm);
+  font-weight: 600;
+  color: var(--fg);
+}
+.opticalstate__sub {
+  font-size: var(--t-2xs);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--fg-subtle);
+}
+.opticalstate[data-on] .opticalstate__title,
+.opticalstate[data-on] .opticalstate__sub {
+  color: var(--accent-text);
+}
+/* The switch inside the state button is a touch larger than the
+   in-group toggles to read as the primary control. */
+.opticalstate .toggle__switch {
+  width: 38px;
+  height: 22px;
+}
+.opticalstate .toggle__switch::after {
+  width: 18px;
+  height: 18px;
+}
+.opticalstate .toggle__switch--on::after {
+  transform: translateX(16px);
+}

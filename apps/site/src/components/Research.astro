@@ -1,0 +1,654 @@
+---
+/*
+ * Research — the perceptual study program that validates the algorithm.
+ *
+ *   1.  Header — same rhythm as Hero / Problem / Science.
+ *   2.  Progress strip — a 3-node horizontal timeline. Two filled dots
+ *       (completed phases) + one bullseye (live now), connected by a thin
+ *       accent line. Each node is an anchor to the matching phase card
+ *       below — mirrors the references → stages pattern in Science.
+ *   3.  Three phase cards — status pill, phase number, title, description,
+ *       a metrics grid (mono value + muted label), and a tail block. The
+ *       tail is a "Result" callout for completed phases (the headline
+ *       finding: RMSE 2.99px · r = 0.585 for Phase 1, PSE 0.745 for
+ *       Phase 2) or a filled-accent CTA button for the live phase.
+ *
+ * The live phase card carries an accent border to mark it as the action.
+ * Its CTA is the only filled-accent button on the page so far — Phase 3 is
+ * genuinely the most important user action, and the page reserves that
+ * weight for it.
+ */
+type Phase = {
+  num: string;
+  status: "completed" | "live";
+  title: string;
+  description: string;
+  metrics: readonly { value: string; label: string }[];
+  result?: { primary: string; secondary?: string };
+  cta?: { label: string; href: string };
+};
+
+const PHASES: readonly Phase[] = [
+  {
+    num: "01",
+    status: "completed",
+    title: "Perceptual Data",
+    description:
+      "Method of Adjustment study. Participants positioned icons until they “looked centered.” Data used to validate the biologically-inspired v2 pipeline.",
+    metrics: [
+      { value: "36", label: "Participants" },
+      { value: "2,160", label: "Trials" },
+      { value: "100%", label: "Pass rate" },
+      { value: "20", label: "Test icons" },
+    ],
+    result: { primary: "RMSE 2.99 px", secondary: "r = 0.585" },
+  },
+  {
+    num: "02",
+    status: "completed",
+    title: "Icon Validation (2AFC)",
+    description:
+      "Two-alternative forced choice tests on real icons from Lucide, Feather, Heroicons, Bootstrap Icons, and Phosphor. The v2 model was validated against human perceptual judgments.",
+    metrics: [
+      { value: "41", label: "Participants" },
+      { value: "5,234", label: "Trials" },
+      { value: "999", label: "Icons processed" },
+      { value: "5", label: "Libraries" },
+    ],
+    result: { primary: "PSE 0.745", secondary: "humans prefer 74.5% of model correction" },
+  },
+];
+
+const STATUS_LABEL: Record<Phase["status"], string> = {
+  completed: "Completed",
+  live: "Live now",
+};
+---
+
+<section class="research" id="research" aria-labelledby="research-title">
+  <div class="research__inner">
+    <header class="research__head">
+      <p class="research__eyebrow">Research</p>
+      <h2 class="research__title" id="research-title">
+        Measuring where people
+        <span class="research__title-accent">actually look</span>.
+      </h2>
+      <p class="research__sub">
+        We&rsquo;re running a perceptual centering study with real
+        participants. Each person adjusts the position of a shape until it
+        &ldquo;looks centered&rdquo; inside a container.
+      </p>
+    </header>
+
+    <ol
+      class="research__progress"
+      style={`--phase-count: ${PHASES.length}`}
+      aria-label="Research progress"
+    >
+      {PHASES.map((phase, i) => (
+        <li
+          class={`research__progress-item research__progress-item--${phase.status}`}
+          data-index={i}
+          data-last={i === PHASES.length - 1 ? "true" : "false"}
+        >
+          <a
+            class="research__progress-link"
+            href={`#research-phase-${phase.num}`}
+          >
+            <span class="research__progress-node" aria-hidden="true">
+              <span class="research__progress-dot"></span>
+            </span>
+            <span class="research__progress-meta">
+              <span class="research__progress-num">Phase {phase.num}</span>
+              <span class="research__progress-status">
+                {STATUS_LABEL[phase.status]}
+              </span>
+            </span>
+          </a>
+        </li>
+      ))}
+    </ol>
+
+    <ol
+      class="research__phases"
+      style={`--phase-count: ${PHASES.length}`}
+      role="list"
+    >
+      {PHASES.map((phase) => (
+        <li
+          class={`research__phase research__phase--${phase.status}`}
+          id={`research-phase-${phase.num}`}
+        >
+          <header class="research__phase-head">
+            <span
+              class={`research__phase-status research__phase-status--${phase.status}`}
+            >
+              <span class="research__phase-status-dot" aria-hidden="true"></span>
+              {STATUS_LABEL[phase.status]}
+            </span>
+            <span class="research__phase-num">Phase {phase.num}</span>
+          </header>
+
+          <h3 class="research__phase-title">{phase.title}</h3>
+          <p class="research__phase-desc">{phase.description}</p>
+
+          <ul class="research__metrics" role="list">
+            {phase.metrics.map((metric) => (
+              <li class="research__metric">
+                <span class="research__metric-value">{metric.value}</span>
+                <span class="research__metric-label">{metric.label}</span>
+              </li>
+            ))}
+          </ul>
+
+          {phase.result && (
+            <div class="research__result">
+              <p class="research__result-label">Result</p>
+              <p class="research__result-value">
+                <span class="research__result-primary">{phase.result.primary}</span>
+                {phase.result.secondary && (
+                  <>
+                    <span class="research__result-sep" aria-hidden="true">·</span>
+                    <span class="research__result-secondary">
+                      {phase.result.secondary}
+                    </span>
+                  </>
+                )}
+              </p>
+            </div>
+          )}
+
+          {phase.cta && (
+            <a
+              class="research__cta"
+              href={phase.cta.href}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              <span>{phase.cta.label}</span>
+              <svg
+                class="research__cta-arrow"
+                viewBox="0 0 14 14"
+                width="12"
+                height="12"
+                aria-hidden="true"
+              >
+                <path
+                  d="M 3 11 L 11 3 M 11 3 L 11 8 M 11 3 L 6 3"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.6"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                />
+              </svg>
+            </a>
+          )}
+        </li>
+      ))}
+    </ol>
+  </div>
+</section>
+
+<style>
+  .research {
+    position: relative;
+    padding-block: var(--sp-24);
+    border-top: var(--line-w) solid var(--color-line);
+  }
+
+  .research__inner {
+    width: 100%;
+    max-width: var(--page-max-w);
+    margin-inline: auto;
+    padding-inline: var(--page-px);
+    display: grid;
+    gap: var(--sp-12);
+  }
+
+  /* ─────────────────────────  Header  ──────────────────────────────── */
+  .research__head {
+    display: grid;
+    gap: var(--sp-5);
+    justify-items: start;
+    max-width: 720px;
+  }
+  .research__eyebrow {
+    font-family: var(--font-mono);
+    font-size: var(--fs-xs);
+    letter-spacing: var(--ls-wide);
+    text-transform: uppercase;
+    color: var(--color-muted-fg);
+    padding: var(--sp-2) var(--sp-3);
+    border: var(--line-w) solid var(--color-line);
+    border-radius: 999px;
+    background: var(--color-surface);
+  }
+  .research__title {
+    font-family: var(--font-display);
+    font-size: clamp(2rem, 4.2vw, 3.5rem);
+    font-weight: var(--fw-semibold);
+    line-height: var(--lh-tight);
+    letter-spacing: -0.03em;
+    color: var(--color-fg);
+    max-width: 18ch;
+  }
+  .research__title-accent {
+    color: var(--color-accent-text);
+  }
+  .research__sub {
+    font-family: var(--font-body);
+    font-size: var(--fs-md);
+    line-height: var(--lh-body);
+    color: var(--color-soft-fg);
+    max-width: 60ch;
+  }
+
+  /* ─────────────────────────  Progress strip  ──────────────────────── */
+  /* 3-node horizontal timeline. The strip is a 3-col grid; each item
+     draws its own connector line to the *next* item via ::after, except
+     the last one. Anchor links scroll to the matching phase card. */
+  .research__progress {
+    list-style: none;
+    margin: 0;
+    padding: var(--sp-5) var(--sp-6);
+    display: grid;
+    grid-template-columns: repeat(var(--phase-count, 3), 1fr);
+    align-items: start;
+    gap: var(--sp-4);
+    border: var(--line-w) solid var(--color-line);
+    border-radius: var(--radius-sm);
+    background: var(--color-surface);
+  }
+  .research__progress-item {
+    position: relative;
+    display: grid;
+    justify-items: center;
+  }
+  /* Connector line — centered vertically on the dot. Node is 16px tall,
+     dot is 12px centered inside, so dot center sits at y=8 from item top.
+     A 1px line at top: 7.5px lands centered on that. */
+  .research__progress-item[data-last="false"]::after {
+    content: "";
+    position: absolute;
+    top: 7.5px;
+    left: calc(50% + var(--sp-4));
+    right: calc(-50% + var(--sp-4));
+    height: 1px;
+    background: var(--color-accent);
+    z-index: 0;
+  }
+  .research__progress-link {
+    display: grid;
+    justify-items: center;
+    gap: var(--sp-3);
+    padding-inline: var(--sp-2);
+    border-radius: var(--radius-sm);
+    transition: transform 0.18s ease;
+  }
+  .research__progress-link:hover {
+    transform: translateY(-1px);
+  }
+  .research__progress-node {
+    position: relative;
+    z-index: 1;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 16px;
+    height: 16px;
+    background: var(--color-surface);
+    border-radius: 50%;
+  }
+  .research__progress-dot {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: var(--color-accent);
+    transition:
+      transform 0.18s ease,
+      box-shadow 0.18s ease;
+  }
+  /* Live node — bullseye. Hollow ring with a smaller filled center, so it
+     reads as "ongoing" rather than "done." */
+  .research__progress-item--live .research__progress-dot {
+    background: var(--color-bg);
+    border: 2px solid var(--color-accent);
+    position: relative;
+  }
+  .research__progress-item--live .research__progress-dot::after {
+    content: "";
+    position: absolute;
+    inset: 1px;
+    background: var(--color-accent);
+    border-radius: 50%;
+  }
+  .research__progress-link:hover .research__progress-dot {
+    transform: scale(1.15);
+    box-shadow:
+      0 0 0 4px color-mix(in oklab, var(--color-accent) 14%, transparent);
+  }
+  .research__progress-meta {
+    display: grid;
+    justify-items: center;
+    gap: 2px;
+    text-align: center;
+  }
+  .research__progress-num {
+    font-family: var(--font-mono);
+    font-size: var(--fs-xs);
+    letter-spacing: var(--ls-wide);
+    text-transform: uppercase;
+    color: var(--color-fg);
+  }
+  .research__progress-status {
+    font-family: var(--font-mono);
+    font-size: var(--fs-xs);
+    color: var(--color-muted-fg);
+  }
+  .research__progress-item--live .research__progress-status {
+    color: var(--color-accent-text);
+  }
+
+  /* ─────────────────────────  Phase cards  ─────────────────────────── */
+  .research__phases {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    grid-template-columns: repeat(var(--phase-count, 3), 1fr);
+    gap: var(--sp-4);
+  }
+
+  /* Flex column so we can margin-top: auto the tail (result / CTA) to the
+     bottom — keeps the result callouts and the CTA button on a shared
+     baseline across the three cards even when the metric grids wrap to
+     different row counts. */
+  .research__phase {
+    display: flex;
+    flex-direction: column;
+    gap: var(--sp-4);
+    padding: var(--sp-6);
+    border: var(--line-w) solid var(--color-line);
+    border-radius: var(--radius-sm);
+    background: var(--color-surface);
+    transition:
+      border-color 0.18s ease,
+      background-color 0.18s ease;
+    scroll-margin-top: calc(73px + var(--sp-4));
+  }
+  /* Live phase carries an accent border — it's the action card. */
+  .research__phase--live {
+    border-color: var(--color-accent);
+  }
+  /* :target highlight when reached via the progress strip anchors. */
+  .research__phase:target {
+    border-color: var(--color-accent);
+    background: var(--color-surface-hi);
+  }
+
+  .research__phase-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: var(--sp-3);
+  }
+  .research__phase-status {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--sp-2);
+    font-family: var(--font-mono);
+    font-size: var(--fs-xs);
+    letter-spacing: 0;
+    color: var(--color-muted-fg);
+    padding: var(--sp-1) var(--sp-3);
+    border: var(--line-w) solid var(--color-line);
+    border-radius: 999px;
+    background: var(--color-bg);
+  }
+  .research__phase-status-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--color-muted-fg);
+    flex-shrink: 0;
+  }
+  .research__phase-status--completed .research__phase-status-dot {
+    background: var(--color-accent);
+  }
+  .research__phase-status--live {
+    color: var(--color-accent-text);
+    border-color: var(--color-accent);
+    background: color-mix(in oklab, var(--color-accent) 10%, transparent);
+  }
+  .research__phase-status--live .research__phase-status-dot {
+    background: var(--color-accent);
+    /* Static pulse-like double-ring drawn via box-shadow — no animation,
+       so it's a calm "active" cue not a "blink and the user notices it
+       fifteen seconds later" cue. */
+    box-shadow: 0 0 0 3px color-mix(in oklab, var(--color-accent) 25%, transparent);
+  }
+  .research__phase-num {
+    font-family: var(--font-mono);
+    font-size: var(--fs-xs);
+    letter-spacing: var(--ls-wide);
+    text-transform: uppercase;
+    color: var(--color-accent-text);
+  }
+
+  .research__phase-title {
+    font-family: var(--font-display);
+    font-size: var(--fs-md);
+    font-weight: var(--fw-semibold);
+    letter-spacing: var(--ls-tight);
+    line-height: var(--lh-snug);
+    color: var(--color-fg);
+  }
+  .research__phase-desc {
+    font-family: var(--font-body);
+    font-size: var(--fs-sm);
+    line-height: var(--lh-body);
+    color: var(--color-muted-fg);
+  }
+
+  /* Metrics grid — value + label pairs, auto-fit so 4 metrics give a 2×2
+     on narrow cards and a 4×1 strip on wide cards. */
+  .research__metrics {
+    list-style: none;
+    margin: 0;
+    padding: var(--sp-4) 0 0;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(80px, 1fr));
+    gap: var(--sp-3);
+    border-top: var(--line-w) solid var(--color-line);
+  }
+  .research__metric {
+    display: grid;
+    gap: 2px;
+  }
+  .research__metric-value {
+    font-family: var(--font-mono);
+    font-size: var(--fs-lg);
+    font-weight: var(--fw-medium);
+    letter-spacing: var(--ls-tight);
+    color: var(--color-fg);
+    line-height: 1.1;
+    font-feature-settings: "tnum", "ss02", "calt";
+  }
+  .research__metric-label {
+    font-family: var(--font-mono);
+    font-size: var(--fs-xs);
+    color: var(--color-muted-fg);
+    letter-spacing: 0;
+  }
+
+  /* Result callout — the headline finding for completed phases. The
+     margin-top: auto pushes it to the bottom of the flex column so all
+     three cards' tails share a baseline regardless of metric row count. */
+  .research__result {
+    display: grid;
+    gap: var(--sp-1);
+    padding: var(--sp-3) var(--sp-4);
+    margin-top: auto;
+    background: var(--color-bg);
+    border: var(--line-w) solid var(--color-line);
+    border-radius: var(--radius-sm);
+  }
+  .research__result-label {
+    font-family: var(--font-mono);
+    font-size: var(--fs-xs);
+    letter-spacing: var(--ls-wide);
+    text-transform: uppercase;
+    color: var(--color-muted-fg);
+  }
+  .research__result-value {
+    font-family: var(--font-mono);
+    font-size: var(--fs-sm);
+    line-height: var(--lh-snug);
+    color: var(--color-fg);
+  }
+  .research__result-primary {
+    color: var(--color-accent-text);
+    font-weight: var(--fw-medium);
+  }
+  .research__result-sep {
+    color: var(--color-muted-fg);
+    margin-inline: 0.5ch;
+  }
+  .research__result-secondary {
+    color: var(--color-muted-fg);
+  }
+
+  /* CTA — the only filled-accent button on the page. The live phase is the
+     primary user action, so it gets the full accent treatment. */
+  .research__cta {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--sp-2);
+    margin-top: auto;
+    padding: var(--sp-3) var(--sp-5);
+    font-family: var(--font-mono);
+    font-size: var(--fs-sm);
+    font-weight: var(--fw-medium);
+    color: var(--color-on-accent);
+    background: var(--color-accent);
+    border: var(--line-w) solid var(--color-accent);
+    border-radius: var(--radius-sm);
+    width: 100%;
+    transition:
+      transform 0.18s ease,
+      box-shadow 0.18s ease,
+      filter 0.18s ease;
+  }
+  .research__cta-arrow {
+    color: currentColor;
+    transition: transform 0.18s ease;
+    flex-shrink: 0;
+  }
+  .research__cta:hover,
+  .research__cta:focus-visible {
+    transform: translateY(-1px);
+    filter: brightness(1.06);
+    box-shadow:
+      0 0 0 4px color-mix(in oklab, var(--color-accent) 18%, transparent);
+  }
+  .research__cta:hover .research__cta-arrow,
+  .research__cta:focus-visible .research__cta-arrow {
+    transform: translate(2px, -2px);
+  }
+
+  /* ─────────────────────────  Responsive  ──────────────────────────── */
+  @media (max-width: 960px) {
+    .research {
+      padding-block: var(--sp-16);
+    }
+    .research__inner {
+      gap: var(--sp-8);
+    }
+    .research__phases {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  @media (max-width: 720px) {
+    .research__head {
+      gap: var(--sp-4);
+    }
+  }
+
+  @media (max-width: 560px) {
+    .research {
+      padding-block: var(--sp-12);
+    }
+    .research__progress {
+      padding: var(--sp-4);
+      gap: var(--sp-2);
+    }
+    .research__progress-num,
+    .research__progress-status {
+      font-size: 0.7rem;
+    }
+    .research__phase {
+      padding: var(--sp-5);
+      gap: var(--sp-3);
+    }
+    .research__metric-value {
+      font-size: var(--fs-md);
+    }
+  }
+
+  /* Very narrow phones — stack the progress strip vertically so each phase
+     gets a comfortable row instead of a 100px-wide column. The connector
+     line rotates to vertical via a per-item gradient on ::after. */
+  @media (max-width: 420px) {
+    .research__progress {
+      grid-template-columns: 1fr;
+      gap: var(--sp-5);
+      padding: var(--sp-5);
+    }
+    .research__progress-link {
+      grid-template-columns: auto 1fr;
+      grid-auto-flow: column;
+      justify-items: start;
+      align-items: center;
+      gap: var(--sp-3);
+      padding: 0;
+    }
+    .research__progress-meta {
+      justify-items: start;
+      text-align: left;
+    }
+    /* Replace the horizontal connector with a short vertical one between
+       each pair of nodes. */
+    .research__progress-item[data-last="false"]::after {
+      top: calc(100% + var(--sp-2));
+      bottom: auto;
+      left: calc(var(--sp-5) + 8px);
+      right: auto;
+      width: 1px;
+      height: calc(var(--sp-3));
+      background: var(--color-accent);
+    }
+    .research__phase {
+      padding: var(--sp-4);
+    }
+    .research__phase-head {
+      flex-wrap: wrap;
+      gap: var(--sp-2);
+    }
+    .research__cta {
+      padding: var(--sp-3) var(--sp-4);
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .research__progress-link,
+    .research__progress-dot,
+    .research__phase,
+    .research__cta,
+    .research__cta-arrow {
+      transition: none;
+    }
+  }
+</style>

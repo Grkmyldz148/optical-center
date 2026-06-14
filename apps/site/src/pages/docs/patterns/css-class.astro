@@ -1,0 +1,142 @@
+---
+import DocsLayout from "../../../layouts/DocsLayout.astro";
+import CodeBlock from "../../../components/docs/CodeBlock.astro";
+
+const toc = [
+  { id: "when", label: "When to use it", level: 2 as const },
+  { id: "how", label: "How to write it", level: 2 as const },
+  { id: "emitted", label: "What gets emitted", level: 2 as const },
+  { id: "how-it-finds-the-icon", label: "How the plugin finds the icon", level: 2 as const },
+  { id: "requirements", label: "Requirements", level: 2 as const },
+];
+---
+
+<DocsLayout
+  title="CSS class"
+  description="The canonical container-side pattern. Put optical-center: auto on a CSS class, attach that class to a wrapper, drop the icon inside."
+  toc={toc}
+>
+  <h2 id="when">When to use it</h2>
+  <p>
+    This is the default. Reach for any other pattern only when you have
+    a reason to.
+  </p>
+  <ul>
+    <li>You already have a CSS file (or CSS module) for the component.</li>
+    <li>You're rendering icons through a component library — <code>lucide-react</code>, <code>react-icons</code>, your own wrapper.</li>
+    <li>You want zero markup change at the icon itself.</li>
+  </ul>
+
+  <h2 id="how">How to write it</h2>
+  <p>One declaration in CSS, one className on the wrapper, the icon as a child:</p>
+
+  <CodeBlock
+    filename="styles/icons.css"
+    lang="css"
+    code={`.badge {
+  optical-center: auto;
+}`}
+  />
+
+  <CodeBlock
+    filename="Button.tsx"
+    lang="tsx"
+    code={`import { Play } from 'lucide-react';
+
+export function PlayButton() {
+  return (
+    <button>
+      <div className="badge">
+        <Play />
+      </div>
+    </button>
+  );
+}`}
+  />
+
+  <p>
+    Notice the directive is on <code>.badge</code> — the wrapper. The
+    <code>{`<Play />`}</code> component is untouched. You never set
+    <code>optical-center</code> on the icon.
+  </p>
+
+  <h2 id="emitted">What gets emitted</h2>
+  <p>
+    At build time the PostCSS plugin walks every CSS rule with
+    <code>optical-center: auto</code>, scans the project's JSX for any
+    element whose <code>className</code> matches the rule's selector,
+    and resolves the icon component to its source SVG. It then emits:
+  </p>
+
+  <CodeBlock
+    filename="dist/icons.css"
+    lang="css"
+    code={`.badge {
+  display: flex;
+  --optical-center: auto;
+}
+.badge > * {
+  margin: auto;
+  translate: 4.3365% 2.604%;
+}`}
+  />
+
+  <p>Three things to notice about the output:</p>
+  <ul>
+    <li>
+      <strong>Centering is via flex auto-margin.</strong> The plugin sets
+      <code>display: flex</code> on the wrapper and <code>margin: auto</code>
+      on the child — the well-known flex auto-margin trick that absorbs
+      free space along both axes. No <code>justify-content</code>, no
+      <code>align-items</code>.
+    </li>
+    <li>
+      <strong>The perceptual shift is a <code>translate</code>.</strong>
+      The exact <code>translate: dx% dy%</code> value comes from running
+      the icon's source SVG through the centering pipeline once at build
+      time. The number is per-icon and lives only where you'd expect it
+      — next to the asset it was computed from.
+    </li>
+    <li>
+      <strong><code>--optical-center: auto</code> is a DevTools tracer.</strong>
+      Browsers ignore unknown custom property values, but the line stays
+      visible in the inspector so you can confirm the rule was processed
+      even when the visible change is small.
+    </li>
+  </ul>
+
+  <h2 id="how-it-finds-the-icon">How the plugin finds the icon</h2>
+  <p>
+    The PostCSS plugin scans every <code>.jsx</code> and <code>.tsx</code>
+    file in your project at build time (once, cached). It knows
+    <code>lucide-react</code> out of the box — <code>{`<Play />`}</code>,
+    <code>{`<Heart />`}</code>, any of its named exports map to the
+    matching SVG in the <code>lucide-static</code> package. No config
+    needed.
+  </p>
+  <p>
+    When the plugin then finds a CSS rule with
+    <code>optical-center: auto</code>, it walks the rule's selectors
+    left-to-right, matches the first class token that wraps a tracked
+    icon, and uses that icon's SVG to compute the offset.
+  </p>
+
+  <h2 id="requirements">Requirements</h2>
+  <ul>
+    <li>The wrapper rule must <em>not</em> declare <code>align-items</code> or <code>justify-content</code>. The directive is what replaces them; mixing fights the auto-margin.</li>
+    <li>The icon child must stay in normal flow. Don't <code>position: absolute</code> it — the auto-margin technique needs a flex item.</li>
+    <li>The wrapper must contain exactly one icon child. Multiple children all pick up <code>margin: auto</code>, which produces unexpected layouts.</li>
+  </ul>
+
+  <aside class="callout">
+    <p class="callout-label">When the JSX scan misses</p>
+    <p>
+      If no <code>.jsx</code>/<code>.tsx</code> file references a
+      tracked icon component whose wrapper uses the rule's class, the
+      plugin still emits <code>display: flex</code> + <code>margin: auto</code>
+      — the icon gets centered geometrically. The perceptual translate
+      is only added when the scan succeeds, so a missed mapping
+      gracefully degrades to "flex auto-margin centering."
+    </p>
+  </aside>
+</DocsLayout>

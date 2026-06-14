@@ -1,0 +1,151 @@
+---
+import DocsLayout from "../../../layouts/DocsLayout.astro";
+import CodeBlock from "../../../components/docs/CodeBlock.astro";
+
+const toc = [
+  { id: "when", label: "When to use it", level: 2 as const },
+  { id: "how", label: "How to write it", level: 2 as const },
+  { id: "emitted", label: "What gets emitted", level: 2 as const },
+  { id: "html", label: "Plain HTML works too", level: 2 as const },
+  { id: "static", label: "The static-subtree rule", level: 2 as const },
+];
+---
+
+<DocsLayout
+  title="Inline SVG"
+  description="Hand-written <svg> inside a container wrapper. Babel rewrites the viewBox at compile time so the perceptual shift lives in the asset, not on the element."
+  toc={toc}
+>
+  <h2 id="when">When to use it</h2>
+  <p>
+    Pick this when the icon's markup is authored by hand in the same
+    file — a designer hand-off, a glyph you sketched in
+    <code>{`<svg>`}</code> directly, an SVG snippet pasted from a
+    figma export. No icon-component library involved.
+  </p>
+
+  <h2 id="how">How to write it</h2>
+  <p>
+    Wrap the <code>{`<svg>`}</code> in a container with
+    <code>optical-center="auto"</code>:
+  </p>
+
+  <CodeBlock
+    filename="PlayBadge.tsx"
+    lang="tsx"
+    code={`export function PlayBadge() {
+  return (
+    <div optical-center="auto">
+      <svg
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      >
+        <polygon points="6 3 20 12 6 21 6 3" />
+      </svg>
+    </div>
+  );
+}`}
+  />
+
+  <h2 id="emitted">What gets emitted</h2>
+  <p>
+    For a hand-written inline SVG, Babel doesn't need to look up an
+    asset path or emit a <code>translate</code> — it rewrites the
+    SVG's <code>viewBox</code> directly. The perceptual shift becomes
+    part of the asset.
+  </p>
+
+  <CodeBlock
+    filename="dist/PlayBadge-*.js"
+    lang="jsx"
+    code={`<div style={{ display: 'flex' }} data-optical-center="">
+  <svg
+    viewBox="-0.3239 -0.6226 24 24"
+    data-optical-center=""
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    <polygon points="6 3 20 12 6 21 6 3" />
+  </svg>
+</div>`}
+  />
+
+  <p>
+    Note the difference vs the <a href="/docs/patterns/jsx-attribute">JSX
+    attribute</a> pattern with an icon component: there, the child kept
+    its original SVG and picked up a <code>translate</code>. Here, the
+    child's <code>viewBox</code> shifted and there's no
+    <code>translate</code> on the icon. Both produce the same visual
+    result; the difference is just where the shift lives.
+  </p>
+
+  <h2 id="html">Plain HTML works too</h2>
+  <p>
+    Same pattern outside JSX. Vite's HTML transform (and the Astro
+    integration's post-build sweep) rewrite the
+    <code>{`<svg>`}</code>'s <code>viewBox</code> in place:
+  </p>
+
+  <CodeBlock
+    filename="index.html"
+    lang="html"
+    code={`<div optical-center="auto">
+  <svg viewBox="0 0 24 24" fill="currentColor">
+    <polygon points="6 3 20 12 6 21 6 3" />
+  </svg>
+</div>`}
+  />
+
+  <p>
+    For HTML the marker on the <code>{`<svg>`}</code> itself is also
+    accepted as a lower-level shortcut:
+  </p>
+
+  <CodeBlock
+    filename="index.html"
+    lang="html"
+    code={`<svg optical-center viewBox="0 0 24 24" fill="currentColor">
+  <polygon points="6 3 20 12 6 21 6 3" />
+</svg>`}
+  />
+
+  <h2 id="static">The static-subtree rule</h2>
+  <p>
+    Babel rewrites a hand-written SVG only if the entire subtree is
+    statically known at compile time. That means:
+  </p>
+  <ul>
+    <li>No spread attributes anywhere in the tree (<code>{`<svg {...rest}>`}</code>).</li>
+    <li>No <code>{`{expression}`}</code> children inside the SVG.</li>
+    <li>No fragments around or inside the SVG.</li>
+    <li>No conditional rendering that produces different SVG shapes per render.</li>
+  </ul>
+
+  <p>
+    If the validator can't prove the subtree is static, the plugin bails
+    out with <code>OPTICAL_DYNAMIC_SVG</code> and leaves the markup
+    untouched. Duplicate the literal SVG across branches if you need
+    conditionals — pulling it through any indirection trips the
+    validator.
+  </p>
+
+  <aside class="callout">
+    <p class="callout-label">Why so strict</p>
+    <p>
+      The rewrite is read-only first, mutate second. Babel serializes
+      the JSX subtree to an SVG string, rasterizes it, runs the
+      centering pipeline, computes the new <code>viewBox</code>, and
+      only then mutates the AST. If anything in the subtree could
+      change at runtime, the build-time rasterization wouldn't match
+      what the browser eventually paints — and a near-correct shift
+      is worse than no shift.
+    </p>
+  </aside>
+</DocsLayout>

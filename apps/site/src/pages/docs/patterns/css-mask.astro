@@ -1,0 +1,152 @@
+---
+import DocsLayout from "../../../layouts/DocsLayout.astro";
+import CodeBlock from "../../../components/docs/CodeBlock.astro";
+
+const toc = [
+  { id: "when", label: "When to use it", level: 2 as const },
+  { id: "how", label: "How to write it", level: 2 as const },
+  { id: "emitted", label: "What gets emitted", level: 2 as const },
+  { id: "resolution", label: "URL resolution", level: 2 as const },
+  { id: "centering", label: "Centering is the consumer's job", level: 2 as const },
+];
+---
+
+<DocsLayout
+  title="CSS mask-image"
+  description="A utility class mounts the SVG via mask-image and recolors it with currentColor. optical-center: auto on the same rule rewrites the underlying SVG and inlines it as a data: URI."
+  toc={toc}
+>
+  <h2 id="when">When to use it</h2>
+  <p>
+    Pick this when the icon is delivered as a CSS mask — typically
+    when you want every icon to inherit <code>currentColor</code> so
+    the same class can render in any text color without per-icon
+    variants.
+  </p>
+  <ul>
+    <li>shadcn-style icon primitives.</li>
+    <li>Tailwind <code>mask-utility</code> stacks.</li>
+    <li>Anywhere an icon ships as a one-color mask on top of a colored background.</li>
+  </ul>
+
+  <h2 id="how">How to write it</h2>
+  <p>
+    Mount the SVG via <code>mask</code>, paint it with
+    <code>background</code>, and add
+    <code>optical-center: auto</code> to the same rule. The
+    rule's element <em>is</em> the icon — there's no wrapper here.
+  </p>
+
+  <CodeBlock
+    filename="icons.css"
+    lang="css"
+    code={`.icon-play {
+  display: inline-block;
+  width: 24px;
+  height: 24px;
+  background: currentColor;
+  mask: url('lucide-static/icons/play.svg') center / contain no-repeat;
+  optical-center: auto;
+}`}
+  />
+
+  <CodeBlock
+    filename="Button.tsx"
+    lang="tsx"
+    code={`<button>
+  <span className="icon-play" />
+</button>`}
+  />
+
+  <h2 id="emitted">What gets emitted</h2>
+  <p>
+    The PostCSS plugin reads each <code>url('…svg')</code> in the rule,
+    rasterizes the file, runs the centering pipeline, rewrites the
+    SVG's <code>viewBox</code>, and inlines the result as a
+    <code>data:image/svg+xml,…</code> URI in place of the original URL.
+  </p>
+
+  <CodeBlock
+    filename="dist/icons.css"
+    lang="css"
+    code={`.icon-play {
+  display: inline-block;
+  width: 24px;
+  height: 24px;
+  background: currentColor;
+  mask: url('data:image/svg+xml;utf8,…rewritten…') center / contain no-repeat;
+  --optical-center: auto;
+}`}
+  />
+
+  <p>Two things to notice:</p>
+  <ul>
+    <li>
+      <strong>The shift lives in the mask asset.</strong> The data URI
+      contains an SVG with its <code>viewBox</code> already corrected.
+      The browser sees a flat, pre-shifted icon and does no runtime
+      work.
+    </li>
+    <li>
+      <strong>No positioning was emitted.</strong> Unlike the wrapper
+      patterns, this rule doesn't pick up <code>display: flex</code> or
+      <code>translate</code> — the perceptual shift is internal to the
+      asset, so the element's position is entirely the consumer's
+      layout concern. Drop it in a flex item, a grid cell, a button,
+      anywhere.
+    </li>
+  </ul>
+
+  <h2 id="resolution">URL resolution</h2>
+  <p>The plugin resolves URLs in this order:</p>
+  <ol>
+    <li><code>data:</code> URIs and absolute <code>http(s):</code> URLs are skipped.</li>
+    <li>Any matching <code>aliases</code> prefix you configured gets expanded.</li>
+    <li>Absolute paths and <code>./</code> / <code>../</code> paths resolve against the CSS file's directory.</li>
+    <li>
+      Bare specifiers like <code>lucide-static/icons/play.svg</code>
+      go through Node's module resolution against the CSS file's
+      directory. That makes installed npm icon packages work without
+      alias config.
+    </li>
+  </ol>
+
+  <CodeBlock
+    filename="postcss.config.js"
+    lang="js"
+    code={`import opticalCenter from 'optical-center/postcss';
+
+export default {
+  plugins: [
+    opticalCenter({
+      aliases: {
+        '@icons': '/abs/path/to/icons',
+      },
+    }),
+  ],
+};`}
+  />
+
+  <h2 id="centering">Centering is the consumer's job</h2>
+  <p>
+    Because this rule doesn't emit positioning, the element it
+    targets needs to be centered however the surrounding layout
+    normally centers things. Inside a flex parent, that's
+    <code>justify-content</code> + <code>align-items</code> on the
+    parent, or <code>margin: auto</code> on the child — both work
+    because the mask's <code>viewBox</code> already carries the shift.
+  </p>
+
+  <aside class="callout callout--tip">
+    <p class="callout-label">Composing with a wrapper directive</p>
+    <p>
+      You can put <code>optical-center: auto</code> on a wrapper class
+      <em>and</em> use <code>.icon-play</code> as the child. The
+      wrapper picks up <code>display: flex</code> + <code>margin: auto</code>
+      on the child but no <code>translate</code> (no JSX scan match
+      because the child is a <code>{`<span>`}</code>, not a tracked
+      icon component) — and the shift comes from the mask data URI
+      itself. The two layers compose cleanly.
+    </p>
+  </aside>
+</DocsLayout>

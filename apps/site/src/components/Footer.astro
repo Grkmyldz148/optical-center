@@ -1,0 +1,317 @@
+---
+/*
+ * Site footer — shared across the landing page and the docs (mounted once in
+ * Base.astro). Four columns on the same page shell as the header: brand +
+ * three link groups, then a hairline and a bottom bar (attribution · licence).
+ *
+ * Link data is curated here rather than pulled from the docs SIDEBAR — the
+ * footer is an editorial selection, not the full nav. The two external links
+ * live in clearly-marked constants below so they're trivial to update.
+ */
+
+/* TODO: drop in the real repository URL once the project has a public repo. */
+const GITHUB_URL = "#";
+const NPM_URL = "https://www.npmjs.com/package/optical-center";
+
+const year = new Date().getFullYear();
+
+type FooterLink = { label: string; href: string; external?: boolean };
+type FooterColumn = { title: string; links: readonly FooterLink[] };
+
+const columns: readonly FooterColumn[] = [
+  {
+    title: "Docs",
+    links: [
+      { label: "Overview", href: "/docs" },
+      { label: "Install", href: "/docs/install" },
+      { label: "Any icon library", href: "/docs/icons" },
+    ],
+  },
+  {
+    title: "Patterns",
+    links: [
+      { label: "CSS class", href: "/docs/patterns/css-class" },
+      { label: "Tailwind utility", href: "/docs/patterns/tailwind" },
+      { label: "JSX attribute", href: "/docs/patterns/jsx-attribute" },
+      { label: "Inline SVG", href: "/docs/patterns/inline-svg" },
+      { label: "CSS mask-image", href: "/docs/patterns/css-mask" },
+    ],
+  },
+  {
+    title: "Resources",
+    links: [
+      { label: "GitHub", href: GITHUB_URL, external: true },
+      { label: "optical-center on npm", href: NPM_URL, external: true },
+    ],
+  },
+];
+
+/* Only treat a link as external (new tab + rel) when it's a real http(s)
+   destination — the GitHub placeholder "#" stays a same-tab no-op. */
+const isExternal = (link: FooterLink) =>
+  Boolean(link.external) && /^https?:\/\//.test(link.href);
+---
+
+<footer class="site-footer">
+  <div class="site-footer__inner">
+    <div class="site-footer__top">
+      <div class="site-footer__brand-col">
+        <a class="site-footer__brand" href="/" aria-label="Optical Center — home">
+          <svg
+            class="site-footer__mark"
+            viewBox="-0.32 -0.62 24 24"
+            width="22"
+            height="22"
+            aria-hidden="true"
+          >
+            <path d="M8 5v14l11-7z" fill="currentColor"></path>
+            <circle cx="11.66" cy="11.38" r="1.6" fill="var(--color-accent)"></circle>
+          </svg>
+          <span class="site-footer__brand-name">
+            Optical<span class="site-footer__brand-em"> Center</span>
+          </span>
+        </a>
+
+        <p class="site-footer__desc">
+          Perceptual centering for your icons, baked into the SVG at build
+          time. One declaration, two surfaces — zero runtime cost.
+        </p>
+
+        <div class="site-footer__powered">
+          <p class="site-footer__powered-line">
+            Color system powered by
+            <a
+              class="site-footer__powered-em"
+              href="http://helmlab.space/"
+              target="_blank"
+              rel="noopener noreferrer">helmlab</a>
+          </p>
+          <p class="site-footer__powered-line">
+            Sound layer by
+            <a
+              class="site-footer__powered-em"
+              href="https://www.audiocss.dev/"
+              target="_blank"
+              rel="noopener noreferrer">ACS</a>
+          </p>
+        </div>
+      </div>
+
+      {
+        columns.map((col) => (
+          <nav class="site-footer__col" aria-label={col.title}>
+            <h2 class="site-footer__col-title">{col.title}</h2>
+            <ul class="site-footer__links">
+              {col.links.map((link) => (
+                <li>
+                  <a
+                    class="site-footer__link"
+                    href={link.href}
+                    {...(isExternal(link)
+                      ? { target: "_blank", rel: "noopener noreferrer" }
+                      : {})}
+                  >
+                    {link.label}
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </nav>
+        ))
+      }
+    </div>
+
+    <div class="site-footer__bottom">
+      <p class="site-footer__made">
+        Made by <a
+          class="site-footer__made-em"
+          href="https://ismailyagci.com/"
+          target="_blank"
+          rel="noopener noreferrer">İsmail Yağcı</a>
+        <span class="site-footer__amp" aria-hidden="true">&amp;</span>
+        <a
+          class="site-footer__made-em"
+          href="https://gorkemyildiz.com/"
+          target="_blank"
+          rel="noopener noreferrer">Görkem Yıldız</a>
+      </p>
+      <p class="site-footer__legal">
+        MIT License
+        <span class="site-footer__legal-sep" aria-hidden="true">·</span>
+        © {year}
+      </p>
+    </div>
+  </div>
+</footer>
+
+<style>
+  .site-footer {
+    border-top: var(--line-w) solid var(--color-line);
+    margin-top: var(--sp-24);
+  }
+  .site-footer__inner {
+    max-width: var(--page-max-w);
+    margin-inline: auto;
+    padding-inline: var(--page-px);
+    padding-block: var(--sp-16) var(--sp-8);
+  }
+
+  /* ── Top: brand + three link columns ──────────────────────────────── */
+  .site-footer__top {
+    display: grid;
+    grid-template-columns: minmax(0, 1.8fr) repeat(3, minmax(0, 1fr));
+    gap: var(--sp-12) var(--sp-8);
+  }
+
+  /* Brand */
+  .site-footer__brand {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--sp-3);
+    color: var(--color-fg);
+  }
+  .site-footer__mark {
+    display: block;
+    flex-shrink: 0;
+  }
+  .site-footer__brand-name {
+    font-family: var(--font-display);
+    font-size: var(--fs-md);
+    font-weight: var(--fw-semibold);
+    letter-spacing: var(--ls-display);
+    line-height: 1;
+  }
+  .site-footer__brand-em {
+    font-weight: var(--fw-regular);
+    color: var(--color-muted-fg);
+  }
+  .site-footer__desc {
+    margin: var(--sp-4) 0 0;
+    max-width: 34ch;
+    font-family: var(--font-body);
+    font-size: var(--fs-sm);
+    line-height: var(--lh-body);
+    color: var(--color-muted-fg);
+  }
+  .site-footer__powered {
+    margin-top: var(--sp-6);
+    display: grid;
+    gap: var(--sp-2);
+  }
+  .site-footer__powered-line {
+    margin: 0;
+    font-family: var(--font-mono);
+    font-size: var(--fs-xs);
+    letter-spacing: var(--ls-wide);
+    text-transform: uppercase;
+    /* Dimmer than --color-muted-fg (64%) — a quiet credit, not a label. */
+    color: color-mix(in oklab, var(--color-fg) 40%, transparent);
+  }
+  .site-footer__powered-em {
+    color: var(--color-muted-fg);
+    transition: color 0.18s ease;
+  }
+  .site-footer__powered-em:hover,
+  .site-footer__powered-em:focus-visible {
+    color: var(--color-fg);
+    text-decoration: underline;
+    text-underline-offset: 2px;
+  }
+
+  /* Link columns */
+  .site-footer__col-title {
+    margin: 0 0 var(--sp-4);
+    font-family: var(--font-body);
+    font-size: var(--fs-md);
+    font-weight: var(--fw-semibold);
+    letter-spacing: var(--ls-tight);
+    color: var(--color-fg);
+  }
+  .site-footer__links {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    gap: var(--sp-3);
+  }
+  .site-footer__link {
+    font-family: var(--font-body);
+    font-size: var(--fs-base);
+    color: var(--color-muted-fg);
+    transition: color 0.18s ease;
+  }
+  .site-footer__link:hover,
+  .site-footer__link:focus-visible {
+    color: var(--color-fg);
+  }
+
+  /* ── Bottom bar ────────────────────────────────────────────────────── */
+  .site-footer__bottom {
+    margin-top: var(--sp-12);
+    padding-top: var(--sp-6);
+    border-top: var(--line-w) solid var(--color-line);
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--sp-4);
+  }
+  .site-footer__made,
+  .site-footer__legal {
+    margin: 0;
+    font-family: var(--font-mono);
+    font-size: var(--fs-xs);
+    letter-spacing: var(--ls-normal);
+    color: var(--color-muted-fg);
+  }
+  .site-footer__made-em {
+    color: var(--color-fg);
+    transition: color 0.18s ease;
+  }
+  .site-footer__made-em:hover,
+  .site-footer__made-em:focus-visible {
+    color: var(--color-accent-text);
+    text-decoration: underline;
+    text-underline-offset: 2px;
+  }
+  .site-footer__amp {
+    margin-inline: 1px;
+  }
+  .site-footer__legal-sep {
+    margin-inline: var(--sp-2);
+    color: var(--color-line-strong);
+  }
+
+  /* ── Responsive ────────────────────────────────────────────────────── */
+  @media (max-width: 960px) {
+    .site-footer {
+      margin-top: var(--sp-16);
+    }
+    .site-footer__top {
+      grid-template-columns: 1fr 1fr;
+    }
+    /* Brand spans the full width above the (now two-up) link columns. */
+    .site-footer__brand-col {
+      grid-column: 1 / -1;
+    }
+  }
+  @media (max-width: 560px) {
+    .site-footer__top {
+      grid-template-columns: 1fr;
+      gap: var(--sp-8);
+    }
+    .site-footer__bottom {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: var(--sp-3);
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .site-footer__link,
+    .site-footer__powered-em,
+    .site-footer__made-em {
+      transition: none;
+    }
+  }
+</style>

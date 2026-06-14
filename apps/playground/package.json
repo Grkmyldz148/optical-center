@@ -1,0 +1,27 @@
+{
+  "name": "optical-center-example-playground",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@iconify/react": "^6.0.2",
+    "helmlab": "^0.13.0",
+    "react": "^18.3.0",
+    "react-dom": "^18.3.0"
+  },
+  "devDependencies": {
+    "@iconify/json": "^2.2.0",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "@vitejs/plugin-react": "^4.3.0",
+    "optical-center": "file:../..",
+    "postcss": "^8.4.0",
+    "typescript": "^5.4.0",
+    "vite": "^7.0.0"
+  }
+}

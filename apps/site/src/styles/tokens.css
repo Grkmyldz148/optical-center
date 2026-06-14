@@ -1,0 +1,81 @@
+/*
+ * Design tokens — non-color foundations.
+ * Color tokens live in tokens.color.css (generated via helmlab).
+ */
+
+@import "./tokens.color.css";
+
+:root {
+  /* Typography — Geist family. Display/body share one face (weight does the work);
+     mono is reserved for code, terminal, and tabular UI. */
+  --font-display: "Geist", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Helvetica, Arial, sans-serif;
+  --font-body: "Geist", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Helvetica, Arial, sans-serif;
+  --font-mono: "Geist Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+
+  /* Type scale — modest, restrained */
+  --fs-xs: 0.75rem;
+  --fs-sm: 0.875rem;
+  --fs-base: 1rem;
+  --fs-md: 1.125rem;
+  --fs-lg: 1.5rem;
+  --fs-xl: 2.25rem;
+  --fs-2xl: 3.5rem;
+  --fs-3xl: 5rem;
+  --fs-4xl: 7rem;
+
+  /* Weights — Geist is variable, prefer numeric over named */
+  --fw-regular: 400;
+  --fw-medium: 500;
+  --fw-semibold: 600;
+  --fw-bold: 700;
+
+  /* Line heights */
+  --lh-tight: 1.02;
+  --lh-snug: 1.15;
+  --lh-body: 1.55;
+
+  /* Letter spacing — Geist is already optically tuned; keep tracking minimal */
+  --ls-tight: -0.015em;
+  --ls-display: -0.025em;
+  --ls-normal: 0;
+  --ls-wide: 0.04em;
+
+  /* Spacing scale — 4px base */
+  --sp-1: 0.25rem;
+  --sp-2: 0.5rem;
+  --sp-3: 0.75rem;
+  --sp-4: 1rem;
+  --sp-5: 1.25rem;
+  --sp-6: 1.5rem;
+  --sp-8: 2rem;
+  --sp-12: 3rem;
+  --sp-16: 4rem;
+  --sp-24: 6rem;
+  --sp-32: 8rem;
+
+  /* Lines — still 1px hairlines, but derived from fg with alpha so they read
+     as quiet structure, not contracts-and-litigation borders. */
+  --line-w: 1px;
+  --color-line: color-mix(in oklab, var(--color-fg) 12%, transparent);
+  --color-line-strong: color-mix(in oklab, var(--color-fg) 24%, transparent);
+
+  /* Surfaces — subtle elevation via tonal shift, not shadow */
+  --color-surface: color-mix(in oklab, var(--color-fg) 3%, transparent);
+  --color-surface-hi: color-mix(in oklab, var(--color-fg) 6%, transparent);
+
+  /* Muted text — for eyebrows, labels, captions */
+  --color-muted-fg: color-mix(in oklab, var(--color-fg) 64%, transparent);
+  --color-soft-fg: color-mix(in oklab, var(--color-fg) 80%, transparent);
+
+  /* Radii — small, just enough to take the edge off */
+  --radius-none: 0;
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius: var(--radius-sm);
+
+  /* Page shell — every section uses these so left/right edges align.
+     `--page-px` picks up the device safe-area insets so notched landscape
+     never lands content under the rounded corner / camera cutout. */
+  --page-max-w: 1280px;
+  --page-px: max(clamp(1rem, 4vw, 2rem), env(safe-area-inset-left), env(safe-area-inset-right));
+}

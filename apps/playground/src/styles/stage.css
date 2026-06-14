@@ -1,0 +1,234 @@
+/*
+ * Stage = the canvas where the playground renders one or two
+ * badges. It owns its own theme (light/dark) so users can compare
+ * how an icon looks on both surfaces. Both surface colours come
+ * from HelmLab's neutral scale (50 stop for paper, 950 for ink).
+ */
+
+.stage {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+}
+
+.stage__bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s-4);
+  padding: var(--s-3) var(--s-5);
+  border-bottom: 1px solid var(--line);
+  background: var(--surface-1);
+  font-size: var(--t-xs);
+  color: var(--fg-muted);
+  font-family: var(--font-mono);
+  flex-shrink: 0;
+}
+.stage__bar strong { color: var(--fg); }
+
+.stage__bar-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 8px;
+  border-radius: var(--r-pill);
+  background: var(--bg);
+  border: 1px solid var(--line-strong);
+  color: var(--fg);
+  font-size: var(--t-xs);
+}
+.stage__bar-tag-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--accent);
+}
+
+.stage__canvas {
+  flex: 1;
+  display: grid;
+  place-items: center;
+  background-color: var(--canvas-light);
+  color: var(--canvas-light-fg);
+  background-image:
+    linear-gradient(to right, var(--canvas-light-grid) 1px, transparent 1px),
+    linear-gradient(to bottom, var(--canvas-light-grid) 1px, transparent 1px);
+  background-size: 24px 24px;
+  min-height: 0;
+  overflow: auto;
+  padding: var(--s-8);
+  transition: background-color var(--dur) var(--ease),
+    color var(--dur) var(--ease);
+}
+.stage__canvas[data-theme='dark'] {
+  background-color: var(--canvas-dark);
+  color: var(--canvas-dark-fg);
+  background-image:
+    linear-gradient(to right, var(--canvas-dark-grid) 1px, transparent 1px),
+    linear-gradient(to bottom, var(--canvas-dark-grid) 1px, transparent 1px);
+}
+
+/* ------------------------------------------------------------------
+ * Badge — one round container with an icon centered inside.
+ *
+ * Centering is OWNED by the directive (`optical-center: auto` on the
+ * container emits `display: flex` + child `margin: auto`). The
+ * geometric variant ships the same recipe by hand so the side-by-side
+ * comparison stays apples-to-apples.
+ *
+ * On a light canvas: badge fills with the canvas-light-fg (dark) and
+ * the icon paints with canvas-light (paper). On a dark canvas the
+ * roles swap. Both ends of every contrast pair come from the same
+ * HelmLab neutral scale, so the perceived contrast at the 50 ↔ 950
+ * extremes stays uniform with the rest of the UI.
+ * ------------------------------------------------------------------ */
+.badges {
+  display: grid;
+  grid-template-columns: auto auto;
+  gap: var(--s-10);
+  align-items: center;
+  justify-items: center;
+}
+.badges[data-mode='single'] {
+  grid-template-columns: auto;
+}
+
+.badge-col {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--s-3);
+}
+
+.badge {
+  position: relative;
+  display: flex;
+  width: var(--badge-size, 200px);
+  height: var(--badge-size, 200px);
+  border-radius: var(--badge-radius, 50%);
+  background: var(--canvas-light-fg);
+  color: var(--canvas-light);
+  transition: background-color var(--dur) var(--ease),
+    color var(--dur) var(--ease);
+}
+[data-theme='dark'] .badge {
+  background: var(--canvas-dark-fg);
+  color: var(--canvas-dark);
+}
+
+.badge__icon {
+  margin: auto;
+  width: var(--icon-size, 50%);
+  height: var(--icon-size, 50%);
+  display: block;
+  color: currentColor;
+}
+.badge__icon--optical {
+  translate: var(--icon-dx, 0) var(--icon-dy, 0);
+  transition: translate var(--dur) var(--ease);
+}
+
+.badge svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+  fill: currentColor;
+}
+
+/* Optional: crosshair through the badge centre. Helps the eye
+   judge "is the icon centered?" — without it, every centering
+   claim is just vibes. Crosshair colour comes from the neutral
+   scale so it reads against both badge surfaces. */
+.badge[data-crosshair='true']::before,
+.badge[data-crosshair='true']::after {
+  content: '';
+  position: absolute;
+  background: var(--crosshair-light);
+  pointer-events: none;
+  z-index: 0;
+}
+[data-theme='dark'] .badge[data-crosshair='true']::before,
+[data-theme='dark'] .badge[data-crosshair='true']::after {
+  background: var(--crosshair-dark);
+}
+.badge[data-crosshair='true']::before {
+  left: 0;
+  right: 0;
+  top: 50%;
+  height: 1px;
+}
+.badge[data-crosshair='true']::after {
+  top: 0;
+  bottom: 0;
+  left: 50%;
+  width: 1px;
+}
+.badge .badge__icon {
+  position: relative;
+  z-index: 1;
+}
+
+.badge-col__caption {
+  font-family: var(--font-mono);
+  font-size: var(--t-xs);
+  color: var(--fg-muted);
+  display: flex;
+  align-items: center;
+  gap: var(--s-2);
+}
+.badge-col__caption-tag {
+  font-size: var(--t-2xs);
+  padding: 1px 6px;
+  border-radius: var(--r-pill);
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+}
+.badge-col__caption-tag--optical {
+  color: var(--accent-text);
+  border-color: var(--accent-line);
+  background: var(--accent-soft);
+}
+
+/* ------------------------------------------------------------------
+ * Offset readout — under the stage, the numeric breakdown of the
+ * computed offset (raster px → percent → display px).
+ * ------------------------------------------------------------------ */
+.readout {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  border-top: 1px solid var(--line);
+  background: var(--surface-1);
+  flex-shrink: 0;
+}
+.readout__cell {
+  padding: var(--s-3) var(--s-5);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  border-right: 1px solid var(--line);
+}
+.readout__cell:last-child {
+  border-right: 0;
+}
+.readout__label {
+  font-size: var(--t-2xs);
+  text-transform: uppercase;
+  letter-spacing: 0.10em;
+  color: var(--fg-subtle);
+}
+.readout__value {
+  font-family: var(--font-mono);
+  font-size: var(--t-md);
+  font-variant-numeric: tabular-nums;
+  color: var(--fg);
+}
+.readout__value--accent {
+  color: var(--accent-text);
+}
+.readout__sub {
+  font-family: var(--font-mono);
+  font-size: var(--t-2xs);
+  color: var(--fg-subtle);
+}

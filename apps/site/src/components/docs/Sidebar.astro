@@ -1,0 +1,303 @@
+---
+/*
+ * Docs sidebar — sticky left rail with grouped page links. The current
+ * page picks up an accent left-border indicator + accent text so the
+ * reader's place in the docs is obvious at every level (group + page).
+ *
+ * Markup is plain semantic HTML — <nav> > <ul> > <li> > <a> — so reader
+ * mode, find-in-page and screen readers all behave correctly. The active
+ * detection is server-side (Astro.url.pathname) so no JS is needed for
+ * the highlight to render correctly on first paint.
+ *
+ * Mobile (<=960px): the rail becomes a collapsible disclosure with the
+ * current page label visible on the trigger so the reader still knows
+ * where they are when the panel is closed. JS toggles the open state and
+ * aria-expanded; on first paint the panel stays closed so it doesn't
+ * crowd the article below it.
+ */
+import { SIDEBAR, breadcrumb } from "./nav";
+
+const current = Astro.url.pathname.replace(/\/$/, "") || "/docs";
+const crumbs = breadcrumb(current);
+const triggerLabel = crumbs
+  ? crumbs.group === "Get started"
+    ? crumbs.page
+    : `${crumbs.group} · ${crumbs.page}`
+  : "Documentation";
+---
+
+<aside class="docs-sidebar" data-open="false" aria-label="Documentation">
+  <button
+    type="button"
+    class="docs-sidebar__toggle"
+    aria-expanded="false"
+    aria-controls="docs-sidebar-panel"
+    data-sidebar-toggle
+  >
+    <span class="docs-sidebar__toggle-kicker">Docs menu</span>
+    <span class="docs-sidebar__toggle-label">{triggerLabel}</span>
+    <svg
+      class="docs-sidebar__toggle-chevron"
+      viewBox="0 0 14 14"
+      width="12"
+      height="12"
+      aria-hidden="true"
+      fill="none"
+      stroke="currentColor"
+      stroke-width="1.6"
+      stroke-linecap="round"
+      stroke-linejoin="round"
+    >
+      <polyline points="3 5 7 9 11 5"></polyline>
+    </svg>
+  </button>
+
+  <nav
+    class="docs-sidebar__nav"
+    id="docs-sidebar-panel"
+    data-sidebar-panel
+  >
+    {SIDEBAR.map((group) => (
+      <section class="docs-sidebar__group">
+        <h2 class="docs-sidebar__group-title">{group.title}</h2>
+        <ul class="docs-sidebar__list">
+          {group.pages.map((page) => {
+            const isActive = page.href === current;
+            return (
+              <li>
+                <a
+                  href={page.href}
+                  class:list={["docs-sidebar__link", isActive && "is-active"]}
+                  aria-current={isActive ? "page" : undefined}
+                >
+                  {page.label}
+                </a>
+              </li>
+            );
+          })}
+        </ul>
+      </section>
+    ))}
+  </nav>
+</aside>
+
+<script>
+  /*
+   * Mobile-only toggle. On wide viewports the panel is always visible
+   * regardless of data-open, so the script is effectively a no-op above
+   * 960px. We still bind the click handler so the same DOM works at any
+   * width — resizing past the breakpoint just makes the toggle button
+   * invisible.
+   */
+  const sidebar = document.querySelector<HTMLElement>(".docs-sidebar");
+  const toggle = document.querySelector<HTMLButtonElement>("[data-sidebar-toggle]");
+
+  function setOpen(open: boolean): void {
+    if (!sidebar || !toggle) return;
+    sidebar.dataset.open = open ? "true" : "false";
+    toggle.setAttribute("aria-expanded", open ? "true" : "false");
+  }
+
+  if (sidebar && toggle) {
+    toggle.addEventListener("click", () => {
+      const open = sidebar.dataset.open === "true";
+      setOpen(!open);
+    });
+
+    /* Close when a link inside the panel is tapped — the navigation either
+       leaves the page or jumps to a new section, so a hanging-open drawer
+       would obscure the destination. */
+    sidebar
+      .querySelectorAll<HTMLAnchorElement>(".docs-sidebar__link")
+      .forEach((link) => {
+        link.addEventListener("click", () => setOpen(false));
+      });
+
+    /* Reset to closed when crossing back into desktop layout so layout
+       changes don't leave the panel in a state that conflicts with the
+       always-visible desktop rail. */
+    const desktopMql = window.matchMedia("(min-width: 961px)");
+    desktopMql.addEventListener("change", (e) => {
+      if (e.matches) setOpen(false);
+    });
+  }
+</script>
+
+<style>
+  .docs-sidebar {
+    /* Sticky below the global site header (73px tall, see Header.astro).
+       align-self: start keeps the sidebar from stretching to match the
+       main column when content is long — sticky needs a height < viewport
+       to actually engage. */
+    position: sticky;
+    top: calc(73px + var(--sp-4));
+    align-self: start;
+    max-height: calc(100vh - 73px - var(--sp-8));
+    overflow-y: auto;
+    padding-block: var(--sp-6);
+    padding-right: var(--sp-4);
+    /* Hairline divider on the right separates the rail from content
+       visually — same treatment Stripe / Linear / Tailwind docs use. */
+    border-right: var(--line-w) solid var(--color-line);
+  }
+
+  /* The disclosure trigger is hidden on desktop — the rail is always
+     visible there, so a toggle would be redundant. */
+  .docs-sidebar__toggle {
+    display: none;
+  }
+
+  .docs-sidebar__nav {
+    display: grid;
+    gap: var(--sp-6);
+  }
+
+  .docs-sidebar__group {
+    display: grid;
+    gap: var(--sp-2);
+  }
+
+  .docs-sidebar__group-title {
+    font-family: var(--font-mono);
+    font-size: var(--fs-xs);
+    font-weight: var(--fw-medium);
+    letter-spacing: var(--ls-wide);
+    text-transform: uppercase;
+    color: var(--color-muted-fg);
+    margin: 0;
+    padding-block: var(--sp-1);
+  }
+
+  .docs-sidebar__list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    gap: 0;
+  }
+
+  /* Each link sits in its own row with a subtle indent. The left border
+     is transparent by default; on hover or active it picks up structure
+     or accent — same indicator language CodeMirror, Linear and Stripe
+     docs use, just with our brand tokens. */
+  .docs-sidebar__link {
+    display: block;
+    padding: var(--sp-2) var(--sp-3);
+    font-family: var(--font-body);
+    font-size: var(--fs-sm);
+    line-height: var(--lh-snug);
+    color: var(--color-muted-fg);
+    border-left: 2px solid transparent;
+    margin-left: -2px;
+    border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+    transition:
+      color 0.16s ease,
+      background-color 0.16s ease,
+      border-color 0.16s ease;
+  }
+  .docs-sidebar__link:hover,
+  .docs-sidebar__link:focus-visible {
+    color: var(--color-fg);
+    background: var(--color-surface);
+    border-left-color: var(--color-line-strong);
+  }
+  .docs-sidebar__link.is-active {
+    color: var(--color-accent-text);
+    background: color-mix(in oklab, var(--color-accent) 8%, transparent);
+    border-left-color: var(--color-accent);
+    font-weight: var(--fw-medium);
+  }
+
+  /* ─────────────────────────  Responsive  ─────────────────────────── */
+  @media (max-width: 960px) {
+    /* On narrow screens the rail collapses into a disclosure. The trigger
+       button shows the current location so the reader knows where they
+       are without expanding the panel. Sticky behavior comes off — the
+       full sidebar shouldn't pin to the viewport on mobile. */
+    .docs-sidebar {
+      position: static;
+      max-height: none;
+      overflow-y: visible;
+      border-right: 0;
+      border-bottom: var(--line-w) solid var(--color-line);
+      padding-right: 0;
+      padding-block: var(--sp-4);
+    }
+
+    .docs-sidebar__toggle {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      grid-template-rows: auto auto;
+      grid-template-areas:
+        "kicker chevron"
+        "label  chevron";
+      align-items: center;
+      gap: 2px var(--sp-3);
+      width: 100%;
+      padding: var(--sp-3) var(--sp-4);
+      border: var(--line-w) solid var(--color-line);
+      border-radius: var(--radius-sm);
+      background: var(--color-surface);
+      color: var(--color-fg);
+      text-align: left;
+      transition:
+        border-color 0.16s ease,
+        background-color 0.16s ease;
+    }
+    .docs-sidebar__toggle:hover,
+    .docs-sidebar__toggle:focus-visible {
+      border-color: var(--color-line-strong);
+      background: var(--color-surface-hi);
+    }
+    .docs-sidebar__toggle-kicker {
+      grid-area: kicker;
+      font-family: var(--font-mono);
+      font-size: var(--fs-xs);
+      letter-spacing: var(--ls-wide);
+      text-transform: uppercase;
+      color: var(--color-muted-fg);
+    }
+    .docs-sidebar__toggle-label {
+      grid-area: label;
+      font-family: var(--font-body);
+      font-size: var(--fs-sm);
+      font-weight: var(--fw-medium);
+      color: var(--color-accent-text);
+      line-height: 1.2;
+    }
+    .docs-sidebar__toggle-chevron {
+      grid-area: chevron;
+      color: var(--color-muted-fg);
+      transition: transform 0.18s ease;
+    }
+    .docs-sidebar[data-open="true"] .docs-sidebar__toggle-chevron {
+      transform: rotate(180deg);
+    }
+
+    /* Panel is hidden by default on mobile — the disclosure pattern. */
+    .docs-sidebar__nav {
+      display: none;
+      margin-top: var(--sp-3);
+      padding: var(--sp-3);
+      gap: var(--sp-4);
+      border: var(--line-w) solid var(--color-line);
+      border-radius: var(--radius-sm);
+      background: var(--color-surface);
+    }
+    .docs-sidebar[data-open="true"] .docs-sidebar__nav {
+      display: grid;
+    }
+
+    .docs-sidebar__group {
+      gap: var(--sp-1);
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .docs-sidebar__link,
+    .docs-sidebar__toggle,
+    .docs-sidebar__toggle-chevron {
+      transition: none;
+    }
+  }
+</style>

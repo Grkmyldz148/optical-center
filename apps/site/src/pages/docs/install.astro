@@ -1,0 +1,213 @@
+---
+import DocsLayout from "../../layouts/DocsLayout.astro";
+import CodeBlock from "../../components/docs/CodeBlock.astro";
+
+const toc = [
+  { id: "init", label: "Quick path: init", level: 2 as const },
+  { id: "package", label: "Package", level: 2 as const },
+  { id: "subpaths", label: "Subpath imports", level: 2 as const },
+  { id: "wire", label: "Wire it up", level: 2 as const },
+  { id: "wire-vite", label: "Vite", level: 3 as const },
+  { id: "wire-astro", label: "Astro", level: 3 as const },
+  { id: "wire-postcss", label: "PostCSS (standalone)", level: 3 as const },
+  { id: "wire-tailwind", label: "Tailwind", level: 3 as const },
+  { id: "next", label: "Next", level: 2 as const },
+];
+---
+
+<DocsLayout
+  title="Install"
+  description="One package, several entry points. Install once, then wire the plugin that matches the build tool your stack already uses."
+  toc={toc}
+>
+  <h2 id="init">Quick path: init</h2>
+  <p>
+    One command detects your framework and package manager, installs
+    the dependency, and patches the right config file. Run it bare for
+    an interactive picker, or pin everything with flags:
+  </p>
+  <CodeBlock
+    bare
+    lang="bash"
+    code={`npx optical-center init                          # interactive
+npx optical-center init --integration vite --yes # non-interactive`}
+  />
+  <p>
+    Everything below is what init automates — read on if you prefer to
+    wire things by hand, or if init handed you a manual snippet. Full
+    flag reference on the <a href="/docs/cli#init">CLI page</a>.
+  </p>
+
+  <h2 id="package">Package</h2>
+  <p>Pick a package manager:</p>
+
+  <CodeBlock filename="npm" lang="bash" code={`npm install optical-center`} />
+  <CodeBlock filename="pnpm" lang="bash" code={`pnpm add optical-center`} />
+  <CodeBlock filename="yarn" lang="bash" code={`yarn add optical-center`} />
+  <CodeBlock filename="bun" lang="bash" code={`bun add optical-center`} />
+
+  <h2 id="subpaths">Subpath imports</h2>
+  <p>
+    Each adapter ships behind its own subpath. The root export stays
+    browser-safe — pulling in the Node-only rasterizer requires the
+    explicit <code>/node</code> import.
+  </p>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Subpath</th>
+        <th>What it gives you</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><code>optical-center</code></td>
+        <td>Browser-safe core: <code>getOpticalCenter</code>, <code>transformViewBox</code>, <code>applyTransformToSvg</code>, types.</td>
+      </tr>
+      <tr>
+        <td><code>optical-center/node</code></td>
+        <td>Node-only helpers: <code>rasterizeSvg</code> (resvg), <code>transformViewBoxFromSvg</code>, <code>sanitizeSvg</code>.</td>
+      </tr>
+      <tr>
+        <td><code>optical-center/cli</code></td>
+        <td>The <code>optical-center</code> binary: <code>init</code>, <code>transform</code>, <code>info</code>, <code>analyze</code>, <code>clear-cache</code>, <code>version</code> — plus an interactive wizard when run bare.</td>
+      </tr>
+      <tr>
+        <td><code>optical-center/babel</code></td>
+        <td>Babel plugin. Handles <code>optical-center="auto"</code> on JSX wrappers and inline <code>{`<svg>`}</code>.</td>
+      </tr>
+      <tr>
+        <td><code>optical-center/vite</code></td>
+        <td>Vite plugin. Runs the Babel pass on JSX/TSX and the HTML rewrite on <code>index.html</code>.</td>
+      </tr>
+      <tr>
+        <td><code>optical-center/astro</code></td>
+        <td>Astro integration. Wraps the Vite plugin and adds a post-build sweep over emitted HTML.</td>
+      </tr>
+      <tr>
+        <td><code>optical-center/postcss</code></td>
+        <td>PostCSS plugin. Reads <code>optical-center: auto</code> on CSS rules and emits centering + translate.</td>
+      </tr>
+      <tr>
+        <td><code>optical-center/tailwind</code></td>
+        <td>Tailwind plugin. Registers the <code>.optical-center</code> utility class.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2 id="wire">Wire it up</h2>
+  <p>
+    Pick the section that matches your build tool. Every framework
+    works the same way under the hood — the wiring is just how each
+    tool likes its plugins registered.
+  </p>
+
+  <h3 id="wire-vite">Vite</h3>
+  <p>
+    The Vite plugin owns JSX/TSX modules and the <code>index.html</code>
+    hook. Run it alongside the React (or whatever) plugin:
+  </p>
+  <CodeBlock
+    filename="vite.config.ts"
+    lang="ts"
+    code={`import { defineConfig } from 'vite';
+import opticalCenter from 'optical-center/vite';
+import react from '@vitejs/plugin-react';
+
+export default defineConfig({
+  plugins: [opticalCenter(), react()],
+});`}
+  />
+  <p>
+    For the CSS surface, add the PostCSS plugin too — Vite picks up
+    <code>postcss.config.js</code> automatically:
+  </p>
+  <CodeBlock
+    filename="postcss.config.js"
+    lang="js"
+    code={`import opticalCenter from 'optical-center/postcss';
+
+export default {
+  plugins: [opticalCenter()],
+};`}
+  />
+
+  <h3 id="wire-astro">Astro</h3>
+  <p>
+    The Astro integration wraps the Vite plugin and adds a post-build
+    sweep over emitted <code>*.html</code> files (Astro renders its own
+    pages through a path Vite's <code>transformIndexHtml</code> does
+    not see). Single line in <code>astro.config</code>:
+  </p>
+  <CodeBlock
+    filename="astro.config.mjs"
+    lang="js"
+    code={`import { defineConfig } from 'astro/config';
+import opticalCenter from 'optical-center/astro';
+
+export default defineConfig({
+  integrations: [opticalCenter()],
+});`}
+  />
+
+  <h3 id="wire-postcss">PostCSS (standalone)</h3>
+  <p>
+    Use this when there's no Vite/Astro in the stack — webpack,
+    parcel, postcss-cli, or any other host that runs PostCSS.
+  </p>
+  <CodeBlock
+    filename="postcss.config.js"
+    lang="js"
+    code={`import opticalCenter from 'optical-center/postcss';
+
+export default {
+  plugins: [
+    opticalCenter({
+      // Resolve url('@icons/play.svg') against an absolute path.
+      aliases: { '@icons': '/path/to/icons' },
+    }),
+  ],
+};`}
+  />
+  <p>
+    The PostCSS plugin also handles the JSX-scan path on its own — it
+    walks the project's <code>.jsx</code>/<code>.tsx</code> files at
+    build time so a CSS class on a wrapper can still find the icon
+    inside (see the <a href="/docs/patterns/css-class">CSS class</a>
+    pattern).
+  </p>
+
+  <h3 id="wire-tailwind">Tailwind</h3>
+  <p>
+    The Tailwind plugin registers a single utility,
+    <code>.optical-center</code>, that emits
+    <code>optical-center: auto</code>. The PostCSS plugin then expands
+    it into the centering block. Make sure
+    <code>optical-center/postcss</code> runs <em>after</em> Tailwind
+    in your PostCSS chain — Tailwind ships the directive, our PostCSS
+    plugin resolves it.
+  </p>
+  <CodeBlock
+    filename="tailwind.config.js"
+    lang="js"
+    code={`import opticalCenter from 'optical-center/tailwind';
+
+export default {
+  plugins: [opticalCenter],
+};`}
+  />
+
+  <h2 id="next">Next</h2>
+  <p>
+    Once a plugin is wired, jump to the pattern that matches how you
+    want to author your icons:
+  </p>
+  <ul>
+    <li><a href="/docs/patterns/css-class">CSS class on container</a> — the canonical pattern.</li>
+    <li><a href="/docs/patterns/tailwind">Tailwind utility</a> — same end-state, Tailwind-flavored.</li>
+    <li><a href="/docs/patterns/jsx-attribute">JSX attribute</a> — when you don't want a CSS file.</li>
+    <li><a href="/docs/patterns/inline-svg">Inline SVG</a> — designer hand-offs, hand-rolled glyphs.</li>
+    <li><a href="/docs/patterns/css-mask">CSS mask-image</a> — utility-icon CSS recolored by <code>currentColor</code>.</li>
+  </ul>
+</DocsLayout>

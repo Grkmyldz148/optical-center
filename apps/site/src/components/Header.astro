@@ -1,0 +1,692 @@
+---
+import Search from "./Search.astro";
+
+const nav = [
+  { label: "Problem", href: "/#problem" },
+  { label: "Science", href: "/#science" },
+  { label: "Research", href: "/#research" },
+  { label: "Proposal", href: "/#proposal" },
+  { label: "Docs", href: "/docs" },
+];
+
+/* Highlight the Docs link whenever we're anywhere under /docs/ — same
+   indicator the per-page sidebar already uses. */
+const path = Astro.url.pathname;
+const isDocs = path === "/docs" || path.startsWith("/docs/");
+---
+
+<header class="site-header" data-menu-open="false">
+  <div class="site-header__inner">
+    <a class="brand" href="/" aria-label="Optical Center — home">
+      <svg
+        class="brand__mark"
+        viewBox="-0.32 -0.62 24 24"
+        width="22"
+        height="22"
+        aria-hidden="true"
+      >
+        <path d="M8 5v14l11-7z" fill="currentColor"></path>
+        <circle cx="11.66" cy="11.38" r="1.6" fill="var(--color-accent)"></circle>
+      </svg>
+      <span class="brand__name">
+        Optical<span class="brand__name-em"> Center</span>
+      </span>
+    </a>
+
+    <nav class="nav nav--desktop" aria-label="Primary">
+      <ul>
+        {
+          nav.map(({ label, href }) => {
+            const isCurrent = label === "Docs" && isDocs;
+            return (
+              <li>
+                <a href={href} aria-current={isCurrent ? "page" : undefined}>
+                  {label}
+                </a>
+              </li>
+            );
+          })
+        }
+      </ul>
+    </nav>
+
+    <div class="site-header__end">
+      <Search />
+
+      <button
+        type="button"
+        class="theme-toggle"
+        aria-label="Toggle theme"
+        title="Toggle theme"
+      >
+        <svg
+          class="theme-toggle__icon theme-toggle__icon--sun"
+          viewBox="0 0 16 16"
+          width="16"
+          height="16"
+          aria-hidden="true"
+        >
+          <circle
+            cx="8"
+            cy="8"
+            r="3.25"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.2"></circle>
+          <g stroke="currentColor" stroke-width="1.2" stroke-linecap="round">
+            <line x1="8" y1="1.2" x2="8" y2="2.8"></line>
+            <line x1="8" y1="13.2" x2="8" y2="14.8"></line>
+            <line x1="1.2" y1="8" x2="2.8" y2="8"></line>
+            <line x1="13.2" y1="8" x2="14.8" y2="8"></line>
+            <line x1="3.05" y1="3.05" x2="4.2" y2="4.2"></line>
+            <line x1="11.8" y1="11.8" x2="12.95" y2="12.95"></line>
+            <line x1="12.95" y1="3.05" x2="11.8" y2="4.2"></line>
+          </g>
+        </svg>
+        <svg
+          class="theme-toggle__icon theme-toggle__icon--moon"
+          viewBox="0 0 16 16"
+          width="16"
+          height="16"
+          aria-hidden="true"
+        >
+          <path
+            d="M13.5 9.8A5.6 5.6 0 1 1 6.2 2.5a4.7 4.7 0 0 0 7.3 7.3z"
+            fill="currentColor"></path>
+        </svg>
+      </button>
+
+      <button
+        type="button"
+        class="audio-toggle"
+        aria-label="Mute sound"
+        aria-pressed="true"
+        title="Mute sound"
+        data-audio-toggle
+      >
+        <svg
+          class="audio-toggle__icon audio-toggle__icon--on"
+          viewBox="0 0 16 16"
+          width="16"
+          height="16"
+          aria-hidden="true"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        >
+          <path
+            d="M8.25 2.6 4.4 5.6H2.4v4.8h2l3.85 3z"
+            fill="currentColor"
+            stroke="none"></path>
+          <path d="M10.7 5.7a3.3 3.3 0 0 1 0 4.6"></path>
+          <path d="M12.6 3.9a6 6 0 0 1 0 8.2"></path>
+        </svg>
+        <svg
+          class="audio-toggle__icon audio-toggle__icon--off"
+          viewBox="0 0 16 16"
+          width="16"
+          height="16"
+          aria-hidden="true"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        >
+          <path
+            d="M8.25 2.6 4.4 5.6H2.4v4.8h2l3.85 3z"
+            fill="currentColor"
+            stroke="none"></path>
+          <line x1="10.9" y1="6" x2="14" y2="10"></line>
+          <line x1="14" y1="6" x2="10.9" y2="10"></line>
+        </svg>
+      </button>
+
+      <button
+        type="button"
+        class="menu-toggle"
+        aria-label="Open menu"
+        aria-expanded="false"
+        aria-controls="site-mobile-nav"
+        data-menu-toggle
+      >
+        <svg
+          class="menu-toggle__icon menu-toggle__icon--open"
+          viewBox="0 0 20 20"
+          width="20"
+          height="20"
+          aria-hidden="true"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.5"
+          stroke-linecap="round"
+        >
+          <line x1="3.5" y1="6" x2="16.5" y2="6"></line>
+          <line x1="3.5" y1="10" x2="16.5" y2="10"></line>
+          <line x1="3.5" y1="14" x2="16.5" y2="14"></line>
+        </svg>
+        <svg
+          class="menu-toggle__icon menu-toggle__icon--close"
+          viewBox="0 0 20 20"
+          width="20"
+          height="20"
+          aria-hidden="true"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.5"
+          stroke-linecap="round"
+        >
+          <line x1="5" y1="5" x2="15" y2="15"></line>
+          <line x1="15" y1="5" x2="5" y2="15"></line>
+        </svg>
+      </button>
+    </div>
+  </div>
+
+  <div
+    class="mobile-nav"
+    id="site-mobile-nav"
+    data-mobile-nav
+    hidden
+  >
+    <nav class="mobile-nav__nav" aria-label="Primary mobile">
+      <ul>
+        {
+          nav.map(({ label, href }) => {
+            const isCurrent = label === "Docs" && isDocs;
+            return (
+              <li>
+                <a
+                  href={href}
+                  aria-current={isCurrent ? "page" : undefined}
+                  data-mobile-nav-link
+                >
+                  {label}
+                </a>
+              </li>
+            );
+          })
+        }
+      </ul>
+    </nav>
+  </div>
+</header>
+
+<script>
+  const root = document.documentElement;
+
+  function currentMode(): "light" | "dark" {
+    const stored = root.dataset.theme;
+    if (stored === "light" || stored === "dark") return stored;
+    return window.matchMedia("(prefers-color-scheme: dark)").matches
+      ? "dark"
+      : "light";
+  }
+
+  function syncLabel(button: HTMLButtonElement) {
+    const next = currentMode() === "dark" ? "light" : "dark";
+    button.setAttribute("aria-label", `Switch to ${next} mode`);
+    button.setAttribute("title", `Switch to ${next} mode`);
+  }
+
+  function bind(button: HTMLButtonElement) {
+    syncLabel(button);
+    button.addEventListener("click", () => {
+      const next = currentMode() === "dark" ? "light" : "dark";
+      root.dataset.theme = next;
+      try {
+        localStorage.setItem("theme", next);
+      } catch {}
+      syncLabel(button);
+    });
+  }
+
+  document
+    .querySelectorAll<HTMLButtonElement>(".theme-toggle")
+    .forEach(bind);
+
+  // Reflect system changes when no explicit override is set.
+  const mql = window.matchMedia("(prefers-color-scheme: dark)");
+  mql.addEventListener("change", () => {
+    if (!root.dataset.theme) {
+      document
+        .querySelectorAll<HTMLButtonElement>(".theme-toggle")
+        .forEach(syncLabel);
+    }
+  });
+
+  /*
+   * Sound toggle — mutes / unmutes the ACS audio layer (see public/sounds/
+   * site.acs). The runtime loads asynchronously as an ES module, so
+   * window.ACS may not exist yet when this runs; we therefore (a) drive the
+   * visible state from data-sound on <html> (set pre-paint by the Base.astro
+   * bootstrap), (b) persist the choice in localStorage, since ACS.setEnabled
+   * is an in-memory flag that resets every page load, and (c) re-assert that
+   * choice on the live runtime the moment it becomes available.
+   */
+  const SOUND_KEY = "sound";
+
+  function soundOn(): boolean {
+    return root.dataset.sound !== "off";
+  }
+
+  function syncSoundLabel(button: HTMLButtonElement): void {
+    const on = soundOn();
+    const label = on ? "Mute sound" : "Unmute sound";
+    button.setAttribute("aria-pressed", on ? "true" : "false");
+    button.setAttribute("aria-label", label);
+    button.setAttribute("title", label);
+  }
+
+  function applySound(on: boolean): void {
+    window.ACS?.setEnabled(on);
+  }
+
+  /* window.ACS is published once `import "acs-audio"` evaluates. Poll briefly
+     for it, then apply the stored preference once (and stop). Capped so a
+     missing runtime can never leave an interval running forever. */
+  function whenACSReady(run: () => void): void {
+    if (window.ACS) {
+      run();
+      return;
+    }
+    let tries = 0;
+    const id = window.setInterval(() => {
+      if (window.ACS || ++tries > 100) {
+        window.clearInterval(id);
+        if (window.ACS) run();
+      }
+    }, 50);
+  }
+
+  const audioToggles =
+    document.querySelectorAll<HTMLButtonElement>("[data-audio-toggle]");
+  audioToggles.forEach((button) => {
+    syncSoundLabel(button);
+    button.addEventListener("click", () => {
+      const next = !soundOn();
+      root.dataset.sound = next ? "on" : "off";
+      try {
+        localStorage.setItem(SOUND_KEY, next ? "on" : "off");
+      } catch {}
+      applySound(next);
+      audioToggles.forEach(syncSoundLabel);
+    });
+  });
+
+  if (audioToggles.length) whenACSReady(() => applySound(soundOn()));
+
+  /*
+   * Mobile menu — single toggle button flips data-menu-open on the header.
+   * The drawer is hidden via the `hidden` attribute + a CSS class that
+   * controls the slide/fade transition. Close triggers:
+   *  - clicking the toggle again
+   *  - clicking any nav link inside the drawer (so anchor jumps don't leave
+   *    the drawer hanging open over the destination)
+   *  - pressing Escape
+   *  - resizing past the desktop breakpoint (so layout changes don't leave
+   *    a hidden-but-open drawer in a weird state)
+   */
+  const header = document.querySelector<HTMLElement>(".site-header");
+  const menuToggle = document.querySelector<HTMLButtonElement>("[data-menu-toggle]");
+  const mobileNav = document.querySelector<HTMLElement>("[data-mobile-nav]");
+  const mobileLinks = document.querySelectorAll<HTMLAnchorElement>("[data-mobile-nav-link]");
+
+  function setMenu(open: boolean): void {
+    if (!header || !menuToggle || !mobileNav) return;
+    header.dataset.menuOpen = open ? "true" : "false";
+    menuToggle.setAttribute("aria-expanded", open ? "true" : "false");
+    menuToggle.setAttribute("aria-label", open ? "Close menu" : "Open menu");
+    if (open) {
+      mobileNav.removeAttribute("hidden");
+    } else {
+      mobileNav.setAttribute("hidden", "");
+    }
+  }
+
+  if (menuToggle && mobileNav && header) {
+    menuToggle.addEventListener("click", () => {
+      const isOpen = header.dataset.menuOpen === "true";
+      setMenu(!isOpen);
+    });
+
+    mobileLinks.forEach((link) => {
+      link.addEventListener("click", () => setMenu(false));
+    });
+
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape" && header.dataset.menuOpen === "true") {
+        setMenu(false);
+        menuToggle.focus();
+      }
+    });
+
+    const desktopMql = window.matchMedia("(min-width: 721px)");
+    const onChange = (e: MediaQueryListEvent | MediaQueryList): void => {
+      if (e.matches) setMenu(false);
+    };
+    desktopMql.addEventListener("change", onChange);
+  }
+</script>
+
+<style>
+  .site-header {
+    position: sticky;
+    top: 0;
+    z-index: 50;
+    background: color-mix(in oklab, var(--color-bg) 88%, transparent);
+    backdrop-filter: saturate(140%) blur(8px);
+    -webkit-backdrop-filter: saturate(140%) blur(8px);
+    border-bottom: var(--line-w) solid var(--color-line);
+  }
+
+  /* Three tracks: brand (left), nav (dead-centered in the bar), end cluster
+     (right). The 1fr side tracks are equal, so the auto-sized nav sits at the
+     true center regardless of how wide the brand or the end cluster grow. On
+     mobile the nav is display:none, the center track collapses to 0, and the
+     two 1fr tracks split the bar — brand left, end right, as before. */
+  .site-header__inner {
+    max-width: var(--page-max-w);
+    margin-inline: auto;
+    padding-block: var(--sp-4);
+    padding-inline: var(--page-px);
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    align-items: center;
+    gap: var(--sp-6);
+  }
+  .brand {
+    justify-self: start;
+  }
+  .nav--desktop {
+    justify-self: center;
+  }
+  .site-header__end {
+    justify-self: end;
+  }
+
+  /* Brand */
+  .brand {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--sp-3);
+    color: var(--color-fg);
+  }
+  .brand__mark {
+    display: block;
+    flex-shrink: 0;
+  }
+  .brand__name {
+    font-family: var(--font-display);
+    font-size: var(--fs-md);
+    font-weight: var(--fw-semibold);
+    letter-spacing: var(--ls-display);
+    line-height: 1;
+  }
+  .brand__name-em {
+    font-weight: var(--fw-regular);
+    color: var(--color-muted-fg);
+  }
+
+  /* Nav — desktop inline list */
+  .nav ul {
+    list-style: none;
+    display: flex;
+    gap: var(--sp-6);
+  }
+  .nav a {
+    font-family: var(--font-body);
+    font-size: var(--fs-sm);
+    font-weight: var(--fw-medium);
+    letter-spacing: var(--ls-normal);
+    color: var(--color-muted-fg);
+    position: relative;
+    padding-block: var(--sp-2);
+    padding-inline: var(--sp-1);
+    display: inline-block;
+    transition: color 0.18s ease;
+  }
+  .nav a::after {
+    content: "";
+    position: absolute;
+    inset-inline: var(--sp-1);
+    bottom: calc(var(--sp-2) - 4px);
+    height: var(--line-w);
+    background: var(--color-accent);
+    transform: scaleX(0);
+    transform-origin: left center;
+    transition: transform 0.18s ease;
+  }
+  .nav a:hover,
+  .nav a:focus-visible {
+    color: var(--color-fg);
+  }
+  .nav a:hover::after,
+  .nav a:focus-visible::after,
+  .nav a[aria-current="page"]::after,
+  .nav a.is-active::after {
+    transform: scaleX(1);
+  }
+  .nav a[aria-current="page"],
+  .nav a.is-active {
+    color: var(--color-accent-text);
+  }
+
+  /* End cluster — search + theme toggle + sound toggle (+ menu toggle on
+     mobile). The nav now lives in its own centered track, not in here. */
+  .site-header__end {
+    display: flex;
+    align-items: center;
+    gap: var(--sp-4);
+  }
+
+  /* Theme toggle */
+  .theme-toggle {
+    width: 32px;
+    height: 32px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--color-muted-fg);
+    border-radius: var(--radius-sm);
+    transition: color 0.18s ease, background-color 0.18s ease;
+  }
+  .theme-toggle:hover,
+  .theme-toggle:focus-visible {
+    color: var(--color-fg);
+    background: var(--color-surface);
+  }
+  .theme-toggle__icon {
+    display: none;
+  }
+
+  /* Show the icon for the mode you'll switch TO (target, not current). */
+  :root[data-theme="dark"] .theme-toggle__icon--sun,
+  :root[data-theme="light"] .theme-toggle__icon--moon {
+    display: block;
+  }
+  /* Auto mode (no override): mirror system preference. */
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="dark"]):not([data-theme="light"])
+      .theme-toggle__icon--sun {
+      display: block;
+    }
+  }
+  @media (prefers-color-scheme: light), (prefers-color-scheme: no-preference) {
+    :root:not([data-theme="dark"]):not([data-theme="light"])
+      .theme-toggle__icon--moon {
+      display: block;
+    }
+  }
+
+  /* Sound toggle — same chrome as the theme toggle so the two icon buttons sit
+     as a matched pair. Goes muted-accent when sound is off, a quiet "this is
+     switched off" cue that still reads in both themes. */
+  .audio-toggle {
+    width: 32px;
+    height: 32px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--color-muted-fg);
+    border-radius: var(--radius-sm);
+    transition:
+      color 0.18s ease,
+      background-color 0.18s ease;
+  }
+  .audio-toggle:hover,
+  .audio-toggle:focus-visible {
+    color: var(--color-fg);
+    background: var(--color-surface);
+  }
+  :root[data-sound="off"] .audio-toggle {
+    color: var(--color-accent-text);
+  }
+
+  /* On-icon shows by default (sound is on unless explicitly muted); the
+     data-sound="off" override swaps to the muted glyph. */
+  .audio-toggle__icon--on {
+    display: block;
+  }
+  .audio-toggle__icon--off {
+    display: none;
+  }
+  :root[data-sound="off"] .audio-toggle__icon--on {
+    display: none;
+  }
+  :root[data-sound="off"] .audio-toggle__icon--off {
+    display: block;
+  }
+
+  /* Hamburger button — hidden on desktop, shown on mobile. Same chrome as the
+     theme toggle so the two icon buttons in the end cluster read as a pair. */
+  .menu-toggle {
+    display: none;
+    width: 36px;
+    height: 36px;
+    align-items: center;
+    justify-content: center;
+    color: var(--color-muted-fg);
+    border-radius: var(--radius-sm);
+    transition: color 0.18s ease, background-color 0.18s ease;
+  }
+  .menu-toggle:hover,
+  .menu-toggle:focus-visible {
+    color: var(--color-fg);
+    background: var(--color-surface);
+  }
+  .menu-toggle__icon {
+    display: none;
+  }
+  .menu-toggle__icon--open {
+    display: block;
+  }
+  .site-header[data-menu-open="true"] .menu-toggle__icon--open {
+    display: none;
+  }
+  .site-header[data-menu-open="true"] .menu-toggle__icon--close {
+    display: block;
+  }
+  .site-header[data-menu-open="true"] .menu-toggle {
+    color: var(--color-fg);
+    background: var(--color-surface);
+  }
+
+  /* Mobile drawer — sits directly under the header bar, full-width, with a
+     soft hairline separator. The `hidden` attribute drives presence; CSS only
+     adjusts the visual treatment when it's open. */
+  .mobile-nav {
+    border-top: var(--line-w) solid var(--color-line);
+    background: color-mix(in oklab, var(--color-bg) 96%, transparent);
+    backdrop-filter: saturate(140%) blur(8px);
+    -webkit-backdrop-filter: saturate(140%) blur(8px);
+  }
+  .mobile-nav[hidden] {
+    display: none;
+  }
+  .mobile-nav__nav {
+    max-width: var(--page-max-w);
+    margin-inline: auto;
+    padding-block: var(--sp-3);
+    padding-inline: var(--page-px);
+  }
+  .mobile-nav__nav ul {
+    list-style: none;
+    display: grid;
+    gap: 2px;
+  }
+  .mobile-nav__nav a {
+    display: block;
+    padding: var(--sp-3) var(--sp-3);
+    font-family: var(--font-body);
+    font-size: var(--fs-md);
+    font-weight: var(--fw-medium);
+    color: var(--color-fg);
+    border-radius: var(--radius-sm);
+    border-left: 2px solid transparent;
+    transition:
+      color 0.16s ease,
+      background-color 0.16s ease,
+      border-color 0.16s ease;
+  }
+  .mobile-nav__nav a:hover,
+  .mobile-nav__nav a:focus-visible {
+    background: var(--color-surface);
+    border-left-color: var(--color-line-strong);
+  }
+  .mobile-nav__nav a[aria-current="page"] {
+    color: var(--color-accent-text);
+    border-left-color: var(--color-accent);
+    background: color-mix(in oklab, var(--color-accent) 8%, transparent);
+  }
+
+  /* ─────────────────────────  Responsive  ──────────────────────────── */
+  @media (max-width: 720px) {
+    /* The nav is gone here, so the 3-track centering grid isn't needed — drop
+       back to flex so the brand keeps its natural width (the equal 1fr tracks
+       would otherwise pinch it into half the bar and wrap "Optical Center"). */
+    .site-header__inner {
+      display: flex;
+      justify-content: space-between;
+      gap: var(--sp-3);
+      padding-block: var(--sp-3);
+    }
+    .site-header__end {
+      gap: var(--sp-2);
+    }
+    /* Hide inline nav, show hamburger. The drawer takes over. */
+    .nav--desktop {
+      display: none;
+    }
+    .menu-toggle {
+      display: inline-flex;
+    }
+    .brand__name {
+      font-size: var(--fs-sm);
+    }
+  }
+
+  /* Very narrow phones — let the brand stay readable but trim spacing. */
+  @media (max-width: 360px) {
+    .site-header__inner {
+      gap: var(--sp-2);
+      padding-block: var(--sp-2);
+    }
+    .brand__name-em {
+      display: none;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .nav a,
+    .nav a::after,
+    .theme-toggle,
+    .audio-toggle,
+    .menu-toggle,
+    .mobile-nav__nav a {
+      transition: none;
+    }
+  }
+</style>

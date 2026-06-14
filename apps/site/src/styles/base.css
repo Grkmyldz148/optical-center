@@ -1,0 +1,104 @@
+/* Modern reset + flat typography baseline */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+  text-rendering: optimizeLegibility;
+  font-optical-sizing: auto;
+  background: var(--color-bg);
+  color: var(--color-fg);
+  /* Prevent any rogue horizontal overflow from leaking past the viewport on
+     phones — uses `clip` (not `hidden`) so sticky positioning still works. */
+  overflow-x: clip;
+}
+
+body {
+  min-height: 100vh;
+  /* Mobile Safari leaves a tail of empty bg when the address bar slides
+     up. Use the dynamic viewport unit to track the real visible area. */
+  min-height: 100dvh;
+  font-family: var(--font-body);
+  font-size: var(--fs-base);
+  font-weight: var(--fw-regular);
+  line-height: var(--lh-body);
+  font-feature-settings: "ss01", "cv11";
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  background: var(--color-bg);
+  color: var(--color-fg);
+  overflow-x: clip;
+  /* Stop rubber-band scroll chaining from bouncing the whole page when an
+     internal scroll container (code block, pipeline diagram) hits its
+     edge. */
+  overscroll-behavior-y: none;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  font-family: var(--font-display);
+  font-weight: var(--fw-medium);
+  line-height: var(--lh-tight);
+  letter-spacing: var(--ls-display);
+}
+
+code,
+kbd,
+samp,
+pre {
+  font-family: var(--font-mono);
+  font-feature-settings: "ss02", "calt", "zero";
+}
+
+img,
+picture,
+video,
+canvas,
+svg {
+  display: block;
+  max-width: 100%;
+}
+
+input,
+button,
+textarea,
+select {
+  font: inherit;
+  color: inherit;
+}
+
+button {
+  background: none;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+::selection {
+  background: var(--color-accent);
+  color: var(--color-on-accent);
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+}

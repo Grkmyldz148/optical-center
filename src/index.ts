@@ -1,7 +1,13 @@
-// Public API — the only function consumers need.
-export { getOpticalCenter, CORRECTION_SCALE } from './final-model.js';
-export type { OpticalCenterResult } from './final-model.js';
+/**
+ * Browser-safe public API.
+ *
+ * Re-exports the model (the actual algorithm) and the build-time core
+ * (viewBox math, parsing, types, version, warnings). Native helpers
+ * (`rasterizeSvg`, `transformViewBoxFromSvg`) live under
+ * `optical-center/node`; the cache layer under `optical-center/cli`
+ * surfaces or via direct subpath import — neither is loaded by anything
+ * a browser bundler would walk into.
+ */
 
-// Lower-level exports (advanced use — not needed for typical usage).
-export { computeOffsetV2 } from './compute-offset.js';
-export type { OpticalOffset, ComputeOptionsV2 } from './compute-offset.js';
+export * from './model/index.js';
+export * from './core/index.js';

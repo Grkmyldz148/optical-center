@@ -1,0 +1,43 @@
+{
+  "version": 1,
+  "description": "Shared icon fixture pool. Tests and examples both consume this — single source of truth so no test case lives in only one place.",
+  "tolerancePercent": 25,
+  "icons": [
+    { "id": "lucide/play",                "family": "lucide",      "name": "Play",          "viewBox": "0 0 24 24",     "stroke": true,  "magnitudeRef": 5.99,  "clipExpected": false, "notes": "Triangle pointing right; classic asymmetric icon." },
+    { "id": "lucide/search",              "family": "lucide",      "name": "Search",        "viewBox": "0 0 24 24",     "stroke": true,  "magnitudeRef": 2.03,  "clipExpected": false, "notes": "Magnifier handle adds slight bottom-right bias." },
+    { "id": "lucide/heart",               "family": "lucide",      "name": "Heart",         "viewBox": "0 0 24 24",     "stroke": true,  "magnitudeRef": 9.19,  "clipExpected": true,  "notes": "Stroke heart — caps near edge cause clip flag." },
+    { "id": "lucide/arrow-right",         "family": "lucide",      "name": "Arrow Right",   "viewBox": "0 0 24 24",     "stroke": true,  "magnitudeRef": 4.08,  "clipExpected": false, "notes": "Arrow head shifts mass right." },
+    { "id": "lucide/star",                "family": "lucide",      "name": "Star",          "viewBox": "0 0 24 24",     "stroke": true,  "magnitudeRef": 2.10,  "clipExpected": false, "notes": "Five-point star, near-symmetric." },
+
+    { "id": "heroicons/bell-solid",       "family": "heroicons",   "name": "Bell",          "viewBox": "0 0 24 24",     "stroke": false, "magnitudeRef": 1.45,  "clipExpected": false, "notes": "Solid bell at 24-grid." },
+    { "id": "heroicons/home-solid",       "family": "heroicons",   "name": "Home",          "viewBox": "0 0 24 24",     "stroke": false, "magnitudeRef": 0.08,  "clipExpected": false, "notes": "Roof + body — exceptionally well-balanced." },
+    { "id": "heroicons/user-solid",       "family": "heroicons",   "name": "User",          "viewBox": "0 0 24 24",     "stroke": false, "magnitudeRef": 2.28,  "clipExpected": false, "notes": "Avatar." },
+    { "id": "heroicons/magnifying-glass", "family": "heroicons",   "name": "Magnifier",     "viewBox": "0 0 24 24",     "stroke": false, "magnitudeRef": 2.01,  "clipExpected": false, "notes": "Solid handle bottom-right." },
+
+    { "id": "feather/camera",             "family": "feather",     "name": "Camera",        "viewBox": "0 0 24 24",     "stroke": true,  "magnitudeRef": 0.41,  "clipExpected": true,  "notes": "Symmetric body; stroke at top edge clips." },
+    { "id": "feather/mail",               "family": "feather",     "name": "Mail",          "viewBox": "0 0 24 24",     "stroke": true,  "magnitudeRef": 3.72,  "clipExpected": false, "notes": "Envelope; flap weights it down." },
+    { "id": "feather/settings",           "family": "feather",     "name": "Settings",      "viewBox": "0 0 24 24",     "stroke": true,  "magnitudeRef": 2.64,  "clipExpected": true,  "notes": "Gear teeth at the edge." },
+
+    { "id": "fontawesome/star-solid",     "family": "fontawesome", "name": "Star",          "viewBox": "0 0 576 512",   "stroke": false, "magnitudeRef": 0.81,  "clipExpected": true,  "notes": "FA uses 576-wide non-square viewBox." },
+    { "id": "fontawesome/check-circle",   "family": "fontawesome", "name": "Check Circle",  "viewBox": "0 0 512 512",   "stroke": false, "magnitudeRef": 2.65,  "clipExpected": true,  "notes": "Circle with check inside." },
+    { "id": "fontawesome/play-solid",     "family": "fontawesome", "name": "Play",          "viewBox": "0 0 384 512",   "stroke": false, "magnitudeRef": 6.43,  "clipExpected": true,  "notes": "FA play — narrower than tall (384x512)." },
+
+    { "id": "phosphor/triangle-fill",     "family": "phosphor",    "name": "Triangle",      "viewBox": "0 0 256 256",   "stroke": false, "magnitudeRef": 3.85,  "clipExpected": false, "notes": "256-grid triangle." },
+    { "id": "phosphor/circle-fill",       "family": "phosphor",    "name": "Circle",        "viewBox": "0 0 256 256",   "stroke": false, "magnitudeRef": 2.58,  "clipExpected": false, "notes": "Pure circle — only vertical perceptual bias." },
+    { "id": "phosphor/heart-fill",        "family": "phosphor",    "name": "Heart",         "viewBox": "0 0 256 256",   "stroke": false, "magnitudeRef": 6.77,  "clipExpected": false, "notes": "Solid heart — broader bottom shifts mass." },
+
+    { "id": "tabler/chevron-right",       "family": "tabler",      "name": "Chevron Right", "viewBox": "0 0 24 24",     "stroke": true,  "magnitudeRef": 4.08,  "clipExpected": false, "notes": "Open chevron — dominant rightward mass." },
+    { "id": "tabler/send",                "family": "tabler",      "name": "Send",          "viewBox": "0 0 24 24",     "stroke": true,  "magnitudeRef": 6.59,  "clipExpected": false, "notes": "Paper airplane diagonal." },
+
+    { "id": "edge-cases/tiny",                "family": "edge-cases", "name": "Tiny dot",          "viewBox": "0 0 24 24",     "stroke": false, "magnitudeRef": 2.54,  "clipExpected": false, "notes": "1-px circle in 24-grid." },
+    { "id": "edge-cases/asymmetric-triangle", "family": "edge-cases", "name": "Asymmetric Triangle", "viewBox": "0 0 24 24",   "stroke": false, "magnitudeRef": 10.50, "clipExpected": true,  "notes": "Heavy right-bias triangle." },
+    { "id": "edge-cases/multicolor",          "family": "edge-cases", "name": "Multicolor",        "viewBox": "0 0 24 24",     "stroke": false, "magnitudeRef": 2.60,  "clipExpected": false, "notes": "Three nested shapes, multiple fills." },
+    { "id": "edge-cases/with-text",           "family": "edge-cases", "name": "With Text",         "viewBox": "0 0 24 24",     "stroke": true,  "magnitudeRef": 2.58,  "clipExpected": false, "notes": "<text> element — exercises resvg's font path." },
+    { "id": "edge-cases/edge-clipped",        "family": "edge-cases", "name": "Edge-clipped",      "viewBox": "0 0 24 24",     "stroke": false, "magnitudeRef": 4.00,  "clipExpected": false, "notes": "Content flush at right edge." },
+    { "id": "edge-cases/stroke-only",         "family": "edge-cases", "name": "Stroke Only",       "viewBox": "0 0 24 24",     "stroke": true,  "magnitudeRef": 5.99,  "clipExpected": false, "notes": "Outlined play triangle — fill: none, stroke only." },
+    { "id": "edge-cases/non-square",          "family": "edge-cases", "name": "Non-square",        "viewBox": "0 0 48 24",     "stroke": false, "magnitudeRef": 3.65,  "clipExpected": false, "notes": "Wide viewBox; aspect ratio check." },
+    { "id": "edge-cases/heavy-padding",       "family": "edge-cases", "name": "Heavy padding",     "viewBox": "0 0 24 24",     "stroke": false, "magnitudeRef": 2.65,  "clipExpected": false, "notes": "Tiny shape in big viewBox." },
+    { "id": "edge-cases/negative-viewbox",    "family": "edge-cases", "name": "Negative viewBox",  "viewBox": "-12 -12 24 24", "stroke": false, "magnitudeRef": 7.41,  "clipExpected": false, "notes": "viewBox starts at negative coords." },
+    { "id": "edge-cases/gradient",            "family": "edge-cases", "name": "Gradient",          "viewBox": "0 0 24 24",     "stroke": false, "magnitudeRef": 5.12,  "clipExpected": false, "notes": "<defs>+<linearGradient> — exercises def-block parsing." }
+  ]
+}

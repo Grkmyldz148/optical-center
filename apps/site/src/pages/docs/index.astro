@@ -1,0 +1,287 @@
+---
+/*
+ * Docs · Overview — the conceptual entry point. Establishes the single
+ * rule the rest of the docs depend on ("the directive lives on the
+ * container, never on the icon") and links to the five canonical
+ * patterns that apply that rule in different surfaces.
+ */
+import DocsLayout from "../../layouts/DocsLayout.astro";
+import CodeBlock from "../../components/docs/CodeBlock.astro";
+
+type Pattern = {
+  kicker: string;
+  label: string;
+  href: string;
+  desc: string;
+  best: string;
+};
+
+const PATTERNS: readonly Pattern[] = [
+  {
+    kicker: "01",
+    label: "CSS class",
+    href: "/docs/patterns/css-class",
+    desc: "Hand-written CSS rule on the wrapper. The PostCSS plugin scans your JSX, links the class to the icon, emits centering + translate.",
+    best: "Canonical · use when in doubt",
+  },
+  {
+    kicker: "02",
+    label: "Tailwind utility",
+    href: "/docs/patterns/tailwind",
+    desc: "Drop the optical-center utility on any wrapper. Same end-state as the CSS-class pattern, registered as a Tailwind component.",
+    best: "Tailwind projects",
+  },
+  {
+    kicker: "03",
+    label: "JSX attribute",
+    href: "/docs/patterns/jsx-attribute",
+    desc: "Inline directive on the wrapper, handled by Babel. No CSS file needed — the plugin injects display:flex and translate as inline styles.",
+    best: "One-off wrappers, no CSS layer",
+  },
+  {
+    kicker: "04",
+    label: "Inline SVG",
+    href: "/docs/patterns/inline-svg",
+    desc: "Hand-written <svg> inside the wrapper. Babel rewrites its viewBox at compile time so the shift lives inside the asset, not on the element.",
+    best: "Designer hand-offs, hand-rolled glyphs",
+  },
+  {
+    kicker: "05",
+    label: "CSS mask-image",
+    href: "/docs/patterns/css-mask",
+    desc: "The element IS the icon — mounted via mask-image and recolored by currentColor. PostCSS rewrites the SVG and inlines a data: URI.",
+    best: "Utility-icon CSS, currentColor recoloring",
+  },
+];
+
+const toc = [
+  { id: "two-layers", label: "Two layers", level: 2 as const },
+  { id: "the-rule", label: "The rule", level: 2 as const },
+  { id: "two-surfaces", label: "Two surfaces, one declaration", level: 2 as const },
+  { id: "patterns", label: "The five patterns", level: 2 as const },
+  { id: "status", label: "Status", level: 2 as const },
+];
+---
+
+<DocsLayout
+  title="Documentation"
+  description="optical-center bakes perceptual centering into the elements that hold your icons. One declaration, two surfaces, five patterns — always on a wrapper, never on the icon itself."
+  toc={toc}
+>
+  <h2 id="two-layers">Two layers</h2>
+  <p>
+    optical-center meets your project at two levels. Most people only
+    ever touch the first.
+  </p>
+  <ul>
+    <li>
+      <strong>Automatic — the icons you import.</strong> Add the
+      <a href="/docs/install">Vite plugin</a> and the icon libraries you
+      already use (Iconify, your own SVG files, unplugin-icons, a
+      hand-rolled icon map) come out optically centered with no markup at
+      all. The build finds the icon SVG by shape and bakes the shift into
+      the asset. This is the path most projects want —
+      <a href="/docs/icons">Any icon library</a> covers it case by case.
+    </li>
+    <li>
+      <strong>The directive — when you want explicit control.</strong>
+      For icons the build can't reach (a component library's render
+      output, a runtime-fetched glyph) or when you'd rather centre the
+      slot than the asset, you write <code>optical-center: auto</code> on
+      the container. That declaration, and the five patterns that apply
+      it, are the rest of this page.
+    </li>
+  </ul>
+  <p>
+    The two compose freely — automatic correction for your imported
+    icons, the directive wherever you reach for it.
+  </p>
+
+  <h2 id="the-rule">The rule</h2>
+  <p>
+    The directive lives on the <strong>container</strong> that wraps the
+    icon, never on the icon itself. The icon comes in unchanged — your
+    imported <code>{`<Play />`}</code>, your designer's
+    <code>{`<svg>`}</code>, your utility's <code>mask: url(…svg)</code>.
+    The container picks up <code>optical-center: auto</code> and the
+    build step does the rest.
+  </p>
+  <p>
+    Conceptually the directive replaces flex centering:
+    <code>justify-content: center</code> and
+    <code>align-items: center</code> tell the browser where the
+    bounding box's middle is; <code>optical-center: auto</code> tells
+    it where the eye actually wants the icon to land. Same surface,
+    same property tier, more accurate result.
+  </p>
+
+  <h2 id="two-surfaces">Two surfaces, one declaration</h2>
+  <p>
+    <code>optical-center: auto</code> can arrive in two places — they
+    mean the exact same thing.
+  </p>
+
+  <h3>In CSS, on a rule that targets the container</h3>
+  <CodeBlock
+    filename="styles.css"
+    lang="css"
+    code={`.badge {
+  optical-center: auto;
+}`}
+  />
+
+  <h3>As an attribute on the container, in HTML or JSX</h3>
+  <CodeBlock
+    filename="App.tsx"
+    lang="tsx"
+    code={`<div optical-center="auto">
+  <Play />
+</div>`}
+  />
+
+  <p>
+    Both forms compile to the same emitted CSS: <code>display: flex</code>
+    on the wrapper, <code>margin: auto</code> on the icon child, plus a
+    <code>translate</code> that carries the per-icon perceptual shift.
+    Centering happens via the well-known flex auto-margin trick — no
+    <code>justify-content</code>, no <code>align-items</code>, no
+    <code>position: absolute</code> on the child.
+  </p>
+
+  <h2 id="patterns">The five patterns</h2>
+  <p>
+    Pick whichever surface fits how your project already declares icons.
+    All five compose; you can mix CSS-class wrappers in one component
+    and Tailwind utilities in another without conflict.
+  </p>
+
+  <ul class="docs-hub" role="list">
+    {PATTERNS.map((p) => (
+      <li>
+        <a class="docs-hub__card" href={p.href}>
+          <span class="docs-hub__card-kicker">{p.kicker}</span>
+          <span class="docs-hub__card-title">{p.label}</span>
+          <span class="docs-hub__card-desc">{p.desc}</span>
+          <span class="docs-hub__card-best">{p.best}</span>
+          <span class="docs-hub__card-arrow" aria-hidden="true">
+            <svg viewBox="0 0 14 14" width="14" height="14">
+              <path
+                d="M 3 11 L 11 3 M 11 3 L 11 8 M 11 3 L 6 3"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.6"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              />
+            </svg>
+          </span>
+        </a>
+      </li>
+    ))}
+  </ul>
+
+  <h2 id="status">Status</h2>
+  <aside class="callout callout--tip">
+    <p class="callout-label">v0.2.0-alpha</p>
+    <p>
+      MIT licensed. The core API is stable; subpath adapters
+      (<code>vite</code>, <code>astro</code>, <code>babel</code>,
+      <code>postcss</code>, <code>tailwind</code>, <code>cli</code>,
+      <code>node</code>) are additive. The shipped model is
+      <code>V2 × 0.745</code> — Phase 1 (N=36, method of adjustment)
+      globally scaled by the Phase 2 pooled point of subjective
+      equality (N=30, 2AFC). See the <a href="/#science">Science</a>
+      and <a href="/#research">Research</a> sections for the full
+      study program.
+    </p>
+  </aside>
+</DocsLayout>
+
+<style>
+  /* Hub card grid — five cards in a 2-column layout (last card spans full
+     width on wide; flows naturally on narrow). The card's best-for line
+     sits below the description in muted mono so the eye can pre-filter
+     "which one applies to me" without reading every body line. */
+  .docs-hub {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: var(--sp-4);
+  }
+  @media (max-width: 700px) {
+    .docs-hub {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  .docs-hub__card {
+    position: relative;
+    display: grid;
+    gap: var(--sp-2);
+    padding: var(--sp-5);
+    border: var(--line-w) solid var(--color-line);
+    border-radius: var(--radius-sm);
+    background: var(--color-surface);
+    color: var(--color-fg);
+    text-decoration: none;
+    transition:
+      border-color 0.18s ease,
+      background-color 0.18s ease,
+      transform 0.18s ease;
+  }
+  .docs-hub__card:hover,
+  .docs-hub__card:focus-visible {
+    border-color: var(--color-accent);
+    background: var(--color-surface-hi);
+    transform: translateY(-1px);
+  }
+  .docs-hub__card-kicker {
+    font-family: var(--font-mono);
+    font-size: var(--fs-xs);
+    letter-spacing: var(--ls-wide);
+    color: var(--color-accent-text);
+  }
+  .docs-hub__card-title {
+    font-family: var(--font-display);
+    font-size: var(--fs-md);
+    font-weight: var(--fw-semibold);
+    letter-spacing: var(--ls-tight);
+    color: var(--color-fg);
+  }
+  .docs-hub__card-desc {
+    font-family: var(--font-body);
+    font-size: var(--fs-sm);
+    line-height: var(--lh-body);
+    color: var(--color-muted-fg);
+  }
+  .docs-hub__card-best {
+    font-family: var(--font-mono);
+    font-size: var(--fs-xs);
+    letter-spacing: 0;
+    color: var(--color-muted-fg);
+    padding-top: var(--sp-1);
+    border-top: var(--line-w) solid var(--color-line);
+    margin-top: var(--sp-2);
+  }
+  .docs-hub__card-arrow {
+    position: absolute;
+    top: var(--sp-5);
+    right: var(--sp-5);
+    color: var(--color-muted-fg);
+    transition: color 0.18s ease, transform 0.18s ease;
+  }
+  .docs-hub__card:hover .docs-hub__card-arrow,
+  .docs-hub__card:focus-visible .docs-hub__card-arrow {
+    color: var(--color-accent-text);
+    transform: translate(2px, -2px);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .docs-hub__card,
+    .docs-hub__card-arrow {
+      transition: none;
+    }
+  }
+</style>

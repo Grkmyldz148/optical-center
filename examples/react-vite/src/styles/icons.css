@@ -1,0 +1,86 @@
+/*
+ * Every `optical-center` directive the demo opts into, grouped by
+ * the mechanism that resolves it. The PostCSS plugin (and, for
+ * inline `<svg>`, Babel) does all the heavy lifting; this file just
+ * declares the directives.
+ *
+ * Hard contract followed everywhere below: no rule that opts into
+ * `optical-center` (or its `--optical-center` tracer) ever uses
+ * `align-items: center` or `justify-content: center`. Centering is
+ * the directive's job, and the plugin emits the auto-margin recipe
+ * (`display: flex` on the container + `margin: auto` on the child).
+ */
+
+/* ----------------------------------------------------------------
+ * URL-rewrite mode (icon-side).
+ *
+ * The rule's element IS the icon: it mounts the SVG via `mask: url()`
+ * (or `background-image: url()`) and the PostCSS plugin rewrites the
+ * URL to a `data:` URI whose viewBox is shifted by the perceptual
+ * offset. Positioning of the element itself stays the consumer's
+ * layout call.
+ * ---------------------------------------------------------------- */
+.icon-play {
+  display: inline-block;
+  width: 24px;
+  height: 24px;
+  background: currentColor;
+  mask: url('lucide-static/icons/play.svg') center / contain no-repeat;
+  optical-center: auto;
+}
+
+/* Demo-only twin used in the comparison row — no directive, so the
+ * mask points at the uncorrected source SVG and the geometric centre
+ * shows through. Not something you'd write in production code. */
+.icon-play-geometric {
+  display: inline-block;
+  width: 24px;
+  height: 24px;
+  background: currentColor;
+  mask: url('lucide-static/icons/play.svg') center / contain no-repeat;
+}
+
+/* ----------------------------------------------------------------
+ * Container-side mode (CSS-class flavour).
+ *
+ * The rule's selector identifies a WRAPPER around an icon. The
+ * PostCSS plugin scans the project's JSX once, finds an icon
+ * component (lucide-react etc.) nested inside an element with this
+ * class, maps the class to the package's source SVG, and emits:
+ *
+ *   .badge-optical { display: flex; --optical-center: auto; }
+ *   .badge-optical > * { margin: auto; translate: dx% dy%; }
+ *
+ * Distinct class names per scenario are deliberate: the JSX scanner
+ * keeps a global map (one entry per class), so reusing the same
+ * class across modes would over-apply the translate from the JSX
+ * match onto inline / URL-rewrite badges that already shift
+ * themselves internally. In a real consumer codebase you'd typically
+ * use a single class for a single mode.
+ * ---------------------------------------------------------------- */
+.badge-optical { optical-center: auto; }
+.badge-inline { optical-center: auto; }
+.badge-css { optical-center: auto; }
+
+/* ----------------------------------------------------------------
+ * Container-side mode (Tailwind utility flavour).
+ *
+ * In a real project the Tailwind plugin at `optical-center/tailwind`
+ * registers this class as a component utility. The demo hand-rolls
+ * the same declaration so it doesn't take a Tailwind dependency.
+ * The PostCSS expansion is identical to the CSS-class flavour above.
+ * ---------------------------------------------------------------- */
+.optical-center { optical-center: auto; }
+
+/* ----------------------------------------------------------------
+ * Babel breadcrumb.
+ *
+ * For inline `<svg>` and the JSX-attribute scenarios the Babel
+ * plugin processes the directive in JSX, not CSS. It always emits a
+ * `data-optical-center=""` attribute on the transformed element as
+ * a DevTools breadcrumb. No CSS hook on the attribute is needed —
+ * the perceptual shift is baked into the SVG asset (viewBox rewrite)
+ * or into inline styles (translate). Listed here as a pointer for
+ * anyone hunting for "where does the centering for those scenarios
+ * come from?": it's the Babel-injected `style` prop, not a CSS rule.
+ */

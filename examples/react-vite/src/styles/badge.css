@@ -1,0 +1,85 @@
+/*
+ * Badge shell — the dark circle that holds each icon in the demo.
+ * Nothing here is specific to optical-centering: `.badge` defines
+ * size + colour + the containing block for the crosshair pseudos.
+ * Centering of the icon inside is OWNED by the directive — every
+ * `optical-center: auto` rule (or Babel attribute) produces the
+ * `display: flex` + `margin: auto` recipe on its own. Geometric
+ * badges opt into the same recipe via `.badge-center`.
+ *
+ * Hard contract followed by every icon-centering rule in the project:
+ *   - NO `align-items: center` / `justify-content: center`
+ *   - NO `position: absolute` on the icon (stays in flow)
+ *   - Centering ALWAYS uses `display: flex` + child `margin: auto`
+ */
+
+.badge {
+  width: 160px;
+  height: 160px;
+  background: var(--brand);
+  color: #fff;
+  border-radius: 50%;
+  position: relative;
+}
+
+/*
+ * Manual centering modifier for geometric badges. Identical to the
+ * recipe the PostCSS / Babel plugins emit on the optical side, so
+ * the geometric vs. optical comparison is apples-to-apples — the
+ * only thing that changes between the two badges is whether the
+ * perceptual shift is applied (translate on optical, none on
+ * geometric).
+ */
+.badge-center { display: flex; }
+.badge-center > * { margin: auto; }
+
+/*
+ * Crosshair through the badge centre. Without it, "looks centered"
+ * is impossible to judge by eye — humans see the optical centre,
+ * not the geometric one. The 1-pixel lines are absolutely positioned
+ * relative to `.badge` and stay behind the icon (no z-index needed
+ * on themselves; the icon picks up `z-index: 1` below).
+ */
+.badge::before,
+.badge::after {
+  content: '';
+  position: absolute;
+  background: rgba(255, 255, 255, 0.45);
+  pointer-events: none;
+}
+.badge::before {
+  left: 0;
+  right: 0;
+  top: 50%;
+  height: 1px;
+}
+.badge::after {
+  top: 0;
+  bottom: 0;
+  left: 50%;
+  width: 1px;
+}
+
+/*
+ * Lift the icon above the crosshair without forcing `position:
+ * relative` — that would have overridden the in-flow centering the
+ * directive emits. `z-index` applies on flex items even when their
+ * `position` is `static`, so this works for every scenario.
+ *
+ * Size is bumped to 120 × 120 (from lucide's 24 × 24 default) so
+ * the perceptual shift becomes visible: 4.34% of 120px ≈ 5.2px,
+ * comfortably distinguishable from a vanilla flex-centred baseline.
+ */
+.badge svg,
+.badge span {
+  z-index: 1;
+}
+.badge svg,
+.badge .icon-play,
+.badge .icon-play-geometric {
+  width: 120px;
+  height: 120px;
+}
+.badge svg {
+  fill: currentColor;
+}
