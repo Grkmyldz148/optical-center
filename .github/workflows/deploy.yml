@@ -59,11 +59,14 @@ jobs:
         id: branch
         run: echo "name=${{ github.event_name == 'pull_request' && github.head_ref || 'main' }}" >> "$GITHUB_OUTPUT"
 
+      # wranglerVersion is pinned because wrangler-action@v3 otherwise installs
+      # its bundled default (wrangler 3.90.0), whose `pages deploy` fails here.
       - name: Deploy site
         uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ env.CLOUDFLARE_ACCOUNT_ID }}
+          wranglerVersion: "4.88.0"
           command: pages deploy apps/site/dist --project-name opticalcenter --branch ${{ steps.branch.outputs.name }}
 
       - name: Deploy playground
@@ -71,4 +74,5 @@ jobs:
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ env.CLOUDFLARE_ACCOUNT_ID }}
+          wranglerVersion: "4.88.0"
           command: pages deploy apps/playground/dist --project-name opticalcenter-playground --branch ${{ steps.branch.outputs.name }}
