@@ -1,0 +1,3 @@
+# Cloudflare Pages redirects.
+# Conventional sitemap discovery path → the generated sitemap index.
+/sitemap.xml  /sitemap-index.xml  301

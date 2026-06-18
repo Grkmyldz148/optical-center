@@ -21,6 +21,23 @@ const { title, description, toc = [] } = Astro.props as Props;
 const path = Astro.url.pathname.replace(/\/$/, "") || "/docs";
 const crumbs = breadcrumb(path);
 const { prev, next } = adjacent(path);
+
+// Breadcrumb structured data — Home → Docs → this page. Helps search engines
+// render a breadcrumb trail in results instead of a bare URL.
+const breadcrumbLd = {
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  itemListElement: [
+    { "@type": "ListItem", position: 1, name: "Optical Center", item: Astro.site?.href },
+    { "@type": "ListItem", position: 2, name: "Docs", item: new URL("/docs", Astro.site).href },
+    {
+      "@type": "ListItem",
+      position: 3,
+      name: title,
+      item: new URL(Astro.url.pathname, Astro.site).href,
+    },
+  ],
+};
 ---
 
 <Base
@@ -29,6 +46,7 @@ const { prev, next } = adjacent(path);
   ogTitle={`${title} · Optical Center docs`}
   type="article"
 >
+  <script is:inline type="application/ld+json" set:html={JSON.stringify(breadcrumbLd)} />
   <div class="docs">
     <Sidebar />
 

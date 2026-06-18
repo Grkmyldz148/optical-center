@@ -1,0 +1,109 @@
+---
+/*
+ * 404 — Astro emits this as /404.html, which Cloudflare Pages serves with a
+ * real 404 status for any unmatched route (instead of a soft-200 fallback).
+ * noindex so the error page never enters the index.
+ */
+import Base from "../layouts/Base.astro";
+---
+
+<Base
+  title="Page not found · Optical Center"
+  description="That page doesn't exist. Head back to the optical-center landing or jump into the docs."
+  noindex
+>
+  <section class="notfound">
+    <p class="notfound__code">404</p>
+    <h1 class="notfound__title">This page slipped off-center.</h1>
+    <p class="notfound__lead">
+      The page you're after doesn't exist — it may have moved or never shipped.
+    </p>
+    <div class="notfound__actions">
+      <a class="notfound__btn notfound__btn--primary" href="/">Back home</a>
+      <a class="notfound__btn" href="/docs">Read the docs</a>
+    </div>
+  </section>
+</Base>
+
+<style>
+  .notfound {
+    width: 100%;
+    max-width: var(--page-max-w);
+    margin-inline: auto;
+    padding-inline: var(--page-px);
+    min-height: calc(100svh - 73px);
+    display: grid;
+    align-content: center;
+    justify-items: start;
+    gap: var(--sp-4);
+  }
+  .notfound__code {
+    font-family: var(--font-mono);
+    font-size: var(--fs-sm);
+    letter-spacing: var(--ls-wide);
+    color: var(--color-accent-text);
+    margin: 0;
+  }
+  .notfound__title {
+    font-family: var(--font-display);
+    font-size: clamp(2rem, 5vw, 3.25rem);
+    font-weight: var(--fw-semibold);
+    line-height: var(--lh-tight);
+    letter-spacing: -0.03em;
+    color: var(--color-fg);
+    margin: 0;
+    max-width: 18ch;
+  }
+  .notfound__lead {
+    font-family: var(--font-body);
+    font-size: var(--fs-md);
+    line-height: var(--lh-body);
+    color: var(--color-soft-fg);
+    margin: 0;
+    max-width: 46ch;
+  }
+  .notfound__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--sp-3);
+    margin-top: var(--sp-4);
+  }
+  .notfound__btn {
+    display: inline-flex;
+    align-items: center;
+    padding: var(--sp-3) var(--sp-5);
+    border: var(--line-w) solid var(--color-line);
+    border-radius: var(--radius-sm);
+    background: var(--color-surface);
+    color: var(--color-fg);
+    font-family: var(--font-body);
+    font-size: var(--fs-sm);
+    font-weight: var(--fw-medium);
+    text-decoration: none;
+    transition:
+      border-color 0.18s ease,
+      background-color 0.18s ease,
+      transform 0.18s ease;
+  }
+  .notfound__btn:hover,
+  .notfound__btn:focus-visible {
+    border-color: var(--color-line-strong);
+    background: var(--color-surface-hi);
+    transform: translateY(-1px);
+  }
+  .notfound__btn--primary {
+    background: var(--color-accent);
+    border-color: var(--color-accent);
+    color: var(--color-on-accent);
+  }
+  .notfound__btn--primary:hover,
+  .notfound__btn--primary:focus-visible {
+    background: var(--color-accent);
+    border-color: var(--color-accent);
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .notfound__btn {
+      transition: none;
+    }
+  }
+</style>
