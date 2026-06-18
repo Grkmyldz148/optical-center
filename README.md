@@ -6,11 +6,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](#license)
 
 <p align="center">
-  <img
-    src="https://raw.githubusercontent.com/Grkmyldz148/optical-center/main/docs/assets/optical-center-demo.gif"
-    alt="Toggling optical-center: auto shifts a play icon off its geometric center to where the eye reads as balanced, by rewriting the SVG viewBox."
-    width="820"
-  />
+  <img src="docs/assets/optical-center-demo.gif" alt="Toggling optical-center: auto shifts a play icon off its geometric center to where the eye reads as balanced, by rewriting the SVG viewBox." width="820" />
 </p>
 
 Geometric center ≠ visual center. A play triangle (▶) dropped at the geometric

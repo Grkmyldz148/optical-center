@@ -2,6 +2,12 @@
   "name": "optical-center",
   "version": "0.2.0-alpha.1",
   "description": "Computes the perceptual optical center of an icon for visually balanced rendering.",
+  "homepage": "https://opticalcenter.dev",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Grkmyldz148/optical-center.git"
+  },
+  "bugs": "https://github.com/Grkmyldz148/optical-center/issues",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
