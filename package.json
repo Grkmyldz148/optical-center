@@ -1,6 +1,6 @@
 {
   "name": "optical-center",
-  "version": "0.2.0-alpha.0",
+  "version": "0.2.0-alpha.1",
   "description": "Computes the perceptual optical center of an icon for visually balanced rendering.",
   "type": "module",
   "main": "./dist/index.js",
