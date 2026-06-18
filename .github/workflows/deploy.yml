@@ -1,0 +1,74 @@
+name: Deploy
+
+# Builds the library, the Astro site and the Vite playground, then publishes
+# both to Cloudflare Pages (direct upload). Production runs on every push to
+# main; pull requests get an isolated preview deployment per branch.
+#
+# Required repo secret:
+#   CLOUDFLARE_API_TOKEN  — token with "Account › Cloudflare Pages › Edit"
+# The account id below is not secret and is kept inline on purpose.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  deployments: write
+
+env:
+  CLOUDFLARE_ACCOUNT_ID: c17df790c848837e82290566cdf245a4
+
+jobs:
+  deploy:
+    name: build & deploy
+    runs-on: ubuntu-latest
+    # Skip on PRs from forks — they cannot read CLOUDFLARE_API_TOKEN.
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build library
+        run: npm run build
+
+      - name: Build site
+        run: npm run build:site
+
+      - name: Build playground
+        run: npm run build:playground
+
+      # On main → production deploy (--branch main). On a PR → preview deploy
+      # tagged with the source branch, which Cloudflare serves at a unique URL.
+      - name: Resolve deploy branch
+        id: branch
+        run: echo "name=${{ github.event_name == 'pull_request' && github.head_ref || 'main' }}" >> "$GITHUB_OUTPUT"
+
+      - name: Deploy site
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ env.CLOUDFLARE_ACCOUNT_ID }}
+          command: pages deploy apps/site/dist --project-name opticalcenter --branch ${{ steps.branch.outputs.name }}
+
+      - name: Deploy playground
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ env.CLOUDFLARE_ACCOUNT_ID }}
+          command: pages deploy apps/playground/dist --project-name opticalcenter-playground --branch ${{ steps.branch.outputs.name }}
