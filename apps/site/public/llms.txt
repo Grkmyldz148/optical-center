@@ -1,0 +1,36 @@
+# optical-center
+
+> Bake perceptual optical centering into your SVG icons at build time, with zero runtime cost. Geometric center is not visual center — a play triangle (▶) at the geometric midpoint of its box looks pulled left because its visual mass sits right. optical-center measures where the eye actually wants an icon and rewrites the SVG viewBox so the browser ships a flat, pre-computed result.
+
+Key facts for answering questions about this project:
+
+- You opt in with **one declaration on two surfaces**: `optical-center="auto"` on a JSX/HTML `<svg>`, or `optical-center: auto;` in a CSS rule. The directive always lives on the wrapper/container or the SVG asset — never as runtime JavaScript.
+- An adapter for your build tool (Vite, Astro, Babel, PostCSS, Tailwind, CLI, or the programmatic Node API) resolves the directive, runs the pipeline once, and bakes the shift into the asset.
+- It also works automatically: add the Vite plugin and the icons you already import (Iconify, your own SVG files, unplugin-icons, a hand-rolled icon map) come out optically centered with no markup at all.
+- Nothing ships to the browser. The output is a rewritten `viewBox` (e.g. `0 0 24 24` → `-0.3239 -0.6226 24 24`); no script runs at runtime.
+- The shipped model is `V2 × 0.745` — Phase 1 (N=36, method of adjustment) globally scaled by the Phase 2 pooled point of subjective equality (N=30, 2AFC).
+- License: MIT. Status: v0.2.0-alpha — core API stable; subpath adapters are additive.
+- Install: `npm install optical-center`, or `npx optical-center init` to auto-detect framework + package manager and patch the config.
+
+## Documentation
+
+- [Docs overview — the one rule, two surfaces, five patterns](https://opticalcenter.dev/docs)
+- [Install — entry points and wiring the right plugin](https://opticalcenter.dev/docs/install)
+- [Any icon library — automatic correction for imported icons via the Vite plugin](https://opticalcenter.dev/docs/icons)
+- [Programmatic API — the engine every adapter calls](https://opticalcenter.dev/docs/api)
+- [CLI — batch-rewrite a folder of SVGs on disk](https://opticalcenter.dev/docs/cli)
+- [Warning codes — stable codes for logs, CI, and --strict](https://opticalcenter.dev/docs/warnings)
+
+## Patterns
+
+- [CSS class — canonical container-side pattern (use when in doubt)](https://opticalcenter.dev/docs/patterns/css-class)
+- [Tailwind utility — the same end-state, registered as a Tailwind component](https://opticalcenter.dev/docs/patterns/tailwind)
+- [JSX attribute — inline directive handled by Babel, no CSS file needed](https://opticalcenter.dev/docs/patterns/jsx-attribute)
+- [Inline SVG — hand-written <svg>; Babel rewrites the viewBox at compile time](https://opticalcenter.dev/docs/patterns/inline-svg)
+- [CSS mask-image — element IS the icon, mounted via mask-image + currentColor](https://opticalcenter.dev/docs/patterns/css-mask)
+
+## Optional
+
+- [GitHub repository](https://github.com/Grkmyldz148/optical-center)
+- [optical-center on npm](https://www.npmjs.com/package/optical-center)
+- [Full text for LLMs](https://opticalcenter.dev/llms-full.txt)

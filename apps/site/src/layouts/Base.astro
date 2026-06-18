@@ -5,10 +5,73 @@ import Header from "../components/Header.astro";
 import Footer from "../components/Footer.astro";
 
 interface Props {
+  /** Used verbatim in <title>. */
   title?: string;
+  /** <meta name="description"> + og/twitter description. */
+  description?: string;
+  /** Open Graph title; defaults to `title`. */
+  ogTitle?: string;
+  /** Share image, resolved against the site origin. Defaults to /og.png. */
+  image?: string;
+  /** og:type — "website" for landing pages, "article" for docs. */
+  type?: "website" | "article";
+  /** Emit a noindex robots directive (e.g. for thin or duplicate pages). */
+  noindex?: boolean;
 }
 
-const { title = "Optical Center" } = Astro.props;
+const SITE_NAME = "Optical Center";
+const DEFAULT_DESCRIPTION =
+  "Bake perceptual optical centering into your SVG icons at build time. One declaration, every build tool, zero runtime cost — icons land where the eye expects them.";
+
+const {
+  title = "Optical Center — perceptual icon centering at build time",
+  description = DEFAULT_DESCRIPTION,
+  ogTitle,
+  image = "/og.png",
+  type = "website",
+  noindex = false,
+} = Astro.props;
+
+// Absolute URLs for canonical + social tags. Astro.site is set in
+// astro.config.mjs, so these resolve to the production origin.
+const canonicalURL = new URL(Astro.url.pathname, Astro.site);
+const imageURL = new URL(image, Astro.site);
+const socialTitle = ogTitle ?? title;
+
+// Site-wide structured data — identifies the software and the site so search
+// engines and LLMs can attribute the package, repo, and docs correctly.
+const jsonLd = {
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "WebSite",
+      "@id": `${Astro.site?.origin}/#website`,
+      url: Astro.site?.href,
+      name: SITE_NAME,
+      description: DEFAULT_DESCRIPTION,
+      inLanguage: "en",
+    },
+    {
+      "@type": "SoftwareSourceCode",
+      "@id": `${Astro.site?.origin}/#software`,
+      name: "optical-center",
+      description: DEFAULT_DESCRIPTION,
+      url: Astro.site?.href,
+      codeRepository: "https://github.com/Grkmyldz148/optical-center",
+      programmingLanguage: "TypeScript",
+      license: "https://opensource.org/licenses/MIT",
+      keywords: [
+        "optical center",
+        "icon centering",
+        "perceptual centering",
+        "svg",
+        "vite plugin",
+        "tailwind",
+        "build-time",
+      ],
+    },
+  ],
+};
 ---
 
 <!doctype html>
@@ -22,7 +85,12 @@ const { title = "Optical Center" } = Astro.props;
     <meta name="color-scheme" content="light dark" />
     <meta name="theme-color" content="#f8f7f4" media="(prefers-color-scheme: light)" />
     <meta name="theme-color" content="#0e0c0a" media="(prefers-color-scheme: dark)" />
+
+    {/* Icons + PWA manifest */}
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <link rel="manifest" href="/site.webmanifest" />
 
     {/* Audio Cascading Style Sheets — declarative UI sound */}
     <link rel="audiostyle" href="/sounds/site.acs" />
@@ -34,7 +102,39 @@ const { title = "Optical Center" } = Astro.props;
       href="https://fonts.googleapis.com/css2?family=Geist:wght@300..900&family=Geist+Mono:wght@300..700&display=swap"
     />
 
+    {/* ──────────────────────────  SEO  ────────────────────────── */}
     <title>{title}</title>
+    <meta name="description" content={description} />
+    <link rel="canonical" href={canonicalURL.href} />
+    <meta
+      name="robots"
+      content={noindex ? "noindex, nofollow" : "index, follow, max-image-preview:large"}
+    />
+    <meta name="generator" content={Astro.generator} />
+
+    {/* Open Graph */}
+    <meta property="og:type" content={type} />
+    <meta property="og:site_name" content={SITE_NAME} />
+    <meta property="og:title" content={socialTitle} />
+    <meta property="og:description" content={description} />
+    <meta property="og:url" content={canonicalURL.href} />
+    <meta property="og:image" content={imageURL.href} />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta
+      property="og:image:alt"
+      content="Optical Center — a play glyph with an accent dot on its optical center, above the line: Math centers your icon. Your eye disagrees."
+    />
+    <meta property="og:locale" content="en_US" />
+
+    {/* Twitter / X */}
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content={socialTitle} />
+    <meta name="twitter:description" content={description} />
+    <meta name="twitter:image" content={imageURL.href} />
+
+    {/* Structured data */}
+    <script is:inline type="application/ld+json" set:html={JSON.stringify(jsonLd)} />
 
     {/* No-flash theme + sound bootstrap — runs before <body> paints, so the
         theme colors and the audio-toggle icon never flip after first paint. */}

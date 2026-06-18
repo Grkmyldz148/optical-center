@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "tokens:build": "node scripts/build-tokens.mjs",
+    "og:build": "node scripts/build-og.mjs",
     "predev": "npm run tokens:build",
     "prebuild": "npm run tokens:build",
     "dev": "astro dev",
@@ -15,6 +16,7 @@
     "check": "astro check"
   },
   "dependencies": {
+    "@astrojs/sitemap": "^3.7.3",
     "acs-audio": "^0.9.5",
     "astro": "^5.18.1",
     "optical-center": "file:../.."

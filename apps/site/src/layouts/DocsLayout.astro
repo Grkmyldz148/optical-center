@@ -23,7 +23,12 @@ const crumbs = breadcrumb(path);
 const { prev, next } = adjacent(path);
 ---
 
-<Base title={`${title} · Docs · Optical Center`}>
+<Base
+  title={`${title} · Docs · Optical Center`}
+  description={description}
+  ogTitle={`${title} · Optical Center docs`}
+  type="article"
+>
   <div class="docs">
     <Sidebar />
 

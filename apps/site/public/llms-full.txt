@@ -1,0 +1,334 @@
+# optical-center — full reference for LLMs
+
+> Bake perceptual optical centering into your SVG icons at build time, with zero
+> runtime cost. Source: https://opticalcenter.dev · Repo:
+> https://github.com/Grkmyldz148/optical-center · npm: optical-center · MIT.
+
+This file is a self-contained snapshot of the documentation, written as plain
+text so language models can ingest the whole project in one request. For the
+rendered docs, follow the URLs in each section.
+
+---
+
+## The problem
+
+Geometric center is not visual center. A play triangle (▶) dropped at the
+geometric midpoint of its box looks pulled to the left, because its visual mass
+sits on the right. optical-center measures where the eye actually wants an icon
+to land and shifts the SVG window (the `viewBox`) to put it there, so the
+browser ships a flat, pre-computed result.
+
+```
+// you write
+<svg optical-center viewBox="0 0 24 24"><path d="M8 5v14l11-7z" /></svg>
+
+// it ships: viewBox rewritten, marker gone, nothing runs in the browser
+<svg viewBox="-0.3239 -0.6226 24 24"><path d="M8 5v14l11-7z" /></svg>
+```
+
+## The model
+
+The shipped algorithm is `V2 × 0.745` — Phase 1 (N=36, method of adjustment)
+globally scaled by the Phase 2 pooled point of subjective equality (N=30, 2AFC).
+Algorithm version string: `1.0.0-v2`. See https://opticalcenter.dev/#science and
+https://opticalcenter.dev/#research for the study program.
+
+## Two layers
+
+optical-center meets a project at two levels:
+
+1. Automatic — the icons you import. Add the Vite plugin and the icon libraries
+   you already use (Iconify, your own SVG files, unplugin-icons, a hand-rolled
+   icon map) come out optically centered with no markup. The build finds the
+   icon SVG by shape and bakes the shift into the asset. Detection is by SHAPE,
+   not by package name. See https://opticalcenter.dev/docs/icons.
+
+2. The directive — explicit control. For icons the build can't reach (a
+   component library's render output, a runtime-fetched glyph), or when you'd
+   rather center the slot than the asset, write `optical-center: auto` on the
+   container. See https://opticalcenter.dev/docs.
+
+The one rule: if the plugin can reach the icon's SVG AT BUILD TIME — as data, a
+string, or a file the bundler walks — it is corrected automatically. If the
+pixels only exist at runtime, it can't be (you can't optically center what you
+can't measure), and you fall back to the container directive, which centers the
+slot. Nothing is corrected silently and nothing is skipped silently.
+
+## The rule for the directive
+
+The directive lives on the CONTAINER that wraps the icon, never on the icon
+itself (except the inline-SVG pattern, where it sits on the `<svg>`). It
+conceptually replaces flex centering: `justify-content: center` +
+`align-items: center` tell the browser where the bounding box's middle is;
+`optical-center: auto` tells it where the eye wants the icon to land.
+
+Both surfaces compile to the same emitted CSS: `display: flex` on the wrapper,
+`margin: auto` on the icon child, plus a `translate` carrying the per-icon
+perceptual shift. No `justify-content`, no `align-items`, no
+`position: absolute` on the child.
+
+---
+
+## Install
+
+URL: https://opticalcenter.dev/docs/install
+
+Quick path — one command detects framework + package manager, installs the
+dependency, and patches the right config file:
+
+```
+npx optical-center init                          # interactive
+npx optical-center init --integration vite --yes # non-interactive
+npx optical-center init ./my-app --dry-run       # report, write nothing
+```
+
+Package managers:
+
+```
+npm install optical-center
+pnpm add optical-center
+yarn add optical-center
+bun add optical-center
+```
+
+### Subpath imports
+
+- `optical-center` — browser-safe core: `getOpticalCenter`, `transformViewBox`,
+  `applyTransformToSvg`, types.
+- `optical-center/node` — Node-only helpers: `rasterizeSvg` (resvg),
+  `transformViewBoxFromSvg`, `sanitizeSvg`.
+- `optical-center/cli` — the `optical-center` binary: `init`, `transform`,
+  `info`, `analyze`, `clear-cache`, `version`, plus an interactive wizard.
+- `optical-center/babel` — Babel plugin for `optical-center="auto"` on JSX
+  wrappers and inline `<svg>`.
+- `optical-center/vite` — Vite plugin; Babel pass on JSX/TSX + HTML rewrite on
+  `index.html`.
+- `optical-center/astro` — Astro integration; wraps the Vite plugin and adds a
+  post-build sweep over emitted HTML.
+- `optical-center/postcss` — PostCSS plugin; reads `optical-center: auto` on CSS
+  rules and emits centering + translate.
+- `optical-center/tailwind` — Tailwind plugin; registers the `.optical-center`
+  utility class.
+
+### Wiring
+
+Vite:
+
+```ts
+import { defineConfig } from 'vite';
+import opticalCenter from 'optical-center/vite';
+import react from '@vitejs/plugin-react';
+
+export default defineConfig({
+  plugins: [opticalCenter(), react()],
+});
+```
+
+PostCSS (for the CSS surface; also used standalone for webpack/parcel/etc.):
+
+```js
+import opticalCenter from 'optical-center/postcss';
+
+export default {
+  plugins: [opticalCenter()],
+};
+```
+
+Astro:
+
+```js
+import { defineConfig } from 'astro/config';
+import opticalCenter from 'optical-center/astro';
+
+export default defineConfig({
+  integrations: [opticalCenter()],
+});
+```
+
+Tailwind (the `optical-center/postcss` plugin must run AFTER Tailwind in the
+PostCSS chain — Tailwind ships the directive, PostCSS resolves it):
+
+```js
+import opticalCenter from 'optical-center/tailwind';
+
+export default {
+  plugins: [opticalCenter],
+};
+```
+
+---
+
+## The five patterns
+
+URL: https://opticalcenter.dev/docs
+
+1. CSS class (canonical, use when in doubt) — put `optical-center: auto` on a
+   CSS class, attach the class to a wrapper, drop the icon inside. The PostCSS
+   plugin scans JSX, links the class to the icon, emits centering + translate.
+   https://opticalcenter.dev/docs/patterns/css-class
+
+2. Tailwind utility — drop the `.optical-center` utility on any wrapper. Same
+   end-state as the CSS-class pattern, registered as a Tailwind component.
+   https://opticalcenter.dev/docs/patterns/tailwind
+
+3. JSX attribute — inline directive on the wrapper, handled by Babel. No CSS
+   file needed; the plugin injects `display:flex` and `translate` as inline
+   styles. https://opticalcenter.dev/docs/patterns/jsx-attribute
+
+4. Inline SVG — hand-written `<svg>` inside the wrapper. Babel rewrites its
+   `viewBox` at compile time so the shift lives inside the asset, not on the
+   element. https://opticalcenter.dev/docs/patterns/inline-svg
+
+5. CSS mask-image — the element IS the icon, mounted via `mask-image` and
+   recolored by `currentColor`. PostCSS rewrites the SVG and inlines a `data:`
+   URI. https://opticalcenter.dev/docs/patterns/css-mask
+
+The two surfaces, one declaration:
+
+```css
+.badge { optical-center: auto; }
+```
+
+```tsx
+<div optical-center="auto">
+  <Play />
+</div>
+```
+
+---
+
+## Programmatic API
+
+URL: https://opticalcenter.dev/docs/api
+
+Reach for the API when writing a new bundler adapter, generating a static
+manifest of pre-computed offsets, running the pipeline in a Worker/Edge runtime
+that brings its own rasterizer, or investigating the pipeline in a script.
+
+Browser-safe core:
+
+```ts
+import {
+  getOpticalCenter,
+  transformViewBox,
+  applyTransformToSvg,
+} from 'optical-center';
+
+const offset = getOpticalCenter(raster);   // { dx, dy, dxPercent, dyPercent }
+const result = transformViewBox(svg, raster, offset); // { viewBox, breadcrumb, clipDetected }
+const next = applyTransformToSvg(svg, result);        // string with rewritten <svg>
+```
+
+Node helpers (wrap the core with the resvg rasterizer):
+
+```ts
+import { rasterizeSvg, transformViewBoxFromSvg } from 'optical-center/node';
+import { getOpticalCenter } from 'optical-center';
+
+const raster = rasterizeSvg(svgString);
+const offset = getOpticalCenter(raster);
+// or one-shot:
+const result = transformViewBoxFromSvg(svgString); // { viewBox, breadcrumb, clipDetected }
+```
+
+Types:
+
+```ts
+type Offset = { dx: number; dy: number; dxPercent: number; dyPercent: number };
+type ViewBox = { x: number; y: number; w: number; h: number; source: 'attribute' | 'derived' | 'default' };
+type TransformResult = {
+  viewBox: string;                    // "x y w h"
+  breadcrumb: Record<string, string>; // data-* attrs for DevTools
+  clipDetected: boolean;              // true if the shift might cut painted pixels
+};
+```
+
+resvg is a native binary; it stays behind the `/node` subpath so the browser
+core never tries to bundle it.
+
+---
+
+## CLI
+
+URL: https://opticalcenter.dev/docs/cli
+
+The CLI operates on SVG files directly (no view of CSS rules or JSX wrappers).
+Run the binary bare on a TTY for an interactive wizard; pipes, CI, `--json`, and
+`--silent` always get the stable plain-text contract.
+
+Commands:
+
+- `npx optical-center init` — wire optical-center into a project (detects
+  framework + package manager, installs, patches config; safe to re-run).
+- `npx optical-center transform <input> [output]` — rewrite every SVG in a
+  folder. Folder in, folder out.
+- `npx optical-center info <svg> [--json]` — inspect one SVG (original viewBox,
+  corrected viewBox, offset in px and percent).
+- `npx optical-center analyze <folder> [--json]` — top-N report sorted by offset
+  magnitude.
+- `npx optical-center clear-cache [--all]` — drop the content-addressable cache.
+- `npx optical-center version` — package version + algorithm version.
+
+Common flags: `--json`, `--strict` (promote warnings to a non-zero exit),
+`--no-cache`, `--cache-dir=<path>`, `--emit-metadata`, `--silent`, `--quiet`.
+
+Exit codes (the contract with CI):
+
+- 0 — success.
+- 1 — success with warnings (or `--strict` tripped on a warning). NOTE: npm/yarn
+  print a "command failed" banner on any non-zero exit; treat 1 as a soft pass
+  unless you used `--strict`.
+- 2 — recoverable error (some files failed, run continued).
+- 3 — fatal (invalid args, IO failure, aborted run).
+
+Example `info --json` output:
+
+```json
+{
+  "schemaVersion": 1,
+  "command": "info",
+  "result": {
+    "file": ".../play.svg",
+    "originalViewBox": { "x": 0, "y": 0, "w": 24, "h": 24, "source": "attribute" },
+    "newViewBox": "-0.3239 -0.6226 24 24",
+    "offset": { "dxPercent": 1.3497, "dyPercent": 2.5944, "dx": 1.62, "dy": 3.11 },
+    "clipDetected": false
+  },
+  "version": { "package": "0.2.0-alpha.0", "algorithm": "1.0.0-v2", "schema": 1 }
+}
+```
+
+---
+
+## Warning codes
+
+URL: https://opticalcenter.dev/docs/warnings
+
+Every adapter emits stable codes so you can grep logs, filter CI, or promote
+them to errors with `--strict`.
+
+- OPTICAL_DYNAMIC_SVG — a child/attribute of the SVG is dynamic; can't prove the
+  markup at build time.
+- OPTICAL_SPREAD_PROPS — a spread attribute might inject the marker at runtime;
+  can't statically decide whether to transform.
+- OPTICAL_MISSING_VIEWBOX — no viewBox and no width/height pair; no coordinate
+  system to shift.
+- OPTICAL_VIEWBOX_DERIVED — viewBox derived from width/height; works, but less
+  accurate than an explicit viewBox.
+- OPTICAL_CLIP_DETECTED — the shifted viewBox may clip painted pixels (paint at
+  the edge); inspect output, consider padding the source SVG.
+- OPTICAL_RASTERIZE_FAILED — resvg could not parse the SVG (malformed or
+  unsupported features).
+- OPTICAL_CACHE_WRITE_FAIL — cache dir not writable; compute succeeded, write
+  skipped.
+- OPTICAL_VERSION_MISMATCH — cached entry from a different algorithm version;
+  discarded and recomputed.
+- OPTICAL_INPUT_TOO_LARGE — SVG exceeded the per-file size cap; skipped.
+- OPTICAL_TIMEOUT — per-file timeout exceeded; skipped.
+
+---
+
+## Status
+
+v0.2.0-alpha. MIT licensed. The core API is stable; subpath adapters (vite,
+astro, babel, postcss, tailwind, cli, node) are additive.

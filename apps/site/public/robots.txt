@@ -1,0 +1,20 @@
+User-agent: *
+Allow: /
+
+# AI crawlers are welcome — the package is MIT and the docs are public.
+User-agent: GPTBot
+Allow: /
+
+User-agent: ClaudeBot
+Allow: /
+
+User-agent: anthropic-ai
+Allow: /
+
+User-agent: PerplexityBot
+Allow: /
+
+User-agent: Google-Extended
+Allow: /
+
+Sitemap: https://opticalcenter.dev/sitemap-index.xml
