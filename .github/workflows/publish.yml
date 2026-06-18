@@ -1,0 +1,81 @@
+name: Publish to npm
+
+# Publishes the package to npm when a GitHub Release is published, or on a
+# manual dispatch. Tests must pass first; `prepublishOnly` builds the tarball.
+# The dist-tag is derived from the version (e.g. 0.2.0-alpha.0 -> "alpha",
+# 1.0.0 -> "latest") unless overridden on a manual run.
+#
+# Required repo secret:
+#   NPM_TOKEN — an npm Automation token, or a Granular Access token with
+#   write access to the `optical-center` package.
+#
+# Note: no `--provenance` — provenance attestation requires a public repo and
+# this repo is private. Add it later if the repo is made public.
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      dist_tag:
+        description: "npm dist-tag override (blank = derive from version)"
+        required: false
+        default: ""
+
+permissions:
+  contents: read
+
+concurrency:
+  group: npm-publish
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    name: publish
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          registry-url: "https://registry.npmjs.org"
+
+      - name: Install dependencies
+        run: npm ci
+
+      # Guard: a Release tag like "v0.2.0" must match package.json, so a
+      # forgotten version bump can't publish the wrong version.
+      - name: Verify tag matches version
+        if: github.event_name == 'release'
+        run: |
+          pkg="$(node -p "require('./package.json').version")"
+          rel="${GITHUB_REF_NAME#v}"
+          if [ "$pkg" != "$rel" ]; then
+            echo "::error::Release tag ($rel) does not match package.json version ($pkg)"
+            exit 1
+          fi
+
+      - name: Run tests
+        run: npm test
+
+      - name: Resolve dist-tag
+        id: tag
+        run: |
+          override="${{ github.event.inputs.dist_tag }}"
+          if [ -n "$override" ]; then
+            tag="$override"
+          else
+            ver="$(node -p "require('./package.json').version")"
+            # 0.2.0-alpha.0 -> alpha ; 1.0.0 -> latest
+            pre="$(printf '%s' "$ver" | sed -nE 's/^[0-9]+\.[0-9]+\.[0-9]+-([A-Za-z]+).*/\1/p')"
+            tag="${pre:-latest}"
+          fi
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          echo "Publishing with dist-tag: $tag"
+
+      - name: Publish
+        run: npm publish --access public --tag "${{ steps.tag.outputs.tag }}"
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
