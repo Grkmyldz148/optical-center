@@ -5,12 +5,12 @@ name: Publish to npm
 # The dist-tag is derived from the version (e.g. 0.2.0-alpha.0 -> "alpha",
 # 1.0.0 -> "latest") unless overridden on a manual run.
 #
-# Required repo secret:
-#   NPM_TOKEN — an npm Automation token, or a Granular Access token with
-#   write access to the `optical-center` package.
-#
-# Note: no `--provenance` — provenance attestation requires a public repo and
-# this repo is private. Add it later if the repo is made public.
+# Auth: npm OIDC Trusted Publishing — no token. The `id-token: write` permission
+# lets npm exchange a GitHub OIDC token for a short-lived publish credential.
+# Requires a Trusted Publisher to be configured on the npm package
+# (npmjs.com -> package -> Settings -> Trusted Publisher) pointing at this repo
+# and this workflow file. The package must exist first (do one manual publish to
+# claim the name before relying on this).
 
 on:
   release:
@@ -24,6 +24,7 @@ on:
 
 permissions:
   contents: read
+  id-token: write # OIDC trusted publishing to npm
 
 concurrency:
   group: npm-publish
@@ -40,7 +41,10 @@ jobs:
         with:
           node-version: 22
           cache: npm
-          registry-url: "https://registry.npmjs.org"
+
+      # Trusted publishing (OIDC) requires npm >= 11.5.0; node 22 ships 10.x.
+      - name: Upgrade npm for OIDC
+        run: npm install -g npm@latest
 
       - name: Install dependencies
         run: npm ci
@@ -75,7 +79,5 @@ jobs:
           echo "tag=$tag" >> "$GITHUB_OUTPUT"
           echo "Publishing with dist-tag: $tag"
 
-      - name: Publish
+      - name: Publish (OIDC trusted publishing)
         run: npm publish --access public --tag "${{ steps.tag.outputs.tag }}"
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
