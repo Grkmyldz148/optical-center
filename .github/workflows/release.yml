@@ -1,0 +1,95 @@
+name: Release
+
+# Manually cut a release. Pick a bump type; this workflow runs the test gate,
+# bumps the version with `npm version` (which updates BOTH package.json and
+# package-lock.json, so `npm ci` stays in sync), commits + tags it, and creates
+# a GitHub Release. Publishing that Release triggers .github/workflows/publish.yml,
+# which does the actual `npm publish`. You never hand-edit the version number.
+
+on:
+  workflow_dispatch:
+    inputs:
+      bump:
+        description: "Version bump"
+        type: choice
+        required: true
+        default: prerelease
+        options:
+          - prerelease
+          - prepatch
+          - preminor
+          - premajor
+          - patch
+          - minor
+          - major
+      preid:
+        description: "Prerelease identifier (used by the pre* bumps)"
+        required: false
+        default: alpha
+
+permissions:
+  contents: write # push the bump commit + tag and create the Release
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    name: release
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      # Gate: never tag a release off a red build.
+      - name: Type-check + build
+        run: npm run build
+
+      - name: Run tests
+        run: npm test
+
+      - name: Configure git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      # `npm version` writes package.json + package-lock.json, makes a commit,
+      # and creates a `vX.Y.Z` tag. Captures the new "vX.Y.Z" string it prints.
+      - name: Bump version
+        id: bump
+        run: |
+          bump="${{ github.event.inputs.bump }}"
+          preid="${{ github.event.inputs.preid }}"
+          case "$bump" in
+            pre*) version="$(npm version "$bump" --preid "$preid" -m 'chore(release): %s')" ;;
+            *)    version="$(npm version "$bump" -m 'chore(release): %s')" ;;
+          esac
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "Bumped to $version"
+
+      - name: Push commit + tag
+        run: git push --follow-tags
+
+      # Publishing the Release fires the `release: published` event that
+      # publish.yml listens for. Prerelease versions are flagged as such.
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          version="${{ steps.bump.outputs.version }}"
+          prerelease=""
+          case "$version" in *-*) prerelease="--prerelease" ;; esac
+          gh release create "$version" \
+            --title "$version" \
+            --generate-notes \
+            $prerelease
