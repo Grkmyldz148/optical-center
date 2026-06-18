@@ -1,0 +1,219 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<style>
+  :root {
+    --bg: #0d0d10;
+    --surface: #161619;
+    --surface-hi: #1c1c21;
+    --line: #2a2a31;
+    --line-strong: #3a3a43;
+    --fg: #ededf0;
+    --muted: #9a9aa6;
+    --soft: #c3c3cc;
+    --accent: #e8734a;
+    --accent-soft: rgba(232,115,74,0.14);
+    --on-accent: #140a06;
+    --mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, monospace;
+    --sans: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { background: var(--bg); }
+  .stage {
+    position: relative;
+    width: 920px;
+    height: 440px;
+    background: var(--bg);
+    overflow: hidden;
+    display: grid;
+    grid-template-columns: 372px 1fr;
+    align-items: center;
+    gap: 36px;
+    padding: 44px 48px;
+    isolation: isolate;
+  }
+  /* faint grid backdrop, fading out */
+  .stage::before {
+    content: "";
+    position: absolute; inset: 0; z-index: -1; pointer-events: none;
+    background-image:
+      linear-gradient(to right, rgba(255,255,255,0.035) 1px, transparent 1px),
+      linear-gradient(to bottom, rgba(255,255,255,0.035) 1px, transparent 1px);
+    background-size: 46px 46px;
+    -webkit-mask-image: radial-gradient(ellipse 75% 70% at 60% 50%, #000 30%, transparent 92%);
+            mask-image: radial-gradient(ellipse 75% 70% at 60% 50%, #000 30%, transparent 92%);
+  }
+
+  /* ---------- left: text ---------- */
+  .text { display: grid; gap: 18px; align-content: center; }
+  .eyebrow {
+    display: inline-flex; align-items: center; gap: 9px;
+    font-family: var(--mono); font-size: 13px; letter-spacing: 0.02em;
+    color: var(--muted);
+    border: 1px solid var(--line); border-radius: 999px;
+    padding: 6px 12px; width: max-content;
+    background: var(--surface);
+  }
+  .eyebrow svg { display: block; }
+  .title {
+    font-family: var(--sans); font-weight: 650; line-height: 1.06;
+    letter-spacing: -0.028em; font-size: 40px; color: var(--fg);
+  }
+  .title .dim { color: var(--muted); font-weight: 540; display: block; }
+  .title .em  { color: var(--accent); display: block; }
+  .sub {
+    font-family: var(--sans); font-size: 15.5px; line-height: 1.55;
+    color: var(--soft); max-width: 34ch;
+  }
+  .sub code {
+    font-family: var(--mono); font-size: 0.92em; color: var(--accent);
+    white-space: nowrap;
+  }
+
+  /* ---------- right: demo ---------- */
+  .demo { display: grid; justify-items: center; gap: 18px; }
+  .canvas {
+    position: relative;
+    width: 244px; height: 244px;
+    border: 1px solid var(--line); border-radius: 14px;
+    background-color: var(--surface);
+    background-image:
+      linear-gradient(to right, rgba(255,255,255,0.05) 1px, transparent 1px),
+      linear-gradient(to bottom, rgba(255,255,255,0.05) 1px, transparent 1px);
+    background-size: 12.5% 12.5%;
+    overflow: hidden;
+  }
+  /* geometric-center crosshair (accent, fixed) */
+  .canvas::before {
+    content: ""; position: absolute; inset: 0; z-index: 1; pointer-events: none;
+    background:
+      linear-gradient(rgba(232,115,74,0.40), rgba(232,115,74,0.40)) 0 50% / 100% 1px no-repeat,
+      linear-gradient(rgba(232,115,74,0.40), rgba(232,115,74,0.40)) 50% 0 / 1px 100% no-repeat;
+  }
+  .ico { position: absolute; inset: 20%; z-index: 2; }
+  .ico--ghost path { fill: none; stroke: var(--line-strong); stroke-width: 1; stroke-dasharray: 2.5 2.5; }
+  .ico--live  { will-change: transform; }
+  .ico--live path { fill: var(--fg); }
+
+  /* segmented toggle */
+  .seg { display: inline-flex; align-items: center; gap: 12px; font-family: var(--mono); font-size: 13px; }
+  .seg__label { color: var(--muted); }
+  .seg__tracks {
+    display: flex; gap: 3px; padding: 3px;
+    border: 1px solid var(--line); border-radius: 10px; background: var(--surface);
+  }
+  .pill {
+    position: relative; border: 0; background: transparent; cursor: default;
+    font-family: var(--mono); font-size: 13px; font-weight: 600;
+    padding: 6px 14px; border-radius: 7px; color: var(--muted);
+    min-width: 52px; overflow: hidden;
+  }
+  .pill__fill { position: absolute; inset: 0; background: var(--accent); border-radius: 7px; opacity: 0; }
+  .pill__t { position: relative; z-index: 1; }
+  .pill[data-on="1"] .pill__t { color: var(--on-accent); }
+
+  /* viewBox string */
+  .vb {
+    position: relative; height: 22px; font-family: var(--mono); font-size: 13.5px;
+    color: var(--muted); display: grid; place-items: center; min-width: 280px;
+  }
+  .vb__s { position: absolute; white-space: nowrap; }
+  .vb__k { color: var(--soft); }
+  .vb__n { color: var(--accent); }
+
+  /* caption */
+  .cap { position: relative; height: 20px; font-family: var(--sans); font-size: 14px; min-width: 220px; display: grid; place-items: center; }
+  .cap__s { position: absolute; white-space: nowrap; }
+  .cap__off { color: var(--muted); }
+  .cap__auto { color: var(--fg); font-weight: 560; }
+  .cap__auto .ok { color: var(--accent); }
+</style>
+</head>
+<body>
+  <div class="stage">
+    <div class="text">
+      <span class="eyebrow">
+        <svg width="13" height="13" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14l11-7z" fill="var(--accent)"/></svg>
+        optical-center
+      </span>
+      <h1 class="title">
+        <span class="dim">Math centers your icon.</span>
+        <span>Your eye <span class="em" style="display:inline">disagrees.</span></span>
+      </h1>
+      <p class="sub">
+        <code>optical-center: auto</code> rewrites the SVG viewBox at
+        build&nbsp;time, so icons sit where the eye wants them. Zero runtime cost.
+      </p>
+    </div>
+
+    <div class="demo">
+      <div class="canvas">
+        <svg class="ico ico--ghost" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg>
+        <svg class="ico ico--live" id="live" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg>
+      </div>
+
+      <div class="seg">
+        <span class="seg__label">optical-center</span>
+        <div class="seg__tracks">
+          <button class="pill" id="pillOff" data-on="1"><span class="pill__fill" id="fillOff"></span><span class="pill__t">off</span></button>
+          <button class="pill" id="pillAuto" data-on="0"><span class="pill__fill" id="fillAuto"></span><span class="pill__t">auto</span></button>
+        </div>
+      </div>
+
+      <div class="vb">
+        <span class="vb__s" id="vbOff"><span class="vb__k">viewBox=</span>"0 0 24 24"</span>
+        <span class="vb__s" id="vbAuto"><span class="vb__k">viewBox=</span>"<span class="vb__n">-0.32 -0.62</span> 24 24"</span>
+      </div>
+
+      <div class="cap">
+        <span class="cap__s cap__off" id="capOff">geometric center · looks off-balance</span>
+        <span class="cap__s cap__auto" id="capAuto">optical center <span class="ok">✓</span> visually balanced</span>
+      </div>
+    </div>
+  </div>
+
+<script>
+  // Exaggerated-for-legibility translate (true ratio dx:dy preserved; right + down).
+  const DX = 7.5, DY = 14;
+  const live = document.getElementById('live');
+  const fillOff = document.getElementById('fillOff');
+  const fillAuto = document.getElementById('fillAuto');
+  const pillOff = document.getElementById('pillOff');
+  const pillAuto = document.getElementById('pillAuto');
+  const vbOff = document.getElementById('vbOff');
+  const vbAuto = document.getElementById('vbAuto');
+  const capOff = document.getElementById('capOff');
+  const capAuto = document.getElementById('capAuto');
+
+  const easeInOut = (x) => x < 0.5 ? 2*x*x : 1 - Math.pow(-2*x+2, 2)/2;
+
+  // Loop timeline (seamless: starts & ends at mix=0).
+  function mixAt(t) {
+    const offHold = 0.26, up = 0.16, autoHold = 0.30, down = 0.16; // rest = off
+    if (t < offHold) return 0;
+    if (t < offHold + up) return easeInOut((t - offHold) / up);
+    if (t < offHold + up + autoHold) return 1;
+    if (t < offHold + up + autoHold + down) return 1 - easeInOut((t - offHold - up - autoHold) / down);
+    return 0;
+  }
+
+  // t in [0,1). Deterministic, driven by the capture script.
+  window.renderFrame = function (t) {
+    const m = mixAt(t);
+    live.style.transform = `translate(${(DX*m).toFixed(3)}px, ${(DY*m).toFixed(3)}px)`;
+    fillOff.style.opacity = (1 - m).toFixed(3);
+    fillAuto.style.opacity = m.toFixed(3);
+    pillOff.dataset.on = m < 0.5 ? '1' : '0';
+    pillAuto.dataset.on = m >= 0.5 ? '1' : '0';
+    vbOff.style.opacity = (1 - m).toFixed(3);
+    vbAuto.style.opacity = m.toFixed(3);
+    capOff.style.opacity = (1 - m).toFixed(3);
+    capAuto.style.opacity = m.toFixed(3);
+  };
+
+  window.renderFrame(0);
+  window.__ready = true;
+</script>
+</body>
+</html>
