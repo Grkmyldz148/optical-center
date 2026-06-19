@@ -720,6 +720,13 @@
   .hero__svg {
     position: absolute;
     inset: 18%;
+    /* Explicit size = 100% − 2×18%. Without it, WebKit treats the <svg>
+       (a replaced element with no width/height attr) as having an intrinsic
+       size and ignores the left/right inset constraint, so the icon renders
+       huge and overflows the canvas in Safari. Chrome stretches it to the
+       inset box either way; this keeps both engines identical. */
+    width: 64%;
+    height: 64%;
     color: var(--color-fg);
     transition: opacity 0.16s ease;
     z-index: 2;
