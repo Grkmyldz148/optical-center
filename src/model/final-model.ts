@@ -20,6 +20,12 @@ import { computeOffsetV2 } from './compute-offset.js';
 /**
  * Phase 2 pooled PSE — the proportion of V2 raw correction that humans prefer.
  * Measured via 2AFC (bias-free forced choice). 30 participants × 120 trials.
+ *
+ * Caveat: this PSE was measured on offset vectors that still carried the
+ * (since-removed) global vertical bias. The pooled value was driven by the
+ * horizontal correction, which is unchanged, so 0.745 remains the best
+ * estimate — but it has not been re-derived for the now horizontal-dominant
+ * vectors. A vertical-isolated staircase 2AFC would be needed to refine it.
  */
 export const CORRECTION_SCALE = 0.745;
 

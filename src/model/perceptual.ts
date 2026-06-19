@@ -28,7 +28,13 @@ export interface PerceptualConfig {
 }
 
 export const DEFAULT_PERCEPTUAL_CONFIG: PerceptualConfig = {
-  verticalBias: 0.035,
+  // No global vertical bias: across all three studies humans placed icons at
+  // ~0 vertical offset (Phase 1 adjustment median 0.00; Phase 3 adjustment
+  // median 0.10 with residuals undoing the model's downward shift; Phase 2
+  // 2AFC rejected the model's vertical correction on vertical-dominant icons,
+  // ~29% vs ~46% horizontal). Vertical offset is per-icon (mass/hull/symmetry),
+  // not a global constant. Previously 0.035.
+  verticalBias: 0,
   hullWeight: 0.3,
   shapeCorrection: true,
 };
@@ -50,14 +56,21 @@ export function blendCentroids(
 
 /**
  * Apply vertical bias correction.
- * Shifts the optical center upward by the bias percentage of the element height.
+ *
+ * The emitted render offset is computed downstream as
+ * (geometricCenter − opticalCenter). To shift the rendered icon UPWARD by
+ * `bias × height` — the perceptual upward bias documented in the literature
+ * (perceived center sits above the geometric center) — the optical-center
+ * estimate must be moved DOWN here so the inversion yields a negative (upward)
+ * dy. The previous `cy - height * bias` moved the estimate up, which inverted
+ * to a DOWNWARD render offset, the opposite of the intended bias.
  */
 export function applyVerticalBias(
   cy: number,
   height: number,
   bias: number
 ): number {
-  return cy - height * bias;
+  return cy + height * bias;
 }
 
 /**

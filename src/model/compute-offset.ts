@@ -392,7 +392,14 @@ export function computeOffsetV2(
   const dmy = massCentroid.cy - geoCy;
   const proj = dmx * cosA + dmy * sinA;
 
-  // Blend factor: higher symmetry = pull more toward axis
+  // Blend factor: higher symmetry = pull more toward the axis. We deliberately
+  // use the axis-aligned bilateralX/Y (exact flip-and-compare) rather than the
+  // score along `dominantAxis` (from the bilinear angle scan). The H/V scores
+  // are exactly flip-invariant, so a shape and its mirror get exactly-negated
+  // offsets; the angle-scan score is NOT flip-invariant (bilinear sampling + a
+  // 36-angle grid), which breaks that antisymmetry. Trade-off: diagonal-only
+  // symmetry is under-weighted, but that is rare in real icons and far less
+  // important than keeping mirror images consistent.
   const symStrength = Math.max(symmetry.bilateralX, symmetry.bilateralY);
   const symmetryAxisCenter = {
     x: geoCx + proj * cosA * symStrength,

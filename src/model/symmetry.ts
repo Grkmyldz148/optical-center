@@ -59,17 +59,8 @@ export function computeBilateralSymmetry(
   height: number,
   axis: 'x' | 'y'
 ): number {
-  // TODO: Implement bilateral symmetry via flip-and-compare.
-  //
-  // Algorithm:
-  // 1. Flip the weight map along the specified axis:
-  //    - axis 'x': mirror left <-> right (flip columns).
-  //    - axis 'y': mirror top <-> bottom (flip rows).
-  // 2. Compute the normalized correlation between original and flipped:
-  //    score = 1 - ( sum|w(x,y) - w_flipped(x,y)| ) / ( sum(w(x,y)) + sum(w_flipped(x,y)) )
-  //    Alternatively: score = 1 - (difference / (2 * totalWeight)).
-  // 3. Return score clamped to [0, 1].
-
+  // Flip the weight map along the axis and compare:
+  //   score = 1 - ( Σ|w - w_flipped| ) / (2 · Σw),  clamped to [0, 1].
   let diffSum = 0;
   let totalWeight = 0;
 
@@ -122,20 +113,8 @@ export function computeRadialSymmetry(
   cy: number,
   folds: number = 4
 ): number {
-  // TODO: Implement rotation-and-compare radial symmetry.
-  //
-  // Algorithm:
-  // 1. For each fold k = 1 .. folds-1:
-  //    a. Compute rotation angle theta = 2 * pi * k / folds.
-  //    b. For each pixel (x, y):
-  //       - Translate to center: (dx, dy) = (x - cx, y - cy).
-  //       - Rotate: (rx, ry) = (dx*cos(theta) - dy*sin(theta) + cx,
-  //                              dx*sin(theta) + dy*cos(theta) + cy).
-  //       - If (rx, ry) is within bounds, bilinear-interpolate the weight.
-  //       - Accumulate |w(x,y) - w_rotated(x,y)| and total weight.
-  // 2. Average the correlation scores across all folds.
-  // 3. Return score = 1 - (avgDiff / (2 * totalWeight)), clamped to [0, 1].
-
+  // Rotate the map by 2π·k/folds for k = 1..folds-1, bilinear-sample, and
+  // compare: score = 1 - ( Σ|w - w_rotated| ) / Σ(w + w_rotated), in [0, 1].
   if (folds < 2) return 1;
 
   let totalDiff = 0;
@@ -297,29 +276,10 @@ export function computeSymmetryCorrection(
   width: number,
   height: number
 ): SymmetryCorrection {
-  // TODO: Derive correction vector from symmetry scores.
-  //
-  // Algorithm:
-  // 1. The less symmetric an axis is, the more correction is needed along
-  //    that axis.
-  //    - asymFactorX = 1 - symmetry.bilateralX
-  //    - asymFactorY = 1 - symmetry.bilateralY
-  //
-  // 2. The correction direction comes from *where* the extra weight is.
-  //    This function only computes the magnitude; the sign must come from
-  //    the asymmetry analysis (see features.ts where this is combined with
-  //    the asymmetry vector from perceptual.ts).
-  //
-  //    dx = asymFactorX * width * scaleFactor
-  //    dy = asymFactorY * height * scaleFactor
-  //
-  // 3. Scale factor controls how aggressive the correction is. Typical
-  //    values: 0.01 - 0.05 of the image dimension.
-  //
-  // 4. Radial symmetry further dampens the correction: if radial is high,
-  //    the shape is balanced around the center even if bilateral is low
-  //    (e.g. a pinwheel).
-
+  // Magnitude only — the sign comes from the asymmetry analysis (see
+  // compute-offset.ts, where this is multiplied by sign(asymmetry)). The less
+  // symmetric an axis, the more correction along it; radial symmetry dampens
+  // it (a pinwheel is balanced around the center even with low bilateral).
   const scaleFactor = 0.03;
   const radialDamping = symmetry.radial; // high radial -> less correction
 
