@@ -72,10 +72,12 @@ export function computeBilateralSymmetry(
 
       let flippedIdx: number;
       if (axis === 'x') {
-        // Mirror horizontally: (x, y) -> (width - 1 - x, y)
+        // axis='x' = mirror across the VERTICAL axis (left-right flip).
+        // Pixel (x, y) maps to (width - 1 - x, y).
         flippedIdx = y * width + (width - 1 - x);
       } else {
-        // Mirror vertically: (x, y) -> (x, height - 1 - y)
+        // axis='y' = mirror across the HORIZONTAL axis (top-bottom flip).
+        // Pixel (x, y) maps to (x, height - 1 - y).
         flippedIdx = (height - 1 - y) * width + x;
       }
       const wFlipped = weights[flippedIdx];
@@ -204,14 +206,13 @@ export function computeSymmetryAxis(
     const sin2t = Math.sin(2 * theta);
 
     let diffSum = 0;
-    let totalWeight = 0;
+    let totalWeight = 0; // ONLY in-bounds pixels; otherwise off-axis scans
+                        // would lose pairs to OOB while keeping their weight
+                        // in the denominator, inflating the symmetry score.
     let validPixels = 0;
 
     for (let y = 0; y < height; y++) {
       for (let x = 0; x < width; x++) {
-        const w = weights[y * width + x];
-        totalWeight += w;
-
         // Translate to center
         const dx = x - cx;
         const dy = y - cy;
@@ -225,8 +226,11 @@ export function computeSymmetryAxis(
         const y0 = Math.floor(ry);
 
         if (x0 < 0 || x0 + 1 >= width || y0 < 0 || y0 + 1 >= height) {
-          continue;
+          continue; // skip; do NOT add this pixel's weight to the denominator
         }
+
+        const w = weights[y * width + x];
+        totalWeight += w;
 
         const fx = rx - x0;
         const fy = ry - y0;
