@@ -10,9 +10,10 @@
  *          → edge centroid (40%)
  *          → hull centroid (30%)
  *          → symmetry-axis center (30%)
- *          → vertical bias (shape-dependent)
- *          → offset
+ *          → symmetry-based asymmetry correction (smoothstep)
+ *          → offset = geoCenter − opticalCenter
  *
+ * Global vertical bias was removed (was 0.035, now 0); V1 still applies it.
  * The v1 pipeline (computeOffset) is preserved for backward compatibility
  * and A/B comparison in Phase 2 studies.
  */
@@ -59,13 +60,17 @@ export interface OpticalOffset {
 }
 
 export interface ComputeOptions {
-  /** Perceptual correction config */
+  /** Perceptual correction config. NOTE: V2 ignores `verticalBias` and
+   *  `shapeCorrection`; these knobs only affect the V1 pipeline below. */
   perceptual?: Partial<PerceptualConfig>;
   /** Sampling step for convex hull boundary extraction (default: 2) */
   hullStep?: number;
   /**
    * Global scaling factor applied to final dx/dy offset.
-   * Default: 0.5
+   * V1 default: 0.5.
+   * V2 IGNORES this option — V2's final scale comes from `final-model.ts`
+   * (`CORRECTION_SCALE = 0.745`, Phase 2 PSE); pass V2 output through
+   * `getOpticalCenter()` to apply that scale.
    */
   correctionScale?: number;
 }
@@ -73,11 +78,14 @@ export interface ComputeOptions {
 export interface ComputeOptionsV2 extends ComputeOptions {
   /** Preprocessing config (DoG, compression) */
   preprocessing?: Partial<PreprocessingConfig>;
-  /** Weight for edge centroid in blend. Default: 0.40 */
+  /**
+   * Weight for edge centroid in blend. Default: 0.40.
+   * Note: this is independent from `perceptual.hullWeight` (V1's mass/hull blend).
+   */
   edgeWeight?: number;
-  /** Weight for hull centroid in blend. Default: 0.30 */
+  /** Weight for hull centroid in blend. Default: 0.30. */
   hullWeight?: number;
-  /** Weight for symmetry-axis center in blend. Default: 0.30 */
+  /** Weight for symmetry-axis center in blend. Default: 0.30. */
   symmetryWeight?: number;
 }
 
@@ -133,6 +141,7 @@ export function computeOffset(
   }
 
   // Step 3: Compute convex hull centroid
+  const geoCenterV1 = { x: width / 2, y: height / 2 };
   const boundaryPoints = extractBoundaryPoints(
     pixelData.weights,
     width,
@@ -141,7 +150,7 @@ export function computeOffset(
     hullStep
   );
   const hull = convexHull(boundaryPoints);
-  const hullCenter = hullCentroid(hull);
+  const hullCenter = hullCentroid(hull, geoCenterV1);
 
   // Step 4: Blend mass and hull centroids
   let optical = blendCentroids(
@@ -205,6 +214,7 @@ export function computeOffsetFromWeightMap(
 
   const mass = computeWeightedCentroid(pixelData);
 
+  const geoCenterFM = { x: width / 2, y: height / 2 };
   const boundaryPoints = extractBoundaryPoints(
     pixelData.weights,
     width,
@@ -213,7 +223,7 @@ export function computeOffsetFromWeightMap(
     hullStep
   );
   const hull = convexHull(boundaryPoints);
-  const hullCenter = hullCentroid(hull);
+  const hullCenter = hullCentroid(hull, geoCenterFM);
 
   let optical = blendCentroids(
     { x: mass.cx, y: mass.cy },
@@ -235,7 +245,7 @@ export function computeOffsetFromWeightMap(
 
   optical.y = applyVerticalBias(optical.y, height, config.verticalBias);
 
-  const geometricCenter = { x: width / 2, y: height / 2 };
+  const geometricCenter = geoCenterFM;
   const dx = (geometricCenter.x - optical.x) * scale;
   const dy = (geometricCenter.y - optical.y) * scale;
 
@@ -361,6 +371,7 @@ export function computeOffsetV2(
   // The convex hull captures the shape's structural envelope — the bounding
   // shape that quick glances perceive. This should operate on the original
   // shape boundary, not the DoG edge response (which loses interior structure).
+  const v2GeoCenter = { x: width / 2, y: height / 2 };
   const boundaryPoints = extractBoundaryPoints(
     pixelData.weights,
     width,
@@ -369,7 +380,7 @@ export function computeOffsetV2(
     hullStep
   );
   const hull = convexHull(boundaryPoints);
-  const hullCenter = hullCentroid(hull);
+  const hullCenter = hullCentroid(hull, v2GeoCenter);
 
   // Step 4c: Symmetry-axis center — from RAW weight map
   //
@@ -392,7 +403,14 @@ export function computeOffsetV2(
   const dmy = massCentroid.cy - geoCy;
   const proj = dmx * cosA + dmy * sinA;
 
-  // Blend factor: higher symmetry = pull more toward axis
+  // Blend factor: higher symmetry = pull more toward the axis. We deliberately
+  // use the axis-aligned bilateralX/Y (exact flip-and-compare) rather than the
+  // score along `dominantAxis` (from the bilinear angle scan). The H/V scores
+  // are exactly flip-invariant, so a shape and its mirror get exactly-negated
+  // offsets; the angle-scan score is NOT flip-invariant (bilinear sampling + a
+  // 36-angle grid), which breaks that antisymmetry. Trade-off: diagonal-only
+  // symmetry is under-weighted, but that is rare in real icons and far less
+  // important than keeping mirror images consistent.
   const symStrength = Math.max(symmetry.bilateralX, symmetry.bilateralY);
   const symmetryAxisCenter = {
     x: geoCx + proj * cosA * symStrength,
@@ -406,17 +424,27 @@ export function computeOffsetV2(
   };
 
   // Step 6: Symmetry-based correction for asymmetric shapes
-  // Asymmetry is measured on the raw weight map (shape structure, not edges)
+  // Asymmetry is measured on the raw weight map (shape structure, not edges).
+  //
+  // OPEN ISSUE: Math.sign() has a discontinuity at asymX/Y = 0 (the correction
+  // jumps from −symCorr to +symCorr across ±ε). A smoothstep replacement
+  // (tanh(asym / ε)) would remove that, BUT it also reduces correction
+  // magnitude for small-but-nonzero asymmetries (most real icons). The
+  // current CORRECTION_SCALE = 0.745 was measured on Math.sign() behavior;
+  // any smoothing change requires a Phase-4 re-calibration before shipping.
+  // See audit finding `symmetry-correction-sign-discontinuity`.
   const asymmetry = analyzeAsymmetry(pixelData.weights, width, height);
   const symCorr = computeSymmetryCorrection(symmetry, width, height);
   optical.x += symCorr.dx * Math.sign(asymmetry.asymX);
   optical.y += symCorr.dy * Math.sign(asymmetry.asymY);
 
-  // Step 7: Vertical perceptual bias
-  optical.y = applyVerticalBias(optical.y, height, perceptualConfig.verticalBias);
+  // Step 7: Vertical perceptual bias is now zero by default and the call is a
+  // no-op. V1 keeps the call for backward compatibility; V2 omits it to avoid
+  // a confusing dead path. To re-enable a global vertical bias, set it on
+  // PerceptualConfig and add the call back here.
 
   // Step 8: Compute offset from geometric center
-  const geometricCenter = { x: width / 2, y: height / 2 };
+  const geometricCenter = v2GeoCenter;
   const dx = geometricCenter.x - optical.x;
   const dy = geometricCenter.y - optical.y;
 

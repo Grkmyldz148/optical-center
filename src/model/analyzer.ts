@@ -2,8 +2,9 @@
  * Visual Weight Analyzer
  *
  * Rasterizes an element using Canvas 2D and computes per-pixel
- * visual weight as alpha × luminance. This produces a weight map
- * that represents how "visually heavy" each pixel appears.
+ * visual weight as alpha × (1 − luminance) — darker, more opaque pixels read
+ * as visually heavier. This produces a weight map that represents how
+ * "visually heavy" each pixel appears.
  */
 
 export interface PixelData {
@@ -30,10 +31,16 @@ export function rgbToLuminance(r: number, g: number, b: number): number {
 
 /**
  * Build a visual weight map from raw RGBA pixel data.
- * Weight = alpha × luminance (both normalized to 0-1).
+ * Weight = alpha × (1 − luminance), both normalized to 0-1, so darker pixels
+ * have higher weight (the common case for icons on a light surface).
  *
- * For dark-on-transparent content (typical icons), we invert luminance
- * so that darker pixels have higher weight.
+ * Degenerate guard: a near-white opaque shape (e.g. a white icon on a
+ * transparent background) has real coverage but ~zero luminance weight, since
+ * w = α·(1 − L) → 0 as L → 1. Left alone, the centroid would collapse to the
+ * box center and the icon would get no optical correction. When that happens
+ * we fall back to coverage (alpha) so the optical center stays shape-driven.
+ * Solid mid-tone icons are unaffected — a constant luminance cancels in the
+ * centroid either way.
  */
 export function buildWeightMap(
   imageData: { data: Uint8ClampedArray; width: number; height: number }
@@ -41,11 +48,11 @@ export function buildWeightMap(
   const { data, width, height } = imageData;
   const weights = new Float32Array(width * height);
 
+  let lumWeightTotal = 0;
+  let coverageTotal = 0;
+
   for (let i = 0; i < width * height; i++) {
     const offset = i * 4;
-    const r = data[offset];
-    const g = data[offset + 1];
-    const b = data[offset + 2];
     const a = data[offset + 3] / 255; // normalize alpha
 
     if (a < 0.01) {
@@ -54,10 +61,17 @@ export function buildWeightMap(
     }
 
     // Invert luminance: dark pixels = high weight (common for icons)
-    const luminance = rgbToLuminance(r, g, b);
-    const invertedLuminance = 1 - luminance;
+    const luminance = rgbToLuminance(data[offset], data[offset + 1], data[offset + 2]);
+    weights[i] = a * (1 - luminance);
 
-    weights[i] = a * invertedLuminance;
+    lumWeightTotal += weights[i];
+    coverageTotal += a;
+  }
+
+  if (coverageTotal > 0 && lumWeightTotal < 1e-3 * coverageTotal) {
+    for (let i = 0; i < width * height; i++) {
+      weights[i] = data[i * 4 + 3] / 255;
+    }
   }
 
   return { width, height, weights };

@@ -53,7 +53,7 @@ const STAGES: readonly Stage[] = [
     chip: "edge",
     title: "Contour dominance",
     citation: "Proffitt, Cutting & Stier, 1983",
-    body: "You see a shape's center by its boundary, not its mass. We take an edge-weighted centroid via a Sobel pass on the compressed weight map.",
+    body: "You see a shape's center by its boundary, not its mass. The DoG response is already an edge map, so the edge-weighted centroid reads straight from it — no separate gradient pass.",
     weight: { value: "40%", subject: "edge centroid" },
   },
   {
@@ -74,11 +74,11 @@ const STAGES: readonly Stage[] = [
   },
   {
     num: "06",
-    chip: "bias",
-    title: "Vertical bias",
-    citation: "Drain & Reuter-Lorenz, 1996",
-    body: "People consistently see a shape's center slightly above its geometric midpoint. We apply a 3.5% upward shift — a well-documented perceptual bias.",
-    formula: "cy −= height × 0.035",
+    chip: "blend",
+    title: "No global vertical bias",
+    citation: "Measured, not assumed",
+    body: "Theory predicts a slight upward shift — so we tested it across three psychophysics studies and found none. People center icons on the true vertical midline. Any vertical offset is per-icon, from the mass and symmetry above.",
+    formula: "verticalBias = 0",
   },
 ];
 
@@ -93,7 +93,7 @@ const STAGE_GLYPHS: Record<string, string> = {
   "03": '<polygon points="8 2.6 13.6 13.2 2.4 13.2" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/>',
   "04": '<polygon points="8 2 13.5 5.5 13.5 10.5 8 14 2.5 10.5 2.5 5.5" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/>',
   "05": '<line x1="8" y1="1.8" x2="8" y2="14.2" stroke="currentColor" stroke-width="1.2" stroke-dasharray="1.5 1.6"/><polyline points="4.6 6 2.6 8 4.6 10" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/><polyline points="11.4 6 13.4 8 11.4 10" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>',
-  "06": '<line x1="2.6" y1="13.4" x2="13.4" y2="13.4" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/><line x1="8" y1="11.2" x2="8" y2="3.4" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/><polyline points="5.2 6.2 8 3.4 10.8 6.2" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>',
+  "06": '<line x1="2.6" y1="8" x2="13.4" y2="8" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/><circle cx="8" cy="8" r="1.7" fill="currentColor"/>',
 };
 
 /*
@@ -123,7 +123,7 @@ const CHIPS: readonly Chip[] = [
   { id: "edge",     x: 324, y: TOP_Y, w: 180, label: "edge centroid · 40%" },
   { id: "hull",     x: 324, y: ROW_Y, w: 180, label: "hull centroid · 30%" },
   { id: "sym",      x: 324, y: BOT_Y, w: 180, label: "symmetry axis · 30%" },
-  { id: "bias",     x: 524, y: ROW_Y, w: 76,  label: "+ bias" },
+  { id: "blend",    x: 524, y: ROW_Y, w: 76,  label: "blend" },
   { id: "out",      x: 620, y: ROW_Y, w: 100, label: "( dx, dy )", emphasis: "out" },
 ];
 
@@ -245,7 +245,7 @@ const REFERENCES: readonly Reference[] = [
           class="science__pipeline-svg"
           viewBox="0 0 730 180"
           role="img"
-          aria-label="Pipeline: pixels feed a DoG filter, then a power-law compress. The compressed weight map splits three ways into an edge centroid (40%), a hull centroid (30%), and a symmetry axis (30%). The three are blended and shifted by a vertical bias to produce a single (dx, dy) offset."
+          aria-label="Pipeline: pixels feed a DoG filter, then a power-law compress. The compressed weight map splits three ways into an edge centroid (40%), a hull centroid (30%), and a symmetry axis (30%). The three are blended into a single (dx, dy) offset."
         >
           <defs>
             <marker

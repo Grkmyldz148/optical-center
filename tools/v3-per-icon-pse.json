@@ -1,0 +1,158 @@
+{
+  "_description": "Per-icon PSE from Phase 2 2AFC data via linear interpolation across testLevels",
+  "_methodology": "For each icon, pref(testLevel) = 1 - mean(choseReference); PSE = c where pref(c) = 0.5",
+  "_n_participants": 30,
+  "_n_icons": 15,
+  "icons": {
+    "bootstrap-icons/bar-chart-line-fill": {
+      "pse": 1.115,
+      "n_trials": 190,
+      "pref_at_levels": {
+        "0": 0.617,
+        "0.5": 0.75,
+        "1": 0.6,
+        "1.5": 0.167
+      }
+    },
+    "bootstrap-icons/building-down": {
+      "pse": 0.911,
+      "n_trials": 203,
+      "pref_at_levels": {
+        "0": 0.667,
+        "0.5": 0.6,
+        "1": 0.478,
+        "1.5": 0.3
+      }
+    },
+    "bootstrap-icons/cloud-haze2-fill": {
+      "pse": 0.574,
+      "n_trials": 193,
+      "pref_at_levels": {
+        "0": 0.583,
+        "0.5": 0.533,
+        "1": 0.308,
+        "1.5": 0.45
+      }
+    },
+    "feather/archive": {
+      "pse": 0.779,
+      "n_trials": 199,
+      "pref_at_levels": {
+        "0": 0.733,
+        "0.5": 0.6,
+        "1": 0.421,
+        "1.5": 0.2
+      }
+    },
+    "feather/gift": {
+      "pse": 0.801,
+      "n_trials": 194,
+      "pref_at_levels": {
+        "0": 0.733,
+        "0.5": 0.717,
+        "1": 0.357,
+        "1.5": 0.283
+      }
+    },
+    "feather/globe": {
+      "pse": 0.622,
+      "n_trials": 197,
+      "pref_at_levels": {
+        "0": 0.7,
+        "0.5": 0.567,
+        "1": 0.294,
+        "1.5": 0.317
+      }
+    },
+    "feather/slack": {
+      "pse": 1.385,
+      "n_trials": 198,
+      "pref_at_levels": {
+        "0": 0.617,
+        "0.5": 0.633,
+        "1": 0.667,
+        "1.5": 0.45
+      }
+    },
+    "heroicons-outline/gift-top": {
+      "pse": 0.861,
+      "n_trials": 192,
+      "pref_at_levels": {
+        "0": 0.667,
+        "0.5": 0.717,
+        "1": 0.417,
+        "1.5": 0.3
+      }
+    },
+    "heroicons-outline/table-cells": {
+      "pse": 0.63,
+      "n_trials": 192,
+      "pref_at_levels": {
+        "0": 0.583,
+        "0.5": 0.617,
+        "1": 0.167,
+        "1.5": 0.35
+      }
+    },
+    "heroicons-outline/wallet": {
+      "pse": 0.88,
+      "n_trials": 195,
+      "pref_at_levels": {
+        "0": 0.8,
+        "0.5": 0.817,
+        "1": 0.4,
+        "1.5": 0.117
+      }
+    },
+    "heroicons-outline/wrench-screwdriver": {
+      "pse": 1.188,
+      "n_trials": 195,
+      "pref_at_levels": {
+        "0": 0.8,
+        "0.5": 0.65,
+        "1": 0.6,
+        "1.5": 0.333
+      }
+    },
+    "lucide/calendar-fold": {
+      "pse": 0.893,
+      "n_trials": 191,
+      "pref_at_levels": {
+        "0": 0.683,
+        "0.5": 0.667,
+        "1": 0.455,
+        "1.5": 0.317
+      }
+    },
+    "phosphor-regular/compass-rose": {
+      "pse": 0.766,
+      "n_trials": 197,
+      "pref_at_levels": {
+        "0": 0.633,
+        "0.5": 0.533,
+        "1": 0.471,
+        "1.5": 0.367
+      }
+    },
+    "phosphor-regular/exclude": {
+      "pse": 1.199,
+      "n_trials": 194,
+      "pref_at_levels": {
+        "0": 0.6,
+        "0.5": 0.683,
+        "1": 0.643,
+        "1.5": 0.283
+      }
+    },
+    "phosphor-regular/microsoft-outlook-logo": {
+      "pse": 0.182,
+      "n_trials": 197,
+      "pref_at_levels": {
+        "0": 0.433,
+        "0.5": 0.617,
+        "1": 0.412,
+        "1.5": 0.417
+      }
+    }
+  }
+}
