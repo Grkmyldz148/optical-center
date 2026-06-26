@@ -1,0 +1,79 @@
+:root {
+  color-scheme: dark;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: ui-sans-serif, system-ui, -apple-system, sans-serif;
+  background: #0b0d12;
+  color: #e7eaf0;
+  line-height: 1.5;
+}
+
+main {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 48px 24px 96px;
+}
+
+h1 {
+  font-size: 1.6rem;
+  margin: 0 0 4px;
+}
+
+.lede {
+  color: #9aa3b2;
+  margin: 0 0 40px;
+}
+
+section {
+  margin: 0 0 40px;
+}
+
+section h2 {
+  font-size: 1rem;
+  margin: 0 0 12px;
+}
+
+.pair {
+  display: flex;
+  gap: 24px;
+}
+
+.cell {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: center;
+}
+
+.cell small {
+  color: #9aa3b2;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Fixed box so the icon's centering is visually obvious. Crosshair guides
+   mark the true geometric center; a correctly balanced glyph sits with its
+   visual mass over the crosshair, not its bounding box. */
+.box {
+  width: 96px;
+  height: 96px;
+  display: grid;
+  place-items: center;
+  border: 1px solid #2a2f3a;
+  border-radius: 12px;
+  background:
+    linear-gradient(#3a4150, #3a4150) center / 1px 100% no-repeat,
+    linear-gradient(#3a4150, #3a4150) center / 100% 1px no-repeat,
+    #12151c;
+}
+
+.box svg {
+  width: 56px;
+  height: 56px;
+  color: #5b9dff;
+}

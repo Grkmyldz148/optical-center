@@ -1,0 +1,28 @@
+{
+  "name": "optical-center-example-nextjs",
+  "version": "0.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev --port 3737",
+    "dev:webpack": "next dev --webpack --port 3737",
+    "build": "next build",
+    "build:webpack": "next build --webpack",
+    "start": "next start --port 3737"
+  },
+  "dependencies": {
+    "@iconify/react": "^6.0.0",
+    "lucide-react": "^1.21.0",
+    "lucide-static": "^1.21.0",
+    "next": "^16.0.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
+  },
+  "devDependencies": {
+    "@babel/core": "^7.29.0",
+    "@types/node": "^25.6.0",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "optical-center": "file:../..",
+    "typescript": "^5.4.0"
+  }
+}

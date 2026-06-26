@@ -47,6 +47,16 @@
       "types": "./dist/tailwind/index.d.ts",
       "import": "./dist/tailwind/index.js"
     },
+    "./next": {
+      "types": "./dist/next/index.d.ts",
+      "import": "./dist/next/index.js",
+      "default": "./dist/next/index.js"
+    },
+    "./next/loader": {
+      "types": "./dist/next/loader.d.ts",
+      "import": "./dist/next/loader.js",
+      "default": "./dist/next/loader.js"
+    },
     "./package.json": "./package.json"
   },
   "bin": {
@@ -111,6 +121,7 @@
   "peerDependencies": {
     "@babel/core": "^7.29.0",
     "astro": ">=4",
+    "next": ">=15",
     "postcss": "^8.5.13",
     "vite": ">=5"
   },
@@ -119,6 +130,9 @@
       "optional": true
     },
     "astro": {
+      "optional": true
+    },
+    "next": {
       "optional": true
     },
     "postcss": {
