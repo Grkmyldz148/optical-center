@@ -149,6 +149,44 @@ export default defineConfig({ integrations: [opticalCenter()] });
 </details>
 
 <details>
+<summary><b>Next.js</b> (Webpack &amp; Turbopack)</summary>
+
+```ts
+// next.config.ts
+import withOpticalCenter from 'optical-center/next';
+
+export default withOpticalCenter({
+  // …your usual Next config
+});
+```
+
+```bash
+npm i -D @babel/core   # the loader needs it; Next does not ship it
+```
+
+Then mark inline SVGs as usual:
+
+```tsx
+<svg optical-center="auto" viewBox="0 0 24 24">
+  <path d="M8 5v14l11-7z" />
+</svg>
+```
+
+`withOpticalCenter` registers one transform on both bundlers — a Webpack
+`enforce: 'pre'` rule and the equivalent `turbopack.rules` entry — so the
+directive is applied to `.jsx`/`.tsx` **before** SWC compiles them. SWC and the
+React Compiler keep doing the actual compilation; unlike a project `.babelrc`,
+nothing is opted out of SWC. Imported Iconify/Lucide icon `.json` is corrected
+automatically (scoped to icon packages; Webpack by default — pass
+`{ turbopackIconData: true }` to extend it to Turbopack).
+
+**Limitations.** No vanilla-HTML / RSC-streamed SVG-string sweep (Next has no
+per-page HTML hook). Function-valued options (`onWarning`, `iconPackages`) are
+not supported because Turbopack rule options must be JSON-serialisable.
+
+</details>
+
+<details>
 <summary><b>Tailwind</b></summary>
 
 ```js
@@ -192,6 +230,7 @@ browser-safe `.` entry; native bindings live behind `optical-center/node`.
 | `optical-center/astro` | Astro integration (+ dev middleware). |
 | `optical-center/postcss` | PostCSS plugin: `optical-center: auto`. |
 | `optical-center/tailwind` | Tailwind plugin surface. |
+| `optical-center/next` | Next.js adapter: `withOpticalCenter()` (Webpack + Turbopack). |
 
 ---
 
